@@ -1,0 +1,119 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  FileSearch,
+  Linkedin,
+  FilePlus,
+  FileEdit,
+  Target,
+  Map,
+  MessageSquare,
+  Users,
+  Settings,
+  CreditCard,
+} from "lucide-react";
+
+const menuItems = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  {
+    label: "Análise de Currículo",
+    href: "/dashboard/resume-analysis",
+    icon: FileSearch,
+  },
+  {
+    label: "Análise LinkedIn",
+    href: "/dashboard/linkedin-analysis",
+    icon: Linkedin,
+  },
+  {
+    label: "Criar Currículo",
+    href: "/dashboard/create-resume",
+    icon: FilePlus,
+  },
+  {
+    label: "Adaptar para Vaga",
+    href: "/dashboard/adapt-resume",
+    icon: Target,
+  },
+  {
+    label: "Editor de Currículo",
+    href: "/dashboard/resume-editor",
+    icon: FileEdit,
+  },
+  {
+    label: "Roadmap de Carreira",
+    href: "/dashboard/career-roadmap",
+    icon: Map,
+  },
+  { label: "Chat IA", href: "/dashboard/chat", icon: MessageSquare },
+  {
+    label: "Área Recrutadores",
+    href: "/dashboard/recruiters",
+    icon: Users,
+  },
+];
+
+const bottomItems = [
+  { label: "Planos", href: "/dashboard/plans", icon: CreditCard },
+  { label: "Configurações", href: "/dashboard/profile", icon: Settings },
+];
+
+export default function Sidebar() {
+  const pathname = usePathname();
+
+  return (
+    <aside className="hidden lg:flex flex-col w-64 bg-dark-800/50 backdrop-blur-xl border-r border-white/[0.06] min-h-[calc(100vh-4rem)]">
+      <nav className="flex-1 px-3 py-4 space-y-1">
+        {menuItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                ${
+                  isActive
+                    ? "bg-primary-500/10 text-primary-400 border border-primary-500/10"
+                    : "text-gray-400 hover:bg-white/5 hover:text-gray-200 border border-transparent"
+                }`}
+            >
+              <item.icon
+                className={`w-5 h-5 ${
+                  isActive ? "text-primary-400" : "text-gray-500"
+                }`}
+              />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="px-3 py-4 border-t border-white/[0.06] space-y-1">
+        {bottomItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                ${
+                  isActive
+                    ? "bg-primary-500/10 text-primary-400 border border-primary-500/10"
+                    : "text-gray-400 hover:bg-white/5 hover:text-gray-200 border border-transparent"
+                }`}
+            >
+              <item.icon
+                className={`w-5 h-5 ${
+                  isActive ? "text-primary-400" : "text-gray-500"
+                }`}
+              />
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
+    </aside>
+  );
+}

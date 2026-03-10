@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"C:\\\\claude-cookbooks-main\" -type f -name \"*.ipynb\" 2>/dev/null | grep -E \"\\(ui|frontend|design|saas|web|app\\)\" -i)",
+      "Bash(find \"C:\\\\claude-cookbooks-main\" -type f \\\\\\( -name \"*dashboard*\" -o -name \"*saas*\" -o -name \"*template*\" -o -name \"*app*\" \\\\\\) 2>/dev/null | head -20)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm 2>&1 | tail -20)",
+      "Bash(npx create-next-app@latest nextcv-temp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm 2>&1 | tail -20)",
+      "Bash(npx create-next-app@latest nextcv-temp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack 2>&1 | tail -20)",
+      "Bash(echo \"N\" | npx create-next-app@14 nextcv-temp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm 2>&1 | tail -30)",
+      "Bash(mv nextcv-temp/.* nextcv-temp/* . 2>/dev/null; rm -rf nextcv-temp && ls -la)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(wc -l /c/ui-ux-pro-max-skill-main/src/ui-ux-pro-max/data/*.csv)",
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(taskkill //F //IM node.exe 2>/dev/null; sleep 2; echo \"Killed previous processes\")"
+    ]
+  }
+}
