@@ -6,11 +6,20 @@ export interface User {
   photoURL: string | null;
   credits: number;
   plan: Plan;
+  planActivatedAt: Date | null;
+  planExpiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export type Plan = "free" | "basic" | "intermediate" | "advanced";
+
+export const PLAN_RANK: Record<Plan, number> = {
+  free: 0,
+  basic: 1,
+  intermediate: 2,
+  advanced: 3,
+};
 
 export interface PlanInfo {
   id: Plan;
@@ -195,6 +204,18 @@ export interface AdaptedResume {
   adaptedContent: ResumeData;
   keywords: string[];
   suggestions: string[];
+  createdAt: Date;
+}
+
+// ==================== Device Types ====================
+export interface Device {
+  id: string;
+  userId: string;
+  deviceName: string;
+  browser: string;
+  os: string;
+  lastVerifiedAt: Date;
+  lastActiveAt: Date;
   createdAt: Date;
 }
 

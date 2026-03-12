@@ -10,6 +10,7 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { cache, CK, TTL, invalidateAll } from "@/lib/cache";
 import type { User } from "@/types";
 
 const googleProvider = new GoogleAuthProvider();
@@ -22,16 +23,24 @@ export async function registerUser(
   const { user } = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(user, { displayName });
 
-  await setDoc(doc(db, "users", user.uid), {
+  const userData = {
     uid: user.uid,
     email: user.email,
     displayName,
     photoURL: null,
     credits: 5,
     plan: "free",
+    planActivatedAt: null,
+    planExpiresAt: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+
+  await setDoc(doc(db, "users", user.uid), userData);
+
+  // Pre-populate cache
+  cache.set(CK.userData(user.uid), { ...userData, createdAt: new Date(), updatedAt: new Date() }, TTL.userData);
+  cache.set(CK.credits(user.uid), 5, TTL.credits);
 
   return user;
 }
@@ -49,29 +58,49 @@ export async function loginWithGoogle(): Promise<FirebaseUser> {
 
   const userDoc = await getDoc(doc(db, "users", user.uid));
   if (!userDoc.exists()) {
-    await setDoc(doc(db, "users", user.uid), {
+    const userData = {
       uid: user.uid,
       email: user.email,
       displayName: user.displayName,
       photoURL: user.photoURL,
       credits: 5,
       plan: "free",
+      planActivatedAt: null,
+      planExpiresAt: null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    await setDoc(doc(db, "users", user.uid), userData);
+
+    cache.set(CK.userData(user.uid), { ...userData, createdAt: new Date(), updatedAt: new Date() }, TTL.userData);
+    cache.set(CK.credits(user.uid), 5, TTL.credits);
+  } else {
+    // Cache existing user data
+    const data = userDoc.data() as User;
+    cache.set(CK.userData(user.uid), data, TTL.userData);
+    cache.set(CK.credits(user.uid), data.credits, TTL.credits);
   }
 
   return user;
 }
 
 export async function logoutUser(): Promise<void> {
+  invalidateAll();
   await signOut(auth);
 }
 
 export async function getUserData(uid: string): Promise<User | null> {
+  const cached = cache.get<User>(CK.userData(uid));
+  if (cached) return cached;
+
   const userDoc = await getDoc(doc(db, "users", uid));
   if (!userDoc.exists()) return null;
-  return userDoc.data() as User;
+
+  const data = userDoc.data() as User;
+  cache.set(CK.userData(uid), data, TTL.userData);
+  cache.set(CK.credits(uid), data.credits, TTL.credits);
+  return data;
 }
 
 export function onAuthChange(callback: (user: FirebaseUser | null) => void) {

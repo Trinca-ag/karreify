@@ -75,7 +75,7 @@ export default function Footer() {
                 { href: "#", label: "Termos de Uso" },
                 { href: "#", label: "Privacidade" },
               ].map((link) => (
-                <li key={link.href}>
+                <li key={link.label}>
                   <Link
                     href={link.href}
                     className="text-sm text-gray-500 hover:text-primary-400 transition-colors duration-200"
@@ -97,7 +97,7 @@ export default function Footer() {
                 { href: "#", label: "Guias" },
                 { href: "#", label: "API" },
               ].map((link) => (
-                <li key={link.href}>
+                <li key={link.label}>
                   <Link
                     href={link.href}
                     className="text-sm text-gray-500 hover:text-primary-400 transition-colors duration-200"

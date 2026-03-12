@@ -12,14 +12,16 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, loading } = useAuthContext();
+  const { isAuthenticated, loading, deviceVerified } = useAuthContext();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push("/auth/login");
+    } else if (!loading && isAuthenticated && !deviceVerified) {
+      router.push("/auth/verify");
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated, loading, deviceVerified, router]);
 
   if (loading) {
     return (
@@ -29,7 +31,7 @@ export default function DashboardLayout({
     );
   }
 
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated || !deviceVerified) return null;
 
   return (
     <div className="min-h-screen bg-dark-900 text-white">

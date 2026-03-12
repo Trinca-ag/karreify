@@ -183,14 +183,24 @@ export default function LoginPage() {
                 placeholder="seu@email.com"
                 required
               />
-              <Input
-                label="Senha"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Sua senha"
-                required
-              />
+              <div>
+                <Input
+                  label="Senha"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Sua senha"
+                  required
+                />
+                <div className="text-right mt-1.5">
+                  <Link
+                    href="/auth/reset-password"
+                    className="text-sm text-gray-400 hover:text-primary-400 transition-colors"
+                  >
+                    Esqueceu a senha?
+                  </Link>
+                </div>
+              </div>
               <Button type="submit" loading={loading} className="w-full" size="lg">
                 Entrar
               </Button>

@@ -55,15 +55,16 @@ export default function ResumeAnalysisPage() {
 
       const data = await response.json();
 
-      if (!data.success) throw new Error(data.error);
+      if (!data.success) throw new Error(data.error || "Erro desconhecido na API");
 
       await deductCredits(user.uid, "resume-analysis", "Analise de curriculo");
 
       setResult(data.data);
       toast.success("Analise concluida!");
     } catch (error) {
-      console.error(error);
-      toast.error("Erro ao analisar curriculo. Tente novamente.");
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error("Resume analysis error:", msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

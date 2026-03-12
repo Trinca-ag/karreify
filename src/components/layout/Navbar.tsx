@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
@@ -101,8 +102,12 @@ export default function Navbar() {
                     onClick={() => setUserMenuOpen(!userMenuOpen)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors hover:bg-white/10 text-gray-300"
                   >
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-white/10 border border-white/20">
-                      <User className="w-4 h-4 text-white" />
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-white/10 border border-white/20 overflow-hidden">
+                      {userData?.photoURL ? (
+                        <Image src={userData.photoURL} alt="" width={32} height={32} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-4 h-4 text-white" />
+                      )}
                     </div>
                     <span className="text-sm font-medium text-gray-300">
                       {user?.displayName || "Usuário"}

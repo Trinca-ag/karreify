@@ -20,9 +20,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: parsed });
   } catch (error) {
-    console.error("Error analyzing resume:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Error analyzing resume:", message, error);
     return NextResponse.json(
-      { error: "Erro ao analisar currículo. Tente novamente." },
+      { success: false, error: message },
       { status: 500 }
     );
   }

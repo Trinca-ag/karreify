@@ -12,7 +12,9 @@
       "Bash(npm run:*)",
       "Bash(wc -l /c/ui-ux-pro-max-skill-main/src/ui-ux-pro-max/data/*.csv)",
       "WebFetch(domain:ai.google.dev)",
-      "Bash(taskkill //F //IM node.exe 2>/dev/null; sleep 2; echo \"Killed previous processes\")"
+      "Bash(taskkill //F //IM node.exe 2>/dev/null; sleep 2; echo \"Killed previous processes\")",
+      "Bash(npm ls:*)",
+      "Bash(npx next:*)"
     ]
   }
 }

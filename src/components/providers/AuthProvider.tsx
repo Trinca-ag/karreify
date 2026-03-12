@@ -10,8 +10,10 @@ interface AuthContextType {
   userData: User | null;
   loading: boolean;
   isAuthenticated: boolean;
+  deviceVerified: boolean;
   logout: () => Promise<void>;
   refreshUserData: () => Promise<void>;
+  markDeviceVerified: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,8 +21,10 @@ const AuthContext = createContext<AuthContextType>({
   userData: null,
   loading: true,
   isAuthenticated: false,
+  deviceVerified: false,
   logout: async () => {},
   refreshUserData: async () => {},
+  markDeviceVerified: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {

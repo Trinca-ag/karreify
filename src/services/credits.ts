@@ -1,11 +1,18 @@
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { FEATURE_COSTS } from "@/types";
+import { cache, CK, TTL } from "@/lib/cache";
 
 export async function getUserCredits(userId: string): Promise<number> {
+  const cached = cache.get<number>(CK.credits(userId));
+  if (cached !== null) return cached;
+
   const userDoc = await getDoc(doc(db, "users", userId));
   if (!userDoc.exists()) throw new Error("Usuário não encontrado");
-  return userDoc.data().credits || 0;
+
+  const credits = userDoc.data().credits || 0;
+  cache.set(CK.credits(userId), credits, TTL.credits);
+  return credits;
 }
 
 export async function checkCredits(userId: string, feature: string): Promise<boolean> {
@@ -26,8 +33,10 @@ export async function deductCredits(
     throw new Error("Créditos insuficientes");
   }
 
+  const newCredits = credits - cost;
+
   await updateDoc(doc(db, "users", userId), {
-    credits: credits - cost,
+    credits: newCredits,
   });
 
   await addDoc(collection(db, "users", userId, "transactions"), {
@@ -37,6 +46,10 @@ export async function deductCredits(
     description,
     createdAt: serverTimestamp(),
   });
+
+  // Update cache with new value instead of invalidating
+  cache.set(CK.credits(userId), newCredits, TTL.credits);
+  cache.invalidate(CK.userData(userId));
 }
 
 export async function addCredits(
@@ -45,9 +58,10 @@ export async function addCredits(
   description: string
 ): Promise<void> {
   const credits = await getUserCredits(userId);
+  const newCredits = credits + amount;
 
   await updateDoc(doc(db, "users", userId), {
-    credits: credits + amount,
+    credits: newCredits,
   });
 
   await addDoc(collection(db, "users", userId, "transactions"), {
@@ -57,4 +71,7 @@ export async function addCredits(
     description,
     createdAt: serverTimestamp(),
   });
+
+  cache.set(CK.credits(userId), newCredits, TTL.credits);
+  cache.invalidate(CK.userData(userId));
 }
