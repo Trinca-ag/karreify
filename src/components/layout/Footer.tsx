@@ -117,7 +117,7 @@ export default function Footer() {
           </p>
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs text-gray-600">Powered by Gemini AI</span>
+            <span className="text-xs text-gray-600">Powered by DeepSeek AI</span>
           </div>
         </div>
       </div>

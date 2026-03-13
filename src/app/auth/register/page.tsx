@@ -121,7 +121,7 @@ export default function RegisterPage() {
               </div>
               <div>
                 <span className="text-gray-300 text-sm font-medium">IA de ultima geracao</span>
-                <p className="text-gray-500 text-xs">Powered by Google Gemini</p>
+                <p className="text-gray-500 text-xs">Powered by DeepSeek AI</p>
               </div>
             </div>
           </div>

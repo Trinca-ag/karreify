@@ -1,4 +1,4 @@
-import { geminiModel } from "@/lib/gemini";
+import { generateCompletion } from "@/lib/deepseek";
 
 export async function analyzeResume(resumeText: string): Promise<string> {
   const prompt = `Você é um especialista em recursos humanos e análise de currículos profissionais.
@@ -85,9 +85,7 @@ Responda APENAS com o JSON, sem markdown ou texto adicional.
 Currículo:
 ${resumeText}`;
 
-  const result = await geminiModel.generateContent(prompt);
-  const response = result.response;
-  return response.text();
+  return generateCompletion(prompt, { temperature: 0.2 });
 }
 
 export async function createResumeFromData(formData: string): Promise<string> {
@@ -115,8 +113,7 @@ Responda APENAS com o JSON, sem markdown.
 Dados do usuário:
 ${formData}`;
 
-  const result = await geminiModel.generateContent(prompt);
-  return result.response.text();
+  return generateCompletion(prompt, { temperature: 0.3 });
 }
 
 export async function adaptResumeForJob(
@@ -155,8 +152,7 @@ ${resumeText}
 Descrição da vaga:
 ${jobDescription}`;
 
-  const result = await geminiModel.generateContent(prompt);
-  return result.response.text();
+  return generateCompletion(prompt, { temperature: 0.2 });
 }
 
 export async function improveResumeSection(
@@ -179,6 +175,5 @@ Retorne um JSON:
 
 Responda APENAS com o JSON.`;
 
-  const result = await geminiModel.generateContent(prompt);
-  return result.response.text();
+  return generateCompletion(prompt, { maxTokens: 2048, temperature: 0.3 });
 }

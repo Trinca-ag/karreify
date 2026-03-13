@@ -14,7 +14,11 @@
       "WebFetch(domain:ai.google.dev)",
       "Bash(taskkill //F //IM node.exe 2>/dev/null; sleep 2; echo \"Killed previous processes\")",
       "Bash(npm ls:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(grep -r \"recruiter\" \"C:\\\\NextCV\" --include=\"*.env*\" --include=\"*.json\" 2>/dev/null | head -20)",
+      "Bash(grep -r \"/chat\" /c/NextCV/src --include=\"*.ts\" --include=\"*.tsx\" 2>/dev/null | grep -v node_modules | head -20)",
+      "Bash(cd C:/NextCV && npm install openai && npm uninstall @google/generative-ai)",
+      "Bash(cd C:/NextCV && mv src/services/gemini-resume.ts src/services/ai-resume.ts && mv src/services/gemini-linkedin.ts src/services/ai-linkedin.ts && mv src/services/gemini-career.ts src/services/ai-career.ts)"
     ]
   }
 }

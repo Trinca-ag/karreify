@@ -10,8 +10,6 @@ import {
   FileEdit,
   Target,
   Map,
-  MessageSquare,
-  Users,
   Settings,
   CreditCard,
 } from "lucide-react";
@@ -47,12 +45,6 @@ const menuItems = [
     label: "Roadmap de Carreira",
     href: "/dashboard/career-roadmap",
     icon: Map,
-  },
-  { label: "Chat IA", href: "/dashboard/chat", icon: MessageSquare },
-  {
-    label: "Área Recrutadores",
-    href: "/dashboard/recruiters",
-    icon: Users,
   },
 ];
 

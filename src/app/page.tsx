@@ -7,7 +7,6 @@ import {
   FilePlus,
   Target,
   Map,
-  MessageSquare,
   Sparkles,
   Upload,
   ArrowRight,
@@ -55,13 +54,6 @@ const features = [
     description:
       "Receba um plano personalizado com cursos, certificações e metas para alcançar seu objetivo profissional.",
     gradient: "from-accent-pink to-primary-500",
-  },
-  {
-    icon: MessageSquare,
-    title: "Chat com IA",
-    description:
-      "Converse com nossa IA especializada em carreira para tirar dúvidas e receber orientações.",
-    gradient: "from-accent-violet to-accent-cyan",
   },
 ];
 
@@ -111,7 +103,7 @@ const benefits = [
   {
     icon: Sparkles,
     title: "IA Avançada",
-    description: "Powered by Gemini para melhores resultados.",
+    description: "Powered by DeepSeek para melhores resultados.",
     gradient: "from-accent-violet to-accent-pink",
   },
 ];
@@ -138,7 +130,6 @@ const plans = [
       "120 créditos/mês",
       "Tudo do plano Básico",
       "Roadmap de carreira",
-      "Chat com IA",
       "Prioridade no suporte",
     ],
     popular: true,
@@ -150,7 +141,6 @@ const plans = [
     features: [
       "230 créditos/mês",
       "Tudo do plano Intermediário",
-      "Área para recrutadores",
       "Relatórios avançados",
       "Suporte prioritário",
     ],
@@ -184,7 +174,7 @@ export default function Home() {
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-8 bg-white/5 border border-white/10 backdrop-blur-sm animate-fade-in-up">
                 <Sparkles className="w-4 h-4 text-primary-400" />
-                <span className="text-gray-300">Powered by Gemini AI</span>
+                <span className="text-gray-300">Powered by DeepSeek AI</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               </div>
 

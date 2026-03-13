@@ -10,7 +10,6 @@ import {
   FilePlus,
   Target,
   Map,
-  MessageSquare,
   ArrowRight,
   TrendingUp,
   FileText,
@@ -52,13 +51,6 @@ const quickActions = [
     icon: Map,
     color: "bg-violet-500/10 text-violet-400",
     description: "Planeje sua carreira",
-  },
-  {
-    label: "Chat com IA",
-    href: "/dashboard/chat",
-    icon: MessageSquare,
-    color: "bg-pink-500/10 text-pink-400",
-    description: "Tire duvidas com a IA",
   },
 ];
 

@@ -1,4 +1,4 @@
-import { geminiModel } from "@/lib/gemini";
+import { generateCompletion } from "@/lib/deepseek";
 
 export async function analyzeLinkedInProfile(profileData: string): Promise<string> {
   const prompt = `Você é um especialista em otimização de perfis do LinkedIn e personal branding.
@@ -39,6 +39,5 @@ Responda APENAS com o JSON, sem markdown.
 Informações do perfil:
 ${profileData}`;
 
-  const result = await geminiModel.generateContent(prompt);
-  return result.response.text();
+  return generateCompletion(prompt, { temperature: 0.2 });
 }

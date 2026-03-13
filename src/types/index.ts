@@ -237,7 +237,6 @@ export const FEATURE_COSTS: Record<string, number> = {
   "resume-adaptation": 1,
   "resume-editor": 1,
   "career-roadmap": 20,
-  "chat": 1,
 };
 
 export const PLANS: PlanInfo[] = [
@@ -263,7 +262,6 @@ export const PLANS: PlanInfo[] = [
       "120 créditos/mês",
       "Tudo do plano Básico",
       "Roadmap de carreira",
-      "Chat com IA",
       "Prioridade no suporte",
     ],
   },
@@ -275,7 +273,6 @@ export const PLANS: PlanInfo[] = [
     features: [
       "230 créditos/mês",
       "Tudo do plano Intermediário",
-      "Área para recrutadores",
       "Relatórios avançados",
       "Suporte prioritário",
     ],

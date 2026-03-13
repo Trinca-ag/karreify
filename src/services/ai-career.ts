@@ -1,4 +1,4 @@
-import { geminiModel } from "@/lib/gemini";
+import { generateCompletion } from "@/lib/deepseek";
 
 export async function generateCareerRoadmap(data: {
   currentRole: string;
@@ -55,24 +55,5 @@ Retorne um JSON válido:
 Crie pelo menos 4 fases com tarefas específicas e mensuráveis.
 Responda APENAS com o JSON, sem markdown.`;
 
-  const result = await geminiModel.generateContent(prompt);
-  return result.response.text();
-}
-
-export async function generateChatResponse(
-  message: string,
-  context: string
-): Promise<string> {
-  const prompt = `Você é um assistente de carreira especializado. Responda de forma útil e profissional.
-
-Contexto do usuário:
-${context}
-
-Pergunta do usuário:
-${message}
-
-Responda de forma clara, objetiva e útil. Use formatação quando apropriado.`;
-
-  const result = await geminiModel.generateContent(prompt);
-  return result.response.text();
+  return generateCompletion(prompt, { temperature: 0.4 });
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adaptResumeForJob } from "@/services/gemini-resume";
+import { adaptResumeForJob } from "@/services/ai-resume";
 import { cleanJsonResponse } from "@/utils/helpers";
 
 export async function POST(request: NextRequest) {

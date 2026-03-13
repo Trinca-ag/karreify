@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateCareerRoadmap } from "@/services/gemini-career";
+import { generateCareerRoadmap } from "@/services/ai-career";
 import { cleanJsonResponse } from "@/utils/helpers";
 
 export async function POST(request: NextRequest) {

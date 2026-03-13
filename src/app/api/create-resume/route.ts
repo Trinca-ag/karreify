@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createResumeFromData } from "@/services/gemini-resume";
+import { createResumeFromData } from "@/services/ai-resume";
 import { cleanJsonResponse } from "@/utils/helpers";
 
 export async function POST(request: NextRequest) {
