@@ -15,10 +15,14 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await analyzeResume(resumeText);
-    const cleanedResult = cleanJsonResponse(result);
+    const cleanedResult = cleanJsonResponse(result.content);
     const parsed = JSON.parse(cleanedResult);
 
-    return NextResponse.json({ success: true, data: parsed });
+    return NextResponse.json({
+      success: true,
+      data: parsed,
+      cache: result.cache,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("Error analyzing resume:", message, error);

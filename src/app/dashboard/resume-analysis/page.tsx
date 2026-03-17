@@ -1,17 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Card, { CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import FileUpload from "@/components/ui/FileUpload";
 import ScoreCircle from "@/components/ui/ScoreCircle";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { extractTextFromFile } from "@/utils/file-parser";
 import { uploadFile } from "@/services/firebase-storage";
-import { deductCredits, checkCredits } from "@/services/credits";
-import { FileSearch, AlertTriangle, CheckCircle, Lightbulb, RefreshCw } from "lucide-react";
+import { deductCredits, checkCredits, hasUsedFeature } from "@/services/credits";
+import { FileSearch, AlertTriangle, CheckCircle, Lightbulb, RefreshCw, Zap, Sparkles, Download } from "lucide-react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+
+const PROGRESS_MESSAGES = [
+  "Enviando seu curriculo...",
+  "Extraindo informacoes do documento...",
+  "Analisando estrutura e formatacao...",
+  "Avaliando conteudo e experiencias...",
+  "Verificando linguagem e gramática...",
+  "Identificando pontos fortes...",
+  "Mapeando areas de melhoria...",
+  "Gerando sugestoes personalizadas...",
+  "Calculando pontuacao final...",
+  "Finalizando analise...",
+];
+
+interface CacheMetrics {
+  promptTokens: number;
+  completionTokens: number;
+  cacheHitTokens: number;
+  cacheMissTokens: number;
+  cacheHitRate: number;
+}
 
 interface AnalysisResult {
   extractedData: Record<string, unknown>;
@@ -29,20 +50,130 @@ interface AnalysisResult {
 
 export default function ResumeAnalysisPage() {
   const { user } = useAuthContext();
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [cacheMetrics, setCacheMetrics] = useState<CacheMetrics | null>(null);
+  const [isFirstUse, setIsFirstUse] = useState<boolean | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [progressMsg, setProgressMsg] = useState("");
+  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    hasUsedFeature(user.uid, "resume-analysis").then((used) => setIsFirstUse(!used));
+  }, [user]);
+
+  const startProgress = useCallback(() => {
+    setProgress(0);
+    setProgressMsg(PROGRESS_MESSAGES[0]);
+    let current = 0;
+    progressInterval.current = setInterval(() => {
+      current += 1;
+      const target = Math.min(current, 90);
+      setProgress(target);
+      const msgIndex = Math.min(Math.floor(target / 10), PROGRESS_MESSAGES.length - 1);
+      setProgressMsg(PROGRESS_MESSAGES[msgIndex]);
+    }, 600);
+  }, []);
+
+  const stopProgress = useCallback(() => {
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+      progressInterval.current = null;
+    }
+    setProgress(100);
+    setProgressMsg("Analise concluida!");
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (progressInterval.current) clearInterval(progressInterval.current);
+    };
+  }, []);
+
+  const handleDownloadPDF = useCallback(async () => {
+    if (!result) return;
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+    let y = 20;
+
+    const checkPage = (needed: number) => {
+      if (y + needed > 280) {
+        doc.addPage();
+        y = 20;
+      }
+    };
+
+    // Title
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("Analise de Curriculo - NextCV", margin, y);
+    y += 10;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120);
+    doc.text(`Gerado em ${new Date().toLocaleDateString("pt-BR")}`, margin, y);
+    y += 12;
+    doc.setTextColor(0);
+
+    // Overall score
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Pontuacao Geral: ${result.analysis.overallScore}/100`, margin, y);
+    y += 10;
+
+    // Score breakdown
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Estrutura: ${result.analysis.structure.score}/100  |  Conteudo: ${result.analysis.content.score}/100  |  Linguagem: ${result.analysis.language.score}/100`, margin, y);
+    y += 12;
+
+    // Section helper
+    const addSection = (title: string, items: string[], icon: string) => {
+      checkPage(20);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${icon} ${title}`, margin, y);
+      y += 8;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      items.forEach((item) => {
+        const lines = doc.splitTextToSize(`• ${item}`, contentWidth);
+        checkPage(lines.length * 5 + 2);
+        doc.text(lines, margin, y);
+        y += lines.length * 5 + 2;
+      });
+      y += 6;
+    };
+
+    addSection("Pontos Fortes", result.analysis.strengths, "✓");
+    addSection("Pontos Fracos", result.analysis.weaknesses, "!");
+    addSection("Sugestoes de Melhoria", result.analysis.suggestions, "→");
+
+    doc.save("analise-curriculo-nextcv.pdf");
+  }, [result]);
 
   const handleAnalyze = async () => {
     if (!file || !user) return;
 
-    const hasCredits = await checkCredits(user.uid, "resume-analysis");
-    if (!hasCredits) {
-      toast.error("Creditos insuficientes. Faca upgrade do seu plano.");
-      return;
+    const usedBefore = await hasUsedFeature(user.uid, "resume-analysis");
+    setIsFirstUse(!usedBefore);
+
+    if (usedBefore) {
+      const hasCredits = await checkCredits(user.uid, "resume-analysis");
+      if (!hasCredits) {
+        toast.error("Creditos insuficientes. Faca upgrade do seu plano.");
+        return;
+      }
     }
 
     setLoading(true);
+    startProgress();
     try {
       const resumeText = await extractTextFromFile(file);
       await uploadFile(user.uid, file, "resumes");
@@ -57,22 +188,43 @@ export default function ResumeAnalysisPage() {
 
       if (!data.success) throw new Error(data.error || "Erro desconhecido na API");
 
-      await deductCredits(user.uid, "resume-analysis", "Analise de curriculo");
+      if (usedBefore) {
+        await deductCredits(user.uid, "resume-analysis", "Analise de curriculo");
+      } else {
+        const { addDoc, collection, serverTimestamp } = await import("firebase/firestore");
+        const { db } = await import("@/lib/firebase");
+        await addDoc(collection(db, "users", user.uid, "transactions"), {
+          amount: 0,
+          type: "debit",
+          feature: "resume-analysis",
+          description: "Analise de curriculo (primeira gratis)",
+          createdAt: serverTimestamp(),
+        });
+      }
 
+      stopProgress();
       setResult(data.data);
-      toast.success("Analise concluida!");
+      if (data.cache) setCacheMetrics(data.cache);
+      toast.success(usedBefore ? "Analise concluida!" : "Analise concluida! (primeira analise gratuita)");
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error("Resume analysis error:", msg);
       toast.error(msg);
     } finally {
       setLoading(false);
+      if (progressInterval.current) {
+        clearInterval(progressInterval.current);
+        progressInterval.current = null;
+      }
     }
   };
 
   const handleReset = () => {
     setFile(null);
     setResult(null);
+    setCacheMetrics(null);
+    setProgress(0);
+    setProgressMsg("");
   };
 
   return (
@@ -104,20 +256,50 @@ export default function ResumeAnalysisPage() {
               onClear={() => setFile(null)}
             />
             <div className="flex items-center justify-between">
-              <span className="inline-flex items-center px-3 py-1 bg-primary-500/10 border border-primary-500/20 text-primary-400 text-xs rounded-lg">Custo: 1 credito</span>
+              <span className={`inline-flex items-center px-3 py-1 text-xs rounded-lg ${
+                isFirstUse
+                  ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                  : "bg-primary-500/10 border border-primary-500/20 text-primary-400"
+              }`}>
+                {isFirstUse ? "Primeira analise gratuita!" : "Custo: 1 credito"}
+              </span>
               <Button onClick={handleAnalyze} disabled={!file || loading} loading={loading}>
                 {loading ? "Analisando..." : "Analisar curriculo"}
               </Button>
             </div>
+
+            {/* Progress bar */}
             {loading && (
-              <div className="py-8">
-                <LoadingSpinner size="lg" text="Analisando seu curriculo com IA..." />
+              <div className="space-y-4 py-4">
+                <div className="relative w-full h-3 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary-500 to-primary-400 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${progress}%` }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse rounded-full" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-400 animate-pulse">{progressMsg}</p>
+                  <span className="text-xs text-gray-500 font-mono">{progress}%</span>
+                </div>
               </div>
             )}
           </CardBody>
         </Card>
       ) : (
         <div className="space-y-6">
+          {/* Cache metrics badge */}
+          {cacheMetrics && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl w-fit">
+              <Zap className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs text-emerald-300 font-medium">
+                {cacheMetrics.cacheHitRate > 0
+                  ? `Cache hit: ${cacheMetrics.cacheHitRate}% — ${cacheMetrics.cacheHitTokens} tokens cacheados de ${cacheMetrics.promptTokens}`
+                  : `Primeiro uso — cache ativado para proximas analises (${cacheMetrics.promptTokens} tokens armazenados)`}
+              </span>
+            </div>
+          )}
+
           {/* Overall Score */}
           <Card>
             <CardBody className="flex flex-col items-center py-8">
@@ -218,29 +400,36 @@ export default function ResumeAnalysisPage() {
             </CardBody>
           </Card>
 
-          {/* Rewrite suggestions */}
-          {result.analysis.rewriteSuggestions?.length > 0 && (
+          {/* Download PDF + CTA */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
-              <CardHeader>
-                <h3 className="font-heading font-semibold text-white">Reescritas Sugeridas</h3>
-              </CardHeader>
-              <CardBody className="space-y-4">
-                {result.analysis.rewriteSuggestions.map((item, i) => (
-                  <div key={i} className="p-4 bg-white/[0.03] border border-white/[0.06] rounded-xl space-y-3">
-                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                      <span className="text-xs font-medium text-red-400 uppercase">Original</span>
-                      <p className="text-sm text-gray-400 mt-1 line-through">{item.original}</p>
-                    </div>
-                    <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                      <span className="text-xs font-medium text-green-400 uppercase">Sugerido</span>
-                      <p className="text-sm text-white mt-1 font-medium">{item.suggested}</p>
-                    </div>
-                    <p className="text-xs text-gray-500">{item.reason}</p>
-                  </div>
-                ))}
+              <CardBody className="flex flex-col items-center text-center py-8 space-y-3">
+                <div className="p-3 bg-blue-500/10 rounded-full">
+                  <Download className="w-7 h-7 text-blue-400" />
+                </div>
+                <h3 className="text-lg font-heading font-bold text-white">Baixar Analise</h3>
+                <p className="text-gray-400 text-sm">Salve a analise completa em PDF para consultar depois.</p>
+                <Button onClick={handleDownloadPDF} className="mt-2">
+                  <Download className="w-4 h-4 mr-2" />
+                  Baixar PDF
+                </Button>
               </CardBody>
             </Card>
-          )}
+
+            <Card>
+              <CardBody className="flex flex-col items-center text-center py-8 space-y-3">
+                <div className="p-3 bg-primary-500/10 rounded-full">
+                  <Sparkles className="w-7 h-7 text-primary-400" />
+                </div>
+                <h3 className="text-lg font-heading font-bold text-white">Corrigir Erros com IA</h3>
+                <p className="text-gray-400 text-sm">Gere um novo curriculo otimizado com as correcoes aplicadas.</p>
+                <Button onClick={() => router.push("/dashboard/create-resume")} className="mt-2">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Gerar curriculo otimizado
+                </Button>
+              </CardBody>
+            </Card>
+          </div>
         </div>
       )}
     </div>

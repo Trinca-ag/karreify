@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, addDoc, collection, query, where, limit, getDocs, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { FEATURE_COSTS } from "@/types";
 import { cache, CK, TTL } from "@/lib/cache";
@@ -50,6 +50,17 @@ export async function deductCredits(
   // Update cache with new value instead of invalidating
   cache.set(CK.credits(userId), newCredits, TTL.credits);
   cache.invalidate(CK.userData(userId));
+}
+
+export async function hasUsedFeature(userId: string, feature: string): Promise<boolean> {
+  const q = query(
+    collection(db, "users", userId, "transactions"),
+    where("feature", "==", feature),
+    where("type", "==", "debit"),
+    limit(1)
+  );
+  const snapshot = await getDocs(q);
+  return !snapshot.empty;
 }
 
 export async function addCredits(
