@@ -20,9 +20,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: parsed });
   } catch (error) {
-    console.error("Error creating resume:", error);
+    const message = error instanceof Error ? error.message : "Erro desconhecido";
+    console.error("Error creating resume:", message);
     return NextResponse.json(
-      { error: "Erro ao criar currículo. Tente novamente." },
+      { error: `Erro ao criar currículo: ${message}` },
       { status: 500 }
     );
   }

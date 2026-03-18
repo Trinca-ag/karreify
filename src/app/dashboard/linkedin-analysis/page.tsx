@@ -105,10 +105,10 @@ export default function LinkedInAnalysisPage() {
                 value={profileDescription}
                 onChange={(e) => setProfileDescription(e.target.value)}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[200px]"
-                placeholder={`Cole aqui as informacoes do seu perfil do LinkedIn:\n\n- Headline\n- Secao Sobre\n- Experiencias\n- Formacao\n- Habilidades\n- Certificacoes`}
+                placeholder={`Cole aqui as informações do seu perfil do LinkedIn:\n\n- Headline\n- Seção Sobre\n- Experiências\n- Formação\n- Habilidades\n- Certificações`}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Copie e cole as informacoes do seu perfil do LinkedIn para analise.
+                Copie e cole as informações do seu perfil do LinkedIn para análise.
               </p>
             </div>
             <div className="flex items-center justify-between">
@@ -159,7 +159,7 @@ export default function LinkedInAnalysisPage() {
           {/* Suggested About */}
           <Card>
             <CardHeader>
-              <h3 className="font-heading font-semibold text-white">Secao Sobre Sugerida</h3>
+              <h3 className="font-heading font-semibold text-white">Seção Sobre Sugerida</h3>
             </CardHeader>
             <CardBody>
               <div className="flex items-start gap-3 p-4 bg-primary-500/10 border border-primary-500/20 rounded-xl">

@@ -22,7 +22,7 @@ const quickActions = [
     href: "/dashboard/resume-analysis",
     icon: FileSearch,
     color: "bg-primary-500/10 text-primary-400",
-    description: "Envie e analise seu curriculo",
+    description: "Envie e analise seu currículo",
   },
   {
     label: "Analisar LinkedIn",

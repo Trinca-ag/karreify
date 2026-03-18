@@ -14,16 +14,16 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 const PROGRESS_MESSAGES = [
-  "Enviando seu curriculo...",
-  "Extraindo informacoes do documento...",
-  "Analisando estrutura e formatacao...",
-  "Avaliando conteudo e experiencias...",
+  "Enviando seu currículo...",
+  "Extraindo informações do documento...",
+  "Analisando estrutura e formatação...",
+  "Avaliando conteúdo e experiências...",
   "Verificando linguagem e gramática...",
   "Identificando pontos fortes...",
-  "Mapeando areas de melhoria...",
-  "Gerando sugestoes personalizadas...",
-  "Calculando pontuacao final...",
-  "Finalizando analise...",
+  "Mapeando áreas de melhoria...",
+  "Gerando sugestões personalizadas...",
+  "Calculando pontuação final...",
+  "Finalizando análise...",
 ];
 
 interface CacheMetrics {
@@ -124,13 +124,13 @@ export default function ResumeAnalysisPage() {
     // Overall score
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.text(`Pontuacao Geral: ${result.analysis.overallScore}/100`, margin, y);
+    doc.text(`Pontuação Geral: ${result.analysis.overallScore}/100`, margin, y);
     y += 10;
 
     // Score breakdown
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
-    doc.text(`Estrutura: ${result.analysis.structure.score}/100  |  Conteudo: ${result.analysis.content.score}/100  |  Linguagem: ${result.analysis.language.score}/100`, margin, y);
+    doc.text(`Estrutura: ${result.analysis.structure.score}/100  |  Conteúdo: ${result.analysis.content.score}/100  |  Linguagem: ${result.analysis.language.score}/100`, margin, y);
     y += 12;
 
     // Section helper
@@ -153,7 +153,7 @@ export default function ResumeAnalysisPage() {
 
     addSection("Pontos Fortes", result.analysis.strengths, "✓");
     addSection("Pontos Fracos", result.analysis.weaknesses, "!");
-    addSection("Sugestoes de Melhoria", result.analysis.suggestions, "→");
+    addSection("Sugestões de Melhoria", result.analysis.suggestions, "→");
 
     doc.save("analise-curriculo-nextcv.pdf");
   }, [result]);
@@ -189,7 +189,7 @@ export default function ResumeAnalysisPage() {
       if (!data.success) throw new Error(data.error || "Erro desconhecido na API");
 
       if (usedBefore) {
-        await deductCredits(user.uid, "resume-analysis", "Analise de curriculo");
+        await deductCredits(user.uid, "resume-analysis", "Análise de currículo");
       } else {
         const { addDoc, collection, serverTimestamp } = await import("firebase/firestore");
         const { db } = await import("@/lib/firebase");
@@ -197,7 +197,7 @@ export default function ResumeAnalysisPage() {
           amount: 0,
           type: "debit",
           feature: "resume-analysis",
-          description: "Analise de curriculo (primeira gratis)",
+          description: "Análise de currículo (primeira grátis)",
           createdAt: serverTimestamp(),
         });
       }
@@ -235,7 +235,7 @@ export default function ResumeAnalysisPage() {
             <FileSearch className="w-7 h-7 text-primary-400" />
             Analise de Curriculo
           </h1>
-          <p className="text-gray-400 mt-1">Envie seu curriculo e receba uma analise completa com IA.</p>
+          <p className="text-gray-400 mt-1">Envie seu currículo e receba uma análise completa com IA.</p>
         </div>
         {result && (
           <button
@@ -264,7 +264,7 @@ export default function ResumeAnalysisPage() {
                 {isFirstUse ? "Primeira analise gratuita!" : "Custo: 1 credito"}
               </span>
               <Button onClick={handleAnalyze} disabled={!file || loading} loading={loading}>
-                {loading ? "Analisando..." : "Analisar curriculo"}
+                {loading ? "Analisando..." : "Analisar currículo"}
               </Button>
             </div>
 
@@ -307,10 +307,10 @@ export default function ResumeAnalysisPage() {
               <h2 className="text-xl font-heading font-bold text-white mt-4">Pontuacao Geral</h2>
               <p className="text-gray-400 mt-1">
                 {result.analysis.overallScore >= 80
-                  ? "Excelente curriculo!"
+                  ? "Excelente currículo!"
                   : result.analysis.overallScore >= 60
-                  ? "Bom curriculo, mas pode melhorar."
-                  : "Seu curriculo precisa de melhorias."}
+                  ? "Bom currículo, mas pode melhorar."
+                  : "Seu currículo precisa de melhorias."}
               </p>
             </CardBody>
           </Card>
@@ -324,7 +324,7 @@ export default function ResumeAnalysisPage() {
             </Card>
             <Card>
               <CardBody className="text-center">
-                <ScoreCircle score={result.analysis.content.score} size="sm" label="Conteudo" />
+                <ScoreCircle score={result.analysis.content.score} size="sm" label="Conteúdo" />
               </CardBody>
             </Card>
             <Card>
@@ -422,10 +422,10 @@ export default function ResumeAnalysisPage() {
                   <Sparkles className="w-7 h-7 text-primary-400" />
                 </div>
                 <h3 className="text-lg font-heading font-bold text-white">Corrigir Erros com IA</h3>
-                <p className="text-gray-400 text-sm">Gere um novo curriculo otimizado com as correcoes aplicadas.</p>
+                <p className="text-gray-400 text-sm">Gere um novo currículo otimizado com as correções aplicadas.</p>
                 <Button onClick={() => router.push("/dashboard/create-resume")} className="mt-2">
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Gerar curriculo otimizado
+                  Gerar currículo otimizado
                 </Button>
               </CardBody>
             </Card>

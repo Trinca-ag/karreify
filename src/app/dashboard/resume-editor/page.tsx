@@ -18,8 +18,8 @@ export default function ResumeEditorPage() {
   const [sections, setSections] = useState<EditorSection[]>([
     { id: "1", type: "personal", title: "Dados Pessoais", content: "" },
     { id: "2", type: "objective", title: "Objetivo", content: "" },
-    { id: "3", type: "experience", title: "Experiencia Profissional", content: "" },
-    { id: "4", type: "education", title: "Formacao Academica", content: "" },
+    { id: "3", type: "experience", title: "Experiência Profissional", content: "" },
+    { id: "4", type: "education", title: "Formação Acadêmica", content: "" },
     { id: "5", type: "skills", title: "Habilidades", content: "" },
     { id: "6", type: "languages", title: "Idiomas", content: "" },
   ]);
@@ -32,7 +32,7 @@ export default function ResumeEditorPage() {
   const addSection = () => {
     setSections([
       ...sections,
-      { id: Date.now().toString(), type: "custom", title: "Nova Secao", content: "" },
+      { id: Date.now().toString(), type: "custom", title: "Nova Seção", content: "" },
     ]);
   };
 
@@ -42,7 +42,7 @@ export default function ResumeEditorPage() {
 
   const improveSection = async (section: EditorSection) => {
     if (!user || !section.content.trim()) {
-      toast.error("Preencha a secao antes de melhorar.");
+      toast.error("Preencha a seção antes de melhorar.");
       return;
     }
 
@@ -62,14 +62,14 @@ export default function ResumeEditorPage() {
       const data = await response.json();
       if (!data.success) throw new Error(data.error);
 
-      await deductCredits(user.uid, "resume-editor", `Melhoria da secao: ${section.title}`);
+      await deductCredits(user.uid, "resume-editor", `Melhoria da seção: ${section.title}`);
 
       const improved = data.data?.formattedText || data.data?.resumeData?.objective || section.content;
       updateSection(section.id, improved);
-      toast.success("Secao melhorada com IA!");
+      toast.success("Seção melhorada com IA!");
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao melhorar secao.");
+      toast.error("Erro ao melhorar seção.");
     } finally { setImprovingSection(null); }
   };
 
@@ -82,7 +82,7 @@ export default function ResumeEditorPage() {
     a.download = "curriculo.txt";
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Curriculo exportado!");
+    toast.success("Currículo exportado!");
   };
 
   return (
@@ -91,14 +91,14 @@ export default function ResumeEditorPage() {
         <div>
           <h1 className="text-2xl font-bold font-heading text-white flex items-center gap-3">
             <FileEdit className="w-7 h-7 text-primary-400" />
-            Editor de Curriculo
+            Editor de Currículo
           </h1>
-          <p className="text-gray-400 mt-1">Edite e melhore cada secao do seu curriculo.</p>
-          <span className="inline-block mt-2 bg-primary-500/10 text-primary-400 text-xs rounded-lg px-2.5 py-1">1 credito por melhoria com IA</span>
+          <p className="text-gray-400 mt-1">Edite e melhore cada seção do seu currículo.</p>
+          <span className="inline-block mt-2 bg-primary-500/10 text-primary-400 text-xs rounded-lg px-2.5 py-1">1 crédito por melhoria com IA</span>
         </div>
         <div className="flex gap-2">
           <button onClick={addSection} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-white/5 text-gray-400 border border-white/10 rounded-xl hover:bg-white/10 transition-colors">
-            <Plus className="w-4 h-4" /> Secao
+            <Plus className="w-4 h-4" /> Seção
           </button>
           <button onClick={exportAsText} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-gradient-to-r from-primary-600 to-primary-500 text-white rounded-xl hover:from-primary-500 hover:to-primary-400 transition-colors">
             <Download className="w-4 h-4" /> Exportar
@@ -149,7 +149,7 @@ export default function ResumeEditorPage() {
         ))}
       </div>
 
-      <p className="text-center text-sm text-gray-500">1 credito por melhoria com IA</p>
+      <p className="text-center text-sm text-gray-500">1 crédito por melhoria com IA</p>
     </div>
   );
 }

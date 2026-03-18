@@ -30,7 +30,18 @@
       "Bash(curl -s \"https://openrouter.ai/api/v1/models\" | python3 -c \"\nimport json, sys\ndata = json.load\\(sys.stdin\\)\nfor m in data.get\\('data', []\\):\n    mid = m.get\\('id', ''\\)\n    if 'free' in mid.lower\\(\\) and 'deepseek' in mid.lower\\(\\):\n        print\\(mid\\)\n\" 2>/dev/null || curl -s \"https://openrouter.ai/api/v1/models\" | python -c \"\nimport json, sys\ndata = json.load\\(sys.stdin\\)\nfor m in data.get\\('data', []\\):\n    mid = m.get\\('id', ''\\)\n    if 'free' in mid.lower\\(\\) and 'deepseek' in mid.lower\\(\\):\n        print\\(mid\\)\n\")",
       "Bash(curl -s \"https://openrouter.ai/api/v1/models\" | python3 -c \"\nimport json, sys\ndata = json.load\\(sys.stdin\\)\nfor m in data.get\\('data', []\\):\n    mid = m.get\\('id', ''\\)\n    if ':free' in mid:\n        print\\(mid\\)\n\")",
       "Bash(curl -s \"https://openrouter.ai/api/v1/models\" | node -e \"\nlet data = '';\nprocess.stdin.on\\('data', c => data += c\\);\nprocess.stdin.on\\('end', \\(\\) => {\n  const models = JSON.parse\\(data\\).data;\n  models.filter\\(m => m.id.includes\\(':free'\\)\\).forEach\\(m => console.log\\(m.id\\)\\);\n}\\);\n\")",
-      "Bash(node -e \"const p=require\\('./package.json'\\); const d={...p.dependencies,...p.devDependencies}; Object.keys\\(d\\).filter\\(k=>k.includes\\('pdf'\\)||k.includes\\('jspdf'\\)||k.includes\\('html2'\\)\\).forEach\\(k=>console.log\\(k,d[k]\\)\\)\")"
+      "Bash(node -e \"const p=require\\('./package.json'\\); const d={...p.dependencies,...p.devDependencies}; Object.keys\\(d\\).filter\\(k=>k.includes\\('pdf'\\)||k.includes\\('jspdf'\\)||k.includes\\('html2'\\)\\).forEach\\(k=>console.log\\(k,d[k]\\)\\)\")",
+      "WebFetch(domain:www.jobscan.co)",
+      "WebFetch(domain:www.indeed.com)",
+      "WebFetch(domain:atsresumeai.com)",
+      "WebFetch(domain:cvcraft.roynex.com)",
+      "WebFetch(domain:blog.careerscribeai.com)",
+      "WebFetch(domain:scale.jobs)",
+      "WebFetch(domain:www.resumeadapter.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:vercel.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('puppeteer-core:', p.dependencies['puppeteer-core']\\); console.log\\('@sparticuz/chromium:', p.dependencies['@sparticuz/chromium']\\)\")"
     ]
   }
 }

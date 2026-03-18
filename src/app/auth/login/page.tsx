@@ -89,8 +89,8 @@ export default function LoginPage() {
                 <Sparkles className="w-5 h-5 text-primary-400" />
               </div>
               <div>
-                <span className="text-gray-300 text-sm font-medium">Analise com IA</span>
-                <p className="text-gray-500 text-xs">Feedback detalhado do seu curriculo</p>
+                <span className="text-gray-300 text-sm font-medium">Análise com IA</span>
+                <p className="text-gray-500 text-xs">Feedback detalhado do seu currículo</p>
               </div>
             </div>
             <div className="flex items-center gap-4 group">
@@ -98,8 +98,8 @@ export default function LoginPage() {
                 <Zap className="w-5 h-5 text-primary-400" />
               </div>
               <div>
-                <span className="text-gray-300 text-sm font-medium">Resultados rapidos</span>
-                <p className="text-gray-500 text-xs">Melhore seu curriculo em minutos</p>
+                <span className="text-gray-300 text-sm font-medium">Resultados rápidos</span>
+                <p className="text-gray-500 text-xs">Melhore seu currículo em minutos</p>
               </div>
             </div>
             <div className="flex items-center gap-4 group">

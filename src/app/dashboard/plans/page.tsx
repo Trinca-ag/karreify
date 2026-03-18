@@ -97,10 +97,10 @@ export default function PlansPage() {
           <h3 className="font-semibold text-white font-heading mb-4">Custo por funcionalidade</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { name: "Analise de curriculo", cost: 1 },
-              { name: "Analise LinkedIn", cost: 1 },
-              { name: "Criar curriculo", cost: 1 },
-              { name: "Adaptar curriculo", cost: 1 },
+              { name: "Análise de currículo", cost: 1 },
+              { name: "Análise LinkedIn", cost: 1 },
+              { name: "Criar currículo", cost: 1 },
+              { name: "Adaptar currículo", cost: 1 },
               { name: "Editor IA", cost: 1 },
               { name: "Chat", cost: 1 },
               { name: "Roadmap", cost: 20 },

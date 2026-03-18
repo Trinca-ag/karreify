@@ -44,12 +44,12 @@ export default function AdaptResumePage() {
       const data = await response.json();
       if (!data.success) throw new Error(data.error);
 
-      await deductCredits(user.uid, "resume-adaptation", "Adaptacao de curriculo para vaga");
+      await deductCredits(user.uid, "resume-adaptation", "Adaptação de currículo para vaga");
       setResult(data.data);
-      toast.success("Adaptacao concluida!");
+      toast.success("Adaptação concluída!");
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao adaptar curriculo.");
+      toast.error("Erro ao adaptar currículo.");
     } finally { setLoading(false); }
   };
 
@@ -61,14 +61,14 @@ export default function AdaptResumePage() {
             <Target className="w-7 h-7 text-primary-400" />
             Adaptar para Vaga
           </h1>
-          <p className="text-gray-400 mt-1">Adapte seu curriculo para uma vaga especifica.</p>
+          <p className="text-gray-400 mt-1">Adapte seu currículo para uma vaga específica.</p>
         </div>
         {result && (
           <button
             onClick={() => setResult(null)}
             className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-lg hover:bg-white/10 transition-colors text-sm"
           >
-            <RefreshCw className="w-4 h-4" /> Nova adaptacao
+            <RefreshCw className="w-4 h-4" /> Nova adaptação
           </button>
         )}
       </div>
@@ -78,21 +78,21 @@ export default function AdaptResumePage() {
           <CardBody className="space-y-4">
             <FileUpload onFileSelect={setFile} selectedFile={file} onClear={() => setFile(null)} />
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Descricao da vaga</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Descrição da vaga</label>
               <textarea
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[200px]"
-                placeholder="Cole aqui a descricao completa da vaga..."
+                placeholder="Cole aqui a descrição completa da vaga..."
               />
             </div>
             <div className="flex justify-between items-center">
-              <span className="inline-flex items-center px-3 py-1 bg-primary-500/10 border border-primary-500/20 text-primary-400 text-xs rounded-lg">Custo: 1 credito</span>
+              <span className="inline-flex items-center px-3 py-1 bg-primary-500/10 border border-primary-500/20 text-primary-400 text-xs rounded-lg">Custo: 1 crédito</span>
               <Button onClick={handleAdapt} disabled={!file || !jobDescription.trim() || loading} loading={loading}>
-                Adaptar curriculo
+                Adaptar currículo
               </Button>
             </div>
-            {loading && <div className="py-8"><LoadingSpinner size="lg" text="Adaptando curriculo com IA..." /></div>}
+            {loading && <div className="py-8"><LoadingSpinner size="lg" text="Adaptando currículo com IA..." /></div>}
           </CardBody>
         </Card>
       ) : (

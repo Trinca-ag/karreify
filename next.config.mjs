@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ["@sparticuz/chromium"],
+  },
   images: {
     domains: ["firebasestorage.googleapis.com", "lh3.googleusercontent.com"],
   },

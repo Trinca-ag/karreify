@@ -40,19 +40,21 @@ class AppCache {
 export const cache = new AppCache();
 
 // ── Keys ──────────────────────────────────────────────
-export const CK = {
+export const CK: Record<string, (...args: string[]) => string> = {
   userData: (uid: string) => `user:${uid}`,
   credits: (uid: string) => `credits:${uid}`,
   deviceTrust: (uid: string, did: string) => `dtrust:${uid}:${did}`,
   deviceList: (uid: string) => `dlist:${uid}`,
+  resume: (hash: string) => `resume:${hash}`,
 };
 
 // ── TTLs (milliseconds) ──────────────────────────────
-export const TTL = {
+export const TTL: Record<string, number> = {
   userData: 5 * 60 * 1000,     // 5 min
   credits: 30 * 1000,          // 30 sec
   deviceTrust: 60 * 60 * 1000, // 1 hour
   deviceList: 2 * 60 * 1000,   // 2 min
+  resume: 24 * 60 * 60 * 1000, // 24 hours
 };
 
 // ── Invalidation helpers ─────────────────────────────
