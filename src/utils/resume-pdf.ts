@@ -1,5 +1,11 @@
 import type { ResumeSchema } from "@/lib/resume-schema";
-import type { TemplateName } from "@/lib/resume-templates";
+import type { TemplateName, SectionName } from "@/lib/resume-templates";
+
+export interface PdfAdjustments {
+  fontSizeOffset?: number;
+  spacingOffset?: number;
+  hiddenSections?: SectionName[];
+}
 
 /** Remove accents and special characters for safe filenames */
 function sanitizeFilename(name: string): string {
@@ -23,12 +29,21 @@ function buildFilename(name: string): string {
  */
 export async function generateResumePDFBlob(
   data: ResumeSchema,
-  template: TemplateName = "profissional"
+  template: TemplateName = "profissional",
+  candidateLevel?: string,
+  adjustments?: PdfAdjustments
 ): Promise<Blob> {
   const response = await fetch("/api/generate-pdf", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resumeData: data, template }),
+    body: JSON.stringify({
+      resumeData: data,
+      template,
+      candidateLevel,
+      fontSizeOffset: adjustments?.fontSizeOffset,
+      spacingOffset: adjustments?.spacingOffset,
+      hiddenSections: adjustments?.hiddenSections,
+    }),
   });
 
   if (!response.ok) {
@@ -45,9 +60,11 @@ export async function generateResumePDFBlob(
 export async function downloadResumePDF(
   data: ResumeSchema,
   template: TemplateName = "profissional",
-  filename?: string
+  filename?: string,
+  candidateLevel?: string,
+  adjustments?: PdfAdjustments
 ): Promise<void> {
-  const blob = await generateResumePDFBlob(data, template);
+  const blob = await generateResumePDFBlob(data, template, candidateLevel, adjustments);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

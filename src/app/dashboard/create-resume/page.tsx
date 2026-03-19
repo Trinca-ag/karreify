@@ -7,11 +7,12 @@ import Input from "@/components/ui/Input";
 import FileUpload from "@/components/ui/FileUpload";
 import { extractTextFromFile } from "@/utils/file-parser";
 import { deductCredits, checkCredits } from "@/services/credits";
-import { generateResumePDFBlob, downloadResumePDF } from "@/utils/resume-pdf";
-import { FilePlus, Upload, PenLine, Plus, Trash2, Download, RefreshCw, FileText, AlertTriangle, XCircle } from "lucide-react";
+import { generateResumePDFBlob, downloadResumePDF, type PdfAdjustments } from "@/utils/resume-pdf";
+import { FilePlus, Upload, PenLine, Plus, Trash2, Download, RefreshCw, FileText, AlertTriangle, XCircle, Minus, Type, AlignJustify, Eye, EyeOff, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
-import type { ResumeSchema } from "@/lib/resume-schema";
-import type { TemplateName } from "@/lib/resume-templates";
+import type { ResumeSchema, GenerationNotes, QualityReport } from "@/lib/resume-schema";
+import type { TemplateName, SectionName } from "@/lib/resume-templates";
+import ResumeFeedback from "@/components/ui/ResumeFeedback";
 
 type Mode = "upload" | "scratch" | null;
 
@@ -29,6 +30,15 @@ interface FormEducation {
   field: string;
   startDate: string;
   endDate: string;
+}
+
+interface FormProject {
+  type: string;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  link: string;
 }
 
 interface ValidationResult {
@@ -52,6 +62,16 @@ const TEMPLATE_OPTIONS: { id: TemplateName; label: string; desc: string }[] = [
   { id: "profissional", label: "Profissional (ATS)", desc: "Minimalista, preto e branco, máximo ATS" },
   { id: "moderno", label: "Moderno", desc: "ATS-safe com accent azul marinho" },
 ];
+
+const SECTION_LABELS: Record<SectionName, string> = {
+  summary: "Resumo Profissional",
+  skills: "Habilidades",
+  work: "Experiência Profissional",
+  projects: "Projetos",
+  education: "Formação Acadêmica",
+  certifications: "Certificações",
+  languages: "Idiomas",
+};
 
 const CAMPO_LABELS: Record<string, string> = {
   nome: "Nome completo",
@@ -79,7 +99,19 @@ export default function CreateResumePage() {
   const [progressMsg, setProgressMsg] = useState("");
   const [validationBlock, setValidationBlock] = useState<string[] | null>(null);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+  const [candidateLevel, setCandidateLevel] = useState<string | undefined>();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(null);
+  const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
+  const [postCorrections, setPostCorrections] = useState<string[]>([]);
+  const [qualityFlags, setQualityFlags] = useState<string[]>([]);
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Editor state
+  const [fontSizeOffset, setFontSizeOffset] = useState(0);
+  const [spacingOffset, setSpacingOffset] = useState(0);
+  const [hiddenSections, setHiddenSections] = useState<SectionName[]>([]);
+  const editorDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Form state
   const [name, setName] = useState("");
@@ -92,8 +124,10 @@ export default function CreateResumePage() {
   const [objective, setObjective] = useState("");
   const [skills, setSkills] = useState("");
   const [languages, setLanguages] = useState("");
+  const [targetJob, setTargetJob] = useState("");
   const [experiences, setExperiences] = useState<FormExperience[]>([{ company: "", position: "", startDate: "", endDate: "", description: "" }]);
   const [educations, setEducations] = useState<FormEducation[]>([{ institution: "", degree: "", field: "", startDate: "", endDate: "" }]);
+  const [projects, setProjects] = useState<FormProject[]>([]);
 
   useEffect(() => {
     return () => {
@@ -230,10 +264,10 @@ export default function CreateResumePage() {
   }
 
   // Generate PDF via server API
-  const generatePdf = useCallback(async (data: ResumeSchema, template: TemplateName) => {
+  const generatePdf = useCallback(async (data: ResumeSchema, template: TemplateName, level?: string, adj?: PdfAdjustments) => {
     setPdfLoading(true);
     try {
-      const blob = await generateResumePDFBlob(data, template);
+      const blob = await generateResumePDFBlob(data, template, level, adj);
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       const url = URL.createObjectURL(blob);
       setPdfUrl(url);
@@ -246,13 +280,31 @@ export default function CreateResumePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfUrl]);
 
+  // Build current adjustments object
+  const currentAdjustments = useCallback((): PdfAdjustments => ({
+    fontSizeOffset: fontSizeOffset || undefined,
+    spacingOffset: spacingOffset || undefined,
+    hiddenSections: hiddenSections.length > 0 ? hiddenSections : undefined,
+  }), [fontSizeOffset, spacingOffset, hiddenSections]);
+
   // When template changes and we already have resume data, regenerate PDF
   useEffect(() => {
     if (resumeData) {
-      generatePdf(resumeData, selectedTemplate);
+      generatePdf(resumeData, selectedTemplate, candidateLevel, currentAdjustments());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTemplate]);
+
+  // When editor adjustments change, regenerate PDF with debounce
+  useEffect(() => {
+    if (!resumeData) return;
+    if (editorDebounce.current) clearTimeout(editorDebounce.current);
+    editorDebounce.current = setTimeout(() => {
+      generatePdf(resumeData, selectedTemplate, candidateLevel, currentAdjustments());
+    }, 400);
+    return () => { if (editorDebounce.current) clearTimeout(editorDebounce.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fontSizeOffset, spacingOffset, hiddenSections]);
 
   // Pre-validate uploaded resume
   async function validateUploadedResume(text: string): Promise<ValidationResult | null> {
@@ -293,11 +345,17 @@ export default function CreateResumePage() {
       await deductCredits(user.uid, "resume-creation", "Criação de currículo com IA");
 
       const schema = extractResumeSchema(data.data);
+      const level = data.data?.generationNotes?.candidateLevel as string | undefined;
+      setCandidateLevel(level);
+      setGenerationNotes((data.data?.generationNotes as GenerationNotes) || null);
+      setQualityReport((data.data?.qualityReport as QualityReport) || null);
+      setPostCorrections((data.data?.postCorrections as string[]) || []);
+      setQualityFlags((data.data?.qualityFlags as string[]) || []);
       setResumeData(schema);
       stopProgress();
 
       // Generate PDF preview
-      await generatePdf(schema, selectedTemplate);
+      await generatePdf(schema, selectedTemplate, level);
 
       toast.success("Curriculo criado!");
     } catch (error) {
@@ -333,7 +391,7 @@ export default function CreateResumePage() {
       setValidationWarnings(validation.campos_importantes_ausentes);
     }
 
-    handleCreate({ existingResume: text, mode: "improve" });
+    handleCreate({ existingResume: text, mode: "improve", targetJob: targetJob || undefined });
   };
 
   const handleScratchCreate = () => {
@@ -343,15 +401,17 @@ export default function CreateResumePage() {
       objective,
       experience: experiences,
       education: educations,
+      projects: projects.filter((p) => p.name.trim()),
       skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
       languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
+      targetJob: targetJob || undefined,
     });
   };
 
   const handleDownloadPDF = async () => {
     if (!resumeData) return;
     try {
-      await downloadResumePDF(resumeData, selectedTemplate);
+      await downloadResumePDF(resumeData, selectedTemplate, undefined, candidateLevel, currentAdjustments());
     } catch {
       toast.error("Erro ao baixar PDF.");
     }
@@ -365,6 +425,15 @@ export default function CreateResumePage() {
     setProgressMsg("");
     setValidationBlock(null);
     setValidationWarnings([]);
+    setCandidateLevel(undefined);
+    setGenerationNotes(null);
+    setQualityReport(null);
+    setPostCorrections([]);
+    setQualityFlags([]);
+    setTargetJob("");
+    setFontSizeOffset(0);
+    setSpacingOffset(0);
+    setHiddenSections([]);
     if (pdfUrl) {
       URL.revokeObjectURL(pdfUrl);
       setPdfUrl(null);
@@ -385,6 +454,13 @@ export default function CreateResumePage() {
     const updated = [...educations];
     updated[i] = { ...updated[i], [field]: value };
     setEducations(updated);
+  };
+  const addProject = () => setProjects([...projects, { type: "", name: "", description: "", startDate: "", endDate: "", link: "" }]);
+  const removeProject = (i: number) => setProjects(projects.filter((_, idx) => idx !== i));
+  const updateProject = (i: number, field: keyof FormProject, value: string) => {
+    const updated = [...projects];
+    updated[i] = { ...updated[i], [field]: value };
+    setProjects(updated);
   };
 
   // ════════════════════════════════════════════════════
@@ -452,27 +528,202 @@ export default function CreateResumePage() {
           </div>
         </div>
 
-        {/* PDF Preview */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
-          {pdfLoading ? (
-            <div className="flex items-center justify-center py-32">
-              <div className="text-center">
-                <div className="w-8 h-8 border-2 border-primary-400 border-t-transparent rounded-full animate-spin mx-auto" />
-                <p className="text-sm text-gray-400 mt-3">Gerando PDF...</p>
+        {/* PDF Preview + Feedback sidebar */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* PDF Preview */}
+          <div className="flex-1 min-w-0">
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
+              {pdfLoading ? (
+                <div className="flex items-center justify-center py-32">
+                  <div className="text-center">
+                    <div className="w-8 h-8 border-2 border-primary-400 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p className="text-sm text-gray-400 mt-3">Gerando PDF...</p>
+                  </div>
+                </div>
+              ) : pdfUrl ? (
+                <iframe
+                  src={pdfUrl}
+                  className="w-full rounded-xl"
+                  style={{ height: "75vh", minHeight: "500px" }}
+                  title="Preview do currículo"
+                />
+              ) : (
+                <div className="flex items-center justify-center py-32">
+                  <p className="text-sm text-gray-500">Erro ao carregar preview.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Editor + Feedback sidebar */}
+          <div className="w-full lg:w-80 lg:flex-shrink-0 space-y-4">
+            {/* Editor Controls */}
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white">Ajustes</h3>
+                {(fontSizeOffset !== 0 || spacingOffset !== 0 || hiddenSections.length > 0) && (
+                  <button
+                    onClick={() => { setFontSizeOffset(0); setSpacingOffset(0); setHiddenSections([]); }}
+                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Resetar
+                  </button>
+                )}
+              </div>
+
+              {/* Font size */}
+              <div>
+                <label className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
+                  <Type className="w-3.5 h-3.5" /> Tamanho da fonte
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setFontSizeOffset(Math.max(fontSizeOffset - 1, -5))}
+                    disabled={fontSizeOffset <= -5 || pdfLoading}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="flex-1 h-1.5 bg-white/5 rounded-full relative">
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary-400 border-2 border-dark-800 transition-all"
+                      style={{ left: `${((fontSizeOffset + 5) / 10) * 100}%`, transform: "translate(-50%, -50%)" }}
+                    />
+                  </div>
+                  <button
+                    onClick={() => setFontSizeOffset(Math.min(fontSizeOffset + 1, 5))}
+                    disabled={fontSizeOffset >= 5 || pdfLoading}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-xs text-gray-500 w-8 text-right font-mono">
+                    {fontSizeOffset > 0 ? `+${fontSizeOffset}` : fontSizeOffset}
+                  </span>
+                </div>
+              </div>
+
+              {/* Spacing */}
+              <div>
+                <label className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
+                  <AlignJustify className="w-3.5 h-3.5" /> Espaçamento
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSpacingOffset(Math.max(spacingOffset - 1, -5))}
+                    disabled={spacingOffset <= -5 || pdfLoading}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="flex-1 h-1.5 bg-white/5 rounded-full relative">
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary-400 border-2 border-dark-800 transition-all"
+                      style={{ left: `${((spacingOffset + 5) / 10) * 100}%`, transform: "translate(-50%, -50%)" }}
+                    />
+                  </div>
+                  <button
+                    onClick={() => setSpacingOffset(Math.min(spacingOffset + 1, 5))}
+                    disabled={spacingOffset >= 5 || pdfLoading}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-xs text-gray-500 w-8 text-right font-mono">
+                    {spacingOffset > 0 ? `+${spacingOffset}` : spacingOffset}
+                  </span>
+                </div>
+              </div>
+
+              {/* Section visibility */}
+              <div>
+                <label className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5" /> Seções
+                </label>
+                <div className="space-y-1">
+                  {(Object.entries(SECTION_LABELS) as [SectionName, string][])
+                    .filter(([key]) => {
+                      if (!resumeData) return false;
+                      if (key === "summary") return !!resumeData.basics.summary;
+                      if (key === "skills") return resumeData.skills.length > 0;
+                      if (key === "work") return resumeData.work.length > 0;
+                      if (key === "projects") return resumeData.projects.length > 0;
+                      if (key === "education") return resumeData.education.length > 0;
+                      if (key === "certifications") return resumeData.certifications.length > 0;
+                      if (key === "languages") return resumeData.languages.length > 0;
+                      return false;
+                    })
+                    .map(([key, label]) => {
+                      const isHidden = hiddenSections.includes(key);
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => {
+                            setHiddenSections(prev =>
+                              isHidden ? prev.filter(s => s !== key) : [...prev, key]
+                            );
+                          }}
+                          disabled={pdfLoading}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                            isHidden
+                              ? "bg-red-500/10 text-red-400/70 border border-red-500/20"
+                              : "bg-white/[0.02] text-gray-300 border border-white/[0.06] hover:bg-white/[0.05]"
+                          }`}
+                        >
+                          {isHidden ? <EyeOff className="w-3.5 h-3.5 flex-shrink-0" /> : <Eye className="w-3.5 h-3.5 flex-shrink-0" />}
+                          <span className={isHidden ? "line-through" : ""}>{label}</span>
+                        </button>
+                      );
+                    })}
+                </div>
               </div>
             </div>
-          ) : pdfUrl ? (
-            <iframe
-              src={pdfUrl}
-              className="w-full rounded-xl"
-              style={{ height: "75vh", minHeight: "500px" }}
-              title="Preview do currículo"
+
+            <ResumeFeedback
+              postCorrections={postCorrections}
+              qualityFlags={qualityFlags}
             />
-          ) : (
-            <div className="flex items-center justify-center py-32">
-              <p className="text-sm text-gray-500">Erro ao carregar preview.</p>
-            </div>
-          )}
+
+            {/* Quality Report */}
+            {qualityReport && (
+              <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-white">Qualidade</h3>
+                  <span className={`text-sm font-bold ${
+                    qualityReport.score >= 90 ? "text-green-400" :
+                    qualityReport.score >= 70 ? "text-yellow-400" : "text-red-400"
+                  }`}>
+                    {qualityReport.score}/100
+                  </span>
+                </div>
+                {qualityReport.issues.length > 0 && (
+                  <ul className="space-y-1">
+                    {qualityReport.issues.map((issue, i) => (
+                      <li key={i} className={`text-xs flex items-start gap-1.5 ${
+                        issue.severity === "critical" ? "text-red-400/80" :
+                        issue.severity === "warning" ? "text-yellow-400/80" : "text-gray-400"
+                      }`}>
+                        <span className="mt-0.5 flex-shrink-0">
+                          {issue.severity === "critical" ? "\u25CF" : issue.severity === "warning" ? "\u25B2" : "\u25CB"}
+                        </span>
+                        {issue.message}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {qualityReport.suggestions.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-green-400 mb-1">Sugestoes:</p>
+                    <ul className="space-y-0.5">
+                      {qualityReport.suggestions.map((s, i) => (
+                        <li key={i} className="text-xs text-green-300/70">{"\u2192"} {s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Download */}
@@ -562,6 +813,19 @@ export default function CreateResumePage() {
           </div>
           <div className="p-6 space-y-4">
             <FileUpload onFileSelect={setFile} selectedFile={file} onClear={() => setFile(null)} />
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Para qual vaga você está se candidatando? <span className="text-gray-500">(opcional)</span></label>
+              <textarea
+                value={targetJob}
+                onChange={(e) => setTargetJob(e.target.value.slice(0, 2000))}
+                maxLength={2000}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[60px]"
+                placeholder="Cole a descrição da vaga ou digite o título do cargo"
+              />
+              {targetJob.length > 0 && (
+                <span className="text-xs text-gray-500 mt-1 block text-right">{targetJob.length}/2000</span>
+              )}
+            </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500">Custo: 1 crédito</span>
               <Button onClick={handleUploadCreate} disabled={!file || loading || validating} loading={loading || validating}>
@@ -587,9 +851,9 @@ export default function CreateResumePage() {
                 <Input label="Nome completo" value={name} onChange={(e) => setName(e.target.value)} />
                 <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                 <Input label="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                <Input label="Localizacao (Cidade - Estado)" value={location} onChange={(e) => setLocation(e.target.value)} />
+                <Input label="Localização" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Cidade - Estado" />
                 <Input label="LinkedIn" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="linkedin.com/in/seu-perfil" />
-                <Input label="GitHub" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="github.com/seu-usuario" />
+                <Input label="Link opcional" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="github.com, behance.net, etc." />
                 <Input label="Portfolio / Site" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="meusite.com.br (opcional)" />
               </div>
             </div>
@@ -621,8 +885,8 @@ export default function CreateResumePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Input label="Empresa" value={exp.company} onChange={(e) => updateExperience(i, "company", e.target.value)} />
                     <Input label="Cargo" value={exp.position} onChange={(e) => updateExperience(i, "position", e.target.value)} />
-                    <Input label="Início" type="month" value={exp.startDate} onChange={(e) => updateExperience(i, "startDate", e.target.value)} />
-                    <Input label="Fim" type="month" value={exp.endDate} onChange={(e) => updateExperience(i, "endDate", e.target.value)} />
+                    <Input label="Início" type="month" value={exp.startDate} onChange={(e) => updateExperience(i, "startDate", e.target.value)} placeholder="Ex: Janeiro 2024" />
+                    <Input label="Fim" type="month" value={exp.endDate} onChange={(e) => updateExperience(i, "endDate", e.target.value)} placeholder="Ex: Dezembro 2024 (vazio = atual)" />
                   </div>
                   <textarea value={exp.description} onChange={(e) => updateExperience(i, "description", e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50" placeholder="Descreva suas atividades e conquistas" />
                 </div>
@@ -648,11 +912,85 @@ export default function CreateResumePage() {
                     )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="w-full">
+                      <label className="block text-sm font-medium text-gray-300 mb-1.5">Grau</label>
+                      <select
+                        value={edu.degree}
+                        onChange={(e) => updateEducation(i, "degree", e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200 cursor-pointer"
+                      >
+                        <option value="" className="bg-[#1a1a2e] text-gray-400">Selecione o grau</option>
+                        <option value="Ensino Médio" className="bg-[#1a1a2e]">Ensino Medio</option>
+                        <option value="Técnico" className="bg-[#1a1a2e]">Tecnico</option>
+                        <option value="Tecnólogo" className="bg-[#1a1a2e]">Tecnologo</option>
+                        <option value="Graduação" className="bg-[#1a1a2e]">Graduação</option>
+                        <option value="Pós-graduação" className="bg-[#1a1a2e]">Pos-graduação</option>
+                        <option value="MBA" className="bg-[#1a1a2e]">MBA</option>
+                        <option value="Mestrado" className="bg-[#1a1a2e]">Mestrado</option>
+                        <option value="Doutorado" className="bg-[#1a1a2e]">Doutorado</option>
+                        <option value="Curso Livre" className="bg-[#1a1a2e]">Curso Livre</option>
+                        <option value="Bootcamp" className="bg-[#1a1a2e]">Bootcamp</option>
+                      </select>
+                    </div>
                     <Input label="Instituição" value={edu.institution} onChange={(e) => updateEducation(i, "institution", e.target.value)} />
-                    <Input label="Grau" value={edu.degree} onChange={(e) => updateEducation(i, "degree", e.target.value)} />
-                    <Input label="Área" value={edu.field} onChange={(e) => updateEducation(i, "field", e.target.value)} />
-                    <Input label="Início" type="month" value={edu.startDate} onChange={(e) => updateEducation(i, "startDate", e.target.value)} />
+                    {edu.degree !== "Ensino Médio" && (
+                      <Input label="Área" value={edu.field} onChange={(e) => updateEducation(i, "field", e.target.value)} />
+                    )}
+                    <Input label="Início" type="month" value={edu.startDate} onChange={(e) => updateEducation(i, "startDate", e.target.value)} placeholder="Ex: Fevereiro 2020" />
+                    <Input label="Fim" type="month" value={edu.endDate} onChange={(e) => updateEducation(i, "endDate", e.target.value)} placeholder="Ex: Dezembro 2024 (vazio = cursando)" />
                   </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Projects */}
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-white">Projetos e atividades extracurriculares <span className="text-gray-500 font-normal text-sm">(opcional)</span></h3>
+                <button onClick={addProject} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-white/5 text-gray-400 hover:bg-white/10 rounded-xl transition-colors">
+                  <Plus className="w-4 h-4" /> Adicionar
+                </button>
+              </div>
+              {projects.length === 0 && (
+                <p className="text-sm text-gray-500">Nenhum projeto adicionado. Clique em &quot;Adicionar&quot; para incluir projetos pessoais, trabalhos voluntarios, freelances, etc.</p>
+              )}
+              {projects.map((proj, i) => (
+                <div key={i} className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-400">Projeto {i + 1}</span>
+                    <button onClick={() => removeProject(i)} className="text-red-400 hover:text-red-300 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="w-full">
+                      <label className="block text-sm font-medium text-gray-300 mb-1.5">Tipo</label>
+                      <select
+                        value={proj.type}
+                        onChange={(e) => updateProject(i, "type", e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200 cursor-pointer"
+                      >
+                        <option value="" className="bg-[#1a1a2e] text-gray-400">Selecione o tipo</option>
+                        <option value="Projeto Pessoal" className="bg-[#1a1a2e]">Projeto Pessoal</option>
+                        <option value="Trabalho Voluntário" className="bg-[#1a1a2e]">Trabalho Voluntario</option>
+                        <option value="Freelance" className="bg-[#1a1a2e]">Freelance</option>
+                        <option value="Open Source" className="bg-[#1a1a2e]">Open Source</option>
+                        <option value="Trabalho Acadêmico" className="bg-[#1a1a2e]">Trabalho Academico</option>
+                        <option value="Hackathon" className="bg-[#1a1a2e]">Hackathon</option>
+                        <option value="Outro" className="bg-[#1a1a2e]">Outro</option>
+                      </select>
+                    </div>
+                    <Input label="Nome" value={proj.name} onChange={(e) => updateProject(i, "name", e.target.value)} placeholder="Nome do projeto" />
+                    <Input label="Início" type="month" value={proj.startDate} onChange={(e) => updateProject(i, "startDate", e.target.value)} placeholder="Ex: Março 2024" />
+                    <Input label="Fim" type="month" value={proj.endDate} onChange={(e) => updateProject(i, "endDate", e.target.value)} placeholder="Ex: Junho 2024 (opcional)" />
+                  </div>
+                  <textarea
+                    value={proj.description}
+                    onChange={(e) => updateProject(i, "description", e.target.value)}
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                    placeholder="Descreva o projeto, tecnologias usadas e seu papel"
+                  />
+                  <Input label="Link (opcional)" value={proj.link} onChange={(e) => updateProject(i, "link", e.target.value)} placeholder="https://github.com/... ou URL do projeto" />
                 </div>
               ))}
             </div>

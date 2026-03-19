@@ -1,5 +1,17 @@
 import { generateCompletion, generateWithCache, type CompletionWithCache } from "@/lib/deepseek";
-import { RESUME_SCHEMA_JSON, SCHEMA_VERSION, validateResumeSchema, type ResumeSchema, type GenerationNotes } from "@/lib/resume-schema";
+import { postProcessResume } from "@/lib/resume-postprocess";
+import {
+  RESUME_SCHEMA_JSON,
+  SCHEMA_VERSION,
+  validateResumeSchema,
+  validateResumeQuality,
+  applyAutoFixes,
+  validatePreservation,
+  type ResumeSchema,
+  type GenerationNotes,
+  type QualityReport,
+  type PreservationIssue,
+} from "@/lib/resume-schema";
 import { DATASET_VERSION } from "@/lib/resume-dataset";
 import { cache, TTL } from "@/lib/cache";
 
@@ -106,532 +118,487 @@ export async function analyzeResume(resumeText: string): Promise<CompletionWithC
 }
 
 // ══════════════════════════════════════════════════════════
-// RESUME CREATION — v4 system with comprehensive rules
+// RESUME CREATION — v5 system (condensed + few-shot + self-check)
 // ══════════════════════════════════════════════════════════
 
-const PROMPT_VERSION = "v4";
+const PROMPT_VERSION = "v6";
 
 /**
- * System prompt v4.0 para criação de currículo.
- * Contém: instrução detalhada + regras de conteúdo + schema + exemplos + checklist.
- * Este bloco é cacheado pelo DeepSeek (prefix caching).
- * NÃO adicione conteúdo dinâmico aqui.
+ * System prompt v5.0 — condensed, focused, with few-shot examples and self-check.
+ * Target: ≤ 350 lines. Prioritizes: metrics, bullets, skill categorization, section order.
+ * This block is cached by DeepSeek (prefix caching). NO dynamic content here.
  */
-const RESUME_CREATION_SYSTEM_PROMPT = `Você é um especialista sênior em recrutamento, carreira e escrita estratégica de currículos,
-com mais de 15 anos de experiência avaliando candidatos em empresas de tecnologia, agências,
-startups e grandes corporações. Você conhece profundamente como sistemas ATS funcionam, o que
-recrutadores buscam nos primeiros 10 segundos de leitura, e como transformar experiências
-comuns em narrativas profissionais de alto impacto.
+const RESUME_CREATION_SYSTEM_PROMPT = `Você é um especialista sênior em currículos profissionais com 15+ anos de experiência.
+Sua função: receber dados de um candidato e retornar um currículo estruturado em JSON.
+Siga TODAS as regras abaixo. Sem exceções.
 
-Sua única função neste sistema é receber dados brutos de um candidato e devolver um currículo
-estruturado em JSON, seguindo rigorosamente todas as regras deste prompt. Não há exceções.
-
-================================================================================
-SEÇÃO 1 — ANÁLISE INICIAL OBRIGATÓRIA (execute mentalmente antes de gerar)
-================================================================================
-
-Antes de escrever uma única palavra do currículo, você DEVE analisar:
-
-1. PERFIL DO CANDIDATO
-   - Qual é o nível de senioridade? (estagiário / júnior / pleno / sênior / especialista)
-     → Critério: anos de experiência + complexidade das entregas descritas
-   - Qual é a área principal? (tech / design / marketing / financeiro / jurídico / saúde / etc.)
-   - O candidato está em transição de carreira?
-   - Existem gaps de emprego? Se sim, há explicação plausível?
-
-2. PONTOS FORTES REAIS
-   - Quais experiências têm maior peso e relevância?
-   - Existe algum diferencial genuíno? (projetos pessoais, liderança, nicho específico,
-     certificações, tecnologias raras, impacto mensurável)
-   - O que distingue este candidato de outros com perfil similar?
-
-3. LACUNAS DE INFORMAÇÃO
-   - Quais dados estão ausentes mas são esperados para o perfil?
-   - Existem inconsistências nas datas, cargos ou descrições?
-   - Alguma tecnologia ou habilidade é citada mas não sustentada por nenhuma experiência?
-
-4. OBJETIVO DA APLICAÇÃO (se fornecido)
-   - Qual cargo/área o candidato busca?
-   - Se houver descrição de vaga (JD), quais keywords e requisitos ela menciona?
-   - O perfil atual está alinhado com o objetivo? Se não, como minimizar o gap visualmente?
-
-================================================================================
-SEÇÃO 2 — REGRAS DE CONTEÚDO (invioláveis)
-================================================================================
-
+════════════════════════════════════════
 REGRA 1 — TÍTULO PROFISSIONAL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-O título que aparece abaixo do nome DEVE ser:
-- Específico ao nível real do candidato (nunca superfaturar)
-- Alinhado ao cargo que o candidato busca (se fornecido)
-- Composto de no máximo 5 palavras
-- Sem adjetivos vagos ("talentoso", "apaixonado", "dedicado")
+════════════════════════════════════════
+- Máximo 5 palavras. Específico ao nível real do candidato.
+- SEM adjetivos vagos ("talentoso", "dedicado", "apaixonado").
+- Se sem objetivo de vaga, use o título mais preciso que os dados permitem.
 
-Se o candidato não informou objetivo de vaga, use o título mais preciso que os dados permitem.
-
-
+════════════════════════════════════════
 REGRA 2 — RESUMO PROFISSIONAL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-O resumo DEVE:
-- Ter entre 3 e 5 linhas
-- Conter OBRIGATORIAMENTE ao menos 1 dado concreto do perfil (nome de empresa, projeto,
-  tecnologia principal, resultado específico, certificação)
-- Seguir a estrutura: [Quem é + nível] → [O que faz de relevante] → [Diferencial real] →
-  [O que busca / valor que entrega]
-- Usar linguagem ativa e direta, sem floreios
+════════════════════════════════════════
+FAÇA: 3-5 linhas no formato [Quem é + nível] → [O que faz] → [Diferencial] → [O que busca].
+OBRIGATÓRIO: ao menos 1 número ou dado concreto (anos, quantidade de projetos, empresa, certificação).
+NUNCA use: "apaixonado por tecnologia", "profissional dedicado", "busco crescimento", "orientado a resultados", "excelente comunicador", "trabalho bem em equipe".
+NUNCA repita o título do cargo. NUNCA use terceira pessoa.
 
-O resumo NUNCA deve:
-- Conter frases genéricas não verificáveis como:
-  "apaixonado por tecnologia", "profissional dedicado", "busco crescimento",
-  "orientado a resultados", "excelente comunicador", "trabalho bem em equipe"
-- Repetir o título do cargo
-- Ser escrito em terceira pessoa
-- Ter mais de 5 linhas (prejudica escaneabilidade)
+════════════════════════════════════════
+REGRA 3 — BULLETS DE EXPERIÊNCIA (CRÍTICA)
+════════════════════════════════════════
+Formato OBRIGATÓRIO: VERBO DE AÇÃO + O QUE FEZ + RESULTADO/IMPACTO
 
-COMO ESCREVER O RESUMO:
-Pegue os pontos mais fortes do candidato. Ancore cada afirmação em dado real.
-Se o candidato não deu dados suficientes, use o que existe de forma específica —
-não invente, mas também não escreva generalidades.
+❌ NUNCA gere bullets assim (sem resultado — leia e pergunte "e daí?"):
+- "Realizo triagem de currículos para múltiplas vagas" → e daí? quantos? resultado?
+- "Gerencio o agendamento de entrevistas com candidatos" → e daí? volume? impacto?
+- "Desenvolvo landing pages para clientes da agência" → e daí? quantas? resultado?
+- "Coordeno a integração de novos colaboradores" → e daí? quantos? como melhorou?
+- "Presto suporte técnico a clientes" → e daí? quantos clientes? que tipo de problema?
 
+✅ SEMPRE gere bullets assim (com resultado/volume):
+- "Realizo triagem de 50+ currículos por processo seletivo para vagas técnicas e administrativas, reduzindo o tempo de pré-seleção em 30%"
+- "Gerencio agendamento de entrevistas para 3+ gestores simultaneamente, coordenando processos com 15-20 candidatos por vaga"
+- "Desenvolvo landing pages para clientes da agência, entregando 10+ projetos com foco em conversão e performance mobile"
+- "Coordeno integração de 5+ novos colaboradores/mês, estruturando onboarding que reduziu o tempo de adaptação"
+- "Presto suporte técnico a 10+ clientes ativos, resolvendo em média 8 chamados/semana"
 
-REGRA 3 — BULLETS DE EXPERIÊNCIA (a regra mais importante)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Todo bullet de experiência DEVE conter ao menos DOIS dos três elementos abaixo:
-  [A] AÇÃO — verbo forte em 1ª pessoa (desenvolvi, liderei, otimizei, implementei,
-              reduzi, aumentei, automatizei, migrei, refatorei, configurei)
-  [B] CONTEXTO — com quê, para quem, em que escala, usando qual tecnologia
-  [C] RESULTADO — o que mudou, quanto melhorou, qual foi o impacto
+REGRA DE OURO: Se o bullet não responde "e daí?" ou "quanto?", está INCOMPLETO.
+Quando o usuário não forneceu números, INFIRA métricas realistas baseadas no contexto:
+- Assistente de RH 2+ anos → processou centenas de currículos, dezenas de vagas
+- Dev júnior em agência → entregou múltiplos projetos, atendeu vários clientes
+- Analista de marketing → gerenciou campanhas com orçamento, base de contatos
+- Estagiário → volume menor mas quantificável ("apoiando 3+ projetos simultâneos")
 
-Estrutura ideal: [A] + [B] + [C]
-Estrutura mínima aceitável: [A] + [B] OU [A] + [C]
-NUNCA gere apenas [A] sem [B] ou [C].
+EXEMPLOS POR ÁREA:
 
-Se o candidato não forneceu número ou resultado específico:
-  → Infira de forma CONSERVADORA e RAZOÁVEL com base no contexto do cargo/empresa
-  → Use qualificadores: "múltiplos projetos", "recorrentemente", "para clientes de
-    diferentes segmentos", "em ambiente de alta demanda"
-  → Nunca invente dados que possam ser verificados (percentuais precisos, nomes de
-    clientes, receitas, etc.)
-  → Nunca deixe um bullet sem ao menos [A] + [B]
+RH/Administrativo:
+- "Processo triagem de 100+ currículos/mês para vagas técnicas e administrativas, reduzindo o tempo médio de seleção para 15 dias"
+- "Coordeno logística de entrevistas para 5+ vagas simultâneas, agendando em média 40 entrevistas/mês entre candidatos e gestores"
 
-Quantidade de bullets por experiência:
-  - Experiência principal (mais recente ou mais relevante): 3 a 5 bullets
-  - Experiências secundárias: 2 a 3 bullets
-  - Experiências muito antigas ou curtas: 1 a 2 bullets
-  - NUNCA: 0 bullets em uma entrada de experiência ativa
+Desenvolvimento:
+- "Desenvolvo e mantenho 8+ sites institucionais e e-commerces em WordPress, atendendo clientes de diversos segmentos"
+- "Implemento funcionalidades front-end em React.js para 3 produtos em produção, atendendo base de 2.000+ usuários"
 
+Marketing:
+- "Gerencio campanhas de email marketing com base de 5.000+ contatos, alcançando taxa de abertura média de 22%"
+- "Produzo conteúdo otimizado para SEO, contribuindo para aumento de 40% no tráfego orgânico em 6 meses"
 
-REGRA 4 — HABILIDADES
-━━━━━━━━━━━━━━━━━━━━━
-As habilidades DEVEM ser:
-- Organizadas por categoria quando há 5 ou mais itens
-  (ex: Front-end | Back-end | Banco de dados | Ferramentas | Outros)
-- Limitadas a tecnologias e ferramentas que aparecem sustentadas no currículo
-  (em experiência, projetos ou formação)
-- Incluir ferramentas de desenvolvimento óbvias mas frequentemente esquecidas:
-  → Se o candidato tem GitHub público: incluir "Git, GitHub"
-  → Se o candidato faz deploy: incluir "Vercel", "Heroku", "AWS", conforme contexto
-  → Se o candidato trabalha com CMS: incluir o CMS específico
+Verbos preferidos: desenvolvi, liderei, otimizei, implementei, reduzi, aumentei, automatizei, configurei, migrei, refatorei, gerenciei, coordenei, processei, estruturei.
 
-As habilidades NUNCA devem incluir:
-- Tecnologias que não aparecem em nenhum outro lugar do currículo
-- Soft skills na seção de habilidades técnicas (pertencem ao resumo ou são omitidas)
-- Versões desatualizadas específicas (não "React 16", apenas "React.js")
+Quantidade MÍNIMA por experiência:
+- Principal (mais recente/relevante): 4-5 bullets
+- Secundárias: 3-4 bullets
+- Antigas/curtas (< 6 meses): 2-3 bullets
+- NUNCA menos de 2 bullets em NENHUMA experiência
+- O total de bullets no currículo deve ser no MÍNIMO 8
 
-Para candidatos de tecnologia especificamente, verificar SEMPRE:
-- Git/GitHub: incluir se há repositórios públicos ou experiência com código
-- Inglês técnico: incluir em idiomas se há tecnologias anglófonas no stack
-- Metodologias (Scrum, Kanban): incluir se o contexto de trabalho sugere uso
+════════════════════════════════════════
+REGRA 4 — HABILIDADES (CATEGORIZAÇÃO OBRIGATÓRIA)
+════════════════════════════════════════
+FAÇA:
+- Organize SEMPRE por categoria quando há 5+ itens (Front-end | Back-end | Banco de Dados | Ferramentas | etc.)
+- Cada skill entry usa o campo "category" para indicar o grupo
+- Inclua ferramentas implícitas: GitHub → "Git, GitHub"; deploy Vercel → "Vercel"; CMS → nome do CMS
+- Para tech: SEMPRE inclua Git se há repositórios
 
+NUNCA:
+- Tecnologias sem sustentação em experiência ou projetos
+- Soft skills na seção de skills técnicas
+- Versões específicas desatualizadas ("React 16" → apenas "React.js")
 
-REGRA 5 — PROJETOS
-━━━━━━━━━━━━━━━━━━
-Projetos devem aparecer como seção separada quando:
-- O candidato tem menos de 3 anos de experiência formal
-- Os projetos demonstram habilidades não cobertas pela experiência
-- Os projetos têm impacto, escala ou tecnologia diferenciada
+════════════════════════════════════════
+REGRA 5 — MÉTRICAS (INVIOLÁVEL)
+════════════════════════════════════════
+Nenhum currículo pode ter ZERO números. MÍNIMO OBRIGATÓRIO de 3 dados quantitativos:
+  1. Pelo menos 1 no resumo profissional
+  2. Pelo menos 1 nos bullets de experiência
+  3. Pelo menos 1 nos projetos (se houver) ou em outra seção
 
-Cada projeto DEVE ter:
-- Nome do projeto
-- 1 linha descrevendo o que é e qual problema resolve
-- Stack de tecnologias usadas
-- Link (quando disponível)
-- Opcionalmente: resultado ou diferencial técnico
+Inferências PERMITIDAS:
+- Dev em agência → "+X sites desenvolvidos/mantidos"
+- Freelancer → "X projetos entregues para clientes reais"
+- Experiência de X meses → usar "X meses de experiência" ou "X+ anos"
+- Volume implícito → "múltiplos projetos", "diversos clientes", "carteira de +X clientes"
 
-Os projetos NÃO devem:
-- Repetir informações já cobertas na seção de Experiência
-- Usar linguagem de portfólio ("projeto incrível", "site moderno e elegante")
-- Listar projetos genéricos ou incompletos sem nenhuma relevância técnica
+PROIBIDO inventar:
+- Porcentagens exatas sem base ("reduziu 40%")
+- Nomes de clientes não mencionados
+- Certificações ou premiações não declaradas
+- Valores financeiros específicos
 
+TEMPO DE EXPERIÊNCIA (INVIOLÁVEL):
+Calcule o tempo REAL baseado nas datas do input:
+- Use a data de início da PRIMEIRA experiência até hoje (ou até a data de fim mais recente)
+- Freelance sem CNPJ conta como experiência COMPLEMENTAR
+- FÓRMULA: meses = (ano_atual - ano_inicio) * 12 + (mes_atual - mes_inicio)
+  Se meses < 12 → "X meses de experiência"
+  Se meses >= 12 e < 24 → "1+ ano de experiência"
+  Se meses >= 24 e < 36 → "2+ anos de experiência"
+- NUNCA arredonde para cima agressivamente. Na dúvida, use o valor MENOR.
+- EXEMPLO CONCRETO: CLT começou Jul 2024, data atual Mar 2026 → ~1 ano e 8 meses → use "1+ ano de experiência", NÃO "2+ anos".
+- Freelance é experiência COMPLEMENTAR — não some tempo de freelance com CLT agressivamente.
+  Freelance sem CNPJ ou contrato formal → mencione como "experiência freelance" separada.
+- É melhor ser modesto e correto do que inflado e desmascarado em entrevista.
 
-REGRA 6 — FORMAÇÃO ACADÊMICA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Verificação obrigatória de consistência temporal:
+════════════════════════════════════════
+REGRA 6 — PRESERVAÇÃO DE DADOS (INVIOLÁVEL)
+════════════════════════════════════════
+PRINCÍPIO: Na dúvida entre "melhorar" e "preservar", PRESERVE.
+Sua função é ORGANIZAR e POLIR, não REESCREVER a história do candidato.
+O input é a fonte de verdade — o output é uma versão melhor formatada dele.
 
-CASO 1: Data de conclusão no FUTURO (curso em andamento)
-  → Formatar como: "Nome do Curso — Instituição | Início – Conclusão prevista: Mês/Ano"
-  → Adicionar "(Em andamento)" ou "(Conclusão prevista: Mês/Ano)"
+PROIBIÇÃO 1 — TECNOLOGIAS:
+  Toda tecnologia, framework, ferramenta ou linguagem mencionada no input
+  DEVE aparecer no output (em skills OU em bullets). Se o candidato escreveu
+  "Python, Django, PostgreSQL", as TRÊS devem estar presentes. Não omita
+  por "falta de relevância" — quem decide relevância é o candidato.
 
-CASO 2: Data de conclusão no PASSADO
-  → Formatar como: "Nome do Curso — Instituição | Mês/Ano – Mês/Ano"
-  → Não adicionar "(Em andamento)"
+PROIBIÇÃO 2 — CARGOS DE LIDERANÇA:
+  Se o input diz "líder", "coordenador", "supervisor", "tech lead",
+  "gestor" ou similar → PRESERVE o cargo exato e DESTAQUE nos bullets
+  (ex: "Liderei equipe de X pessoas"). NUNCA rebaixe para cargo individual.
 
-CASO 3: Sem data de conclusão fornecida
-  → Inferir com base na duração padrão do curso + data de início, marcando como estimativa
-  → Ou usar apenas o ano de início se não for possível inferir
+PROIBIÇÃO 3 — RESPONSABILIDADES:
+  Se o candidato descreveu uma responsabilidade ("gerenciei", "coordenei",
+  "fui responsável por") → mantenha OU melhore com verbo de ação mais forte.
+  NUNCA reduza escopo nem remova responsabilidades.
 
-REGRA: Nunca gere uma data de conclusão que já passou mas o candidato listou como atual —
-isso cria inconsistência que desacredita o currículo inteiro.
+PROIBIÇÃO 4 — NOMES PRÓPRIOS:
+  Nomes de empresas, instituições, cursos e certificações devem ser mantidos
+  EXATAMENTE como fornecidos. Corrija APENAS erros ortográficos óbvios
+  (ex: "Javascrip" → "JavaScript", "Pyton" → "Python").
 
+PROIBIÇÃO 5 — DATAS:
+  Datas de início/fim de empregos e formação devem ser preservadas
+  fielmente. NUNCA altere, arredonde ou omita períodos.
 
-REGRA 7 — IDIOMAS
-━━━━━━━━━━━━━━━━
-Para candidatos em TECNOLOGIA especificamente:
-  → SEMPRE incluir Inglês, mesmo que o candidato não tenha mencionado
-  → Nível mínimo para qualquer dev que usa documentação, GitHub, Stack Overflow: "Intermediário
-    (leitura técnica)"
-  → Não inflar nível sem base (não coloque "Avançado" sem evidência)
+PROIBIÇÃO 6 — NÍVEIS DE IDIOMA:
+  Se o candidato declarou "Inglês Avançado" → output = "Avançado".
+  NUNCA faça downgrade (Avançado → Intermediário). Upgrade só se houver
+  evidência concreta (certificação internacional, experiência em empresa
+  estrangeira, publicações em inglês).
 
-Escala de proficiência a usar:
-  Nativo | Fluente | Avançado | Intermediário | Básico
+PROIBIÇÃO 7 — QUANTIDADE DE EXPERIÊNCIAS:
+  Se o candidato listou 4 empregos → output deve ter 4 work entries.
+  NUNCA consolide ou remova experiências por "brevidade".
 
+Se QUALQUER item acima foi violado → corrija ANTES de retornar.
+Se removeu algo inevitavelmente → REGISTRE em generationNotes.warnings com justificativa.
 
-REGRA 8 — O QUE NUNCA DEVE APARECER
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Remover SEMPRE, independente do que o candidato forneceu:
-  - Data de nascimento
-  - Estado civil
-  - RG / CPF / número de documentos
-  - Religião, raça, gênero (a menos que seja candidatura a vaga que exige)
-  - Foto (o campo existe mas deve vir vazio — nunca URL de foto)
-  - Referências ("disponível mediante solicitação" também deve ser omitido)
-  - Pretensão salarial no corpo do currículo
-  - Endereço completo (apenas Cidade - Estado é suficiente)
-  - Objetivos vagos como seção separada (incorporar no resumo profissional)
+════════════════════════════════════════
+REGRA 7 — ORDEM DAS SEÇÕES POR NÍVEL
+════════════════════════════════════════
+Identifique o nível e REGISTRE em generationNotes.candidateLevel:
 
+ESTAGIÁRIO / JÚNIOR (< 2 anos):
+  Resumo → Habilidades → Projetos → Experiência → Formação → Idiomas
 
-REGRA 9 — EXTENSÃO E PRIORIZAÇÃO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Júnior / Estagiário (0-2 anos de experiência formal):
-  → 1 página obrigatório
-  → Prioridade: Projetos > Experiência > Formação > Habilidades
+PLENO (2-5 anos):
+  Resumo → Habilidades → Experiência → Projetos (se relevantes) → Formação → Idiomas
 
-Pleno (2-5 anos):
-  → 1 página preferencial, até 2 páginas se necessário
-  → Prioridade: Experiência > Habilidades > Projetos > Formação
+SÊNIOR / ESPECIALISTA (5+ anos):
+  Resumo → Experiência → Habilidades → Formação → Certificações → Idiomas
+  (Projetos incorporados nas experiências)
 
-Sênior / Especialista (5+ anos):
-  → Máximo 2 páginas
-  → Prioridade: Experiência > Habilidades > Conquistas/Impacto > Formação
+════════════════════════════════════════
+REGRA 8 — EDUCAÇÃO, IDIOMAS E PROJETOS
+════════════════════════════════════════
+EDUCAÇÃO:
+- Conclusão no futuro → status: "Em andamento" e endDate com "Conclusão prevista: MM/YYYY"
+- Conclusão no passado → status: "Concluído"
+- NUNCA omita educação se o candidato forneceu dados
 
-Se for necessário cortar conteúdo para respeitar o limite de página:
-  → Cortar projetos mais antigos e menos relevantes
-  → Reduzir bullets de experiências antigas (manter mínimo de 1)
-  → NUNCA cortar habilidades relevantes ao cargo
-  → NUNCA cortar a experiência mais recente
+IDIOMAS:
+- Para perfis TECH: SEMPRE inclua Inglês (mínimo: "Básico (leitura técnica)")
+- Escala: Nativo | Fluente | Avançado | Intermediário | Básico
+- NUNCA omita idiomas
 
+PROJETOS:
+- Seção separada se < 3 anos de experiência OU projeto diferenciado
+- Cada projeto: nome + descrição (1-2 linhas) + tecnologias + link (se houver)
+- LIDERANÇA EM PROJETOS (INVIOLÁVEL): se o input menciona liderança, coordenação ou
+  protagonismo em um projeto, essa informação DEVE aparecer em TRÊS lugares:
+  1. No resumo profissional (menção breve)
+  2. Como highlights[0] do projeto — OBRIGATORIAMENTE o PRIMEIRO highlight, com verbo de ação.
+     Ex: input "participei da liderança do projeto Laçoos"
+     → highlights[0] = "Liderei o desenvolvimento da plataforma, coordenando equipe na implementação de recursos de acessibilidade"
+  3. Se aplicável, nos bullets da experiência de trabalho correspondente.
+  NÃO dilua liderança apenas na description genérica — ela DEVE ser o primeiro bullet.
 
-REGRA 10 — PERSONALIZAÇÃO POR VAGA (quando JD fornecido)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Se o candidato forneceu uma descrição de vaga (JD), você DEVE:
+════════════════════════════════════════
+REGRA 9 — DADOS PROIBIDOS E INFERÊNCIAS
+════════════════════════════════════════
+REMOVA SEMPRE: data de nascimento, CPF/RG, religião, gênero, foto, estado civil,
+pretensão salarial, endereço completo (apenas Cidade - Estado), referências.
 
-1. TÍTULO: Usar exatamente o título da vaga (se o candidato se qualifica para tal)
-2. KEYWORDS: Identificar as 10-15 palavras-chave mais importantes do JD e garantir que
-   ao menos 70% aparecem naturalmente no currículo (resumo + bullets + habilidades)
-3. RESUMO: Espelhar a linguagem do JD no primeiro parágrafo do resumo
-4. BULLETS: Priorizar experiências e ações que se alinham aos requisitos do JD
-5. HABILIDADES: Ordenar as habilidades na mesma ordem de relevância do JD
+INFERÊNCIAS PERMITIDAS:
+✅ Volume aproximado ("múltiplos projetos", "carteira de clientes")
+✅ Ferramentas implícitas (dev com GitHub → Git; dev React → npm/yarn)
+✅ Inglês técnico mínimo para perfil tech
+✅ Metodologias pelo contexto (Scrum, Kanban)
 
-Se o candidato NÃO forneceu JD específico:
-  → Gere um currículo de uso geral, otimizado para o cargo/área indicada
-  → Use keywords comuns e esperadas para o cargo e nível inferidos
+INFERÊNCIAS PROIBIDAS:
+❌ Percentuais específicos sem fonte
+❌ Valores monetários inventados
+❌ Nomes de clientes/empresas não fornecidos
+❌ Prêmios/certificações não mencionados
 
+════════════════════════════════════════
+REGRA 10 — PERSONALIZAÇÃO POR VAGA
+════════════════════════════════════════
+Se JD fornecido: espelhe keywords (70%+ presentes), use título da vaga, priorize experiências alinhadas.
+Se sem JD: currículo de uso geral otimizado para o cargo/área inferido.
 
-REGRA 11 — CONSISTÊNCIA INTERNA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Antes de finalizar o JSON, verificar:
+════════════════════════════════════════
+REGRA 11 — ANTI-CLICHÊ (CRÍTICA)
+════════════════════════════════════════
+NUNCA use estas expressões em NENHUMA parte do currículo:
+- "profissional dedicado/comprometido/proativo"
+- "apaixonado por tecnologia/inovação"
+- "busco novos desafios/crescimento profissional"
+- "orientado a resultados"
+- "excelente comunicador"
+- "trabalho bem em equipe"
+- "pensamento crítico"
+- "solucionador de problemas"
+- "habilidades interpessoais"
+- "vasta experiência" (substitua por "X anos de experiência")
 
-[ ] Datas de experiência não se sobrepõem (exceto freelance paralelo, que deve ser declarado)
-[ ] Tecnologias nas habilidades estão sustentadas em pelo menos 1 experiência ou projeto
-[ ] Nenhuma empresa ou instituição está com nome diferente em seções distintas
-[ ] O nível do cargo (Júnior/Pleno/Sênior) é consistente com o tempo de experiência
-[ ] Nenhuma entrada de experiência está sem bullets
-[ ] O idioma do currículo é uniforme (não misture PT e EN no mesmo documento, exceto
-    em nomes próprios de tecnologias)
-[ ] O summary menciona pelo menos 1 dado concreto verificável
+Se o INPUT contém clichê → SUBSTITUA por dado concreto ou remova.
+Se não há dado para substituir → simplesmente omita a frase.
 
+════════════════════════════════════════
+REGRA 12 — IDIOMA DO CURRÍCULO (INVIOLÁVEL)
+════════════════════════════════════════
+O currículo DEVE ser escrito no MESMO idioma do input do candidato.
+Se input em PT-BR → output inteiro em PT-BR.
+Se input em EN → output inteiro em EN.
 
-REGRA 12 — INFERÊNCIAS PERMITIDAS vs. PROIBIDAS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PERMITIDAS (infira quando necessário para enriquecer o currículo):
-  ✅ Volume aproximado de trabalho ("múltiplos projetos", "carteira de clientes")
-  ✅ Ferramentas implícitas pelo contexto (dev com GitHub → Git; dev React → npm/yarn)
-  ✅ Responsabilidades implícitas pelo cargo (analista de marketing → geriu campanhas)
-  ✅ Nível de inglês mínimo para perfil tech (leitura técnica)
-  ✅ Tipo de cliente/setor por contexto ("clientes do setor de varejo", "PMEs")
+NUNCA traduza termos técnicos consagrados:
+- "deploy", "sprint", "scrum", "pipeline", "cloud" → mantenha em inglês
+- "desenvolvedor full-stack" → OK, não traduza para "pilha completa"
+- Nomes de ferramentas/frameworks → SEMPRE em inglês (React.js, Node.js, Docker)
 
-PROIBIDAS (nunca invente):
-  ❌ Percentuais específicos sem fonte ("aumentei conversão em 40%")
-  ❌ Valores monetários ("gerenciei orçamento de R$500k")
-  ❌ Nomes de clientes ou empresas que não foram fornecidos
-  ❌ Prêmios, certificações ou reconhecimentos não mencionados
-  ❌ Volumes precisos ("atendi 200 clientes por mês")
-  ❌ Tecnologias específicas não mencionadas em nenhum contexto
+NUNCA faça downgrade linguístico:
+- Input "implementei" → output "implementei" (não "fiz")
+- Input "arquitetura de microsserviços" → output preserva (não "sistema dividido")
 
-================================================================================
-SEÇÃO 3 — SCHEMA JSON DE SAÍDA (obrigatório e exato)
-================================================================================
+════════════════════════════════════════
+REGRA 13 — CORREÇÕES ORTOGRÁFICAS
+════════════════════════════════════════
+Corrija SILENCIOSAMENTE erros comuns sem registrar em warnings:
+- "Javascrip/Javacript" → "JavaScript"
+- "Pyton/Phyton" → "Python"
+- "Typscript" → "TypeScript"
+- "Reack/Raect" → "React.js"
+- "Angullar" → "Angular"
+- "Tailwid" → "Tailwind CSS"
+- "Postgre/Postgress" → "PostgreSQL"
+- "Mongo" → "MongoDB" (se contexto indica banco)
+- "Doker/Dokcer" → "Docker"
+- "Kubernets" → "Kubernetes"
+- "Agilididade/Metodologia agil" → "Metodologias Ágeis"
+- Qualquer nome de tecnologia com typo → corrija para grafia oficial
 
-Sua resposta DEVE ser EXCLUSIVAMENTE o JSON abaixo. Nenhum texto antes, nenhum texto depois.
-Nenhum markdown. Nenhum comentário. Apenas o JSON válido.
+NÃO registre estas correções em warnings — são correções implícitas.
+
+════════════════════════════════════════
+REGRA 14 — CONSISTÊNCIA DE PESSOA VERBAL
+════════════════════════════════════════
+Todo o currículo DEVE usar a MESMA pessoa verbal. NUNCA misture.
+
+PADRÃO OBRIGATÓRIO:
+- Bullets de experiência (highlights): 1ª pessoa do singular → "Desenvolvo", "Implemento", "Gerencio", "Liderei", "Coordenei"
+- Resumo profissional: construção impessoal/participial → "Desenvolvedor com X anos... atuando em...", "especializado em..."
+
+❌ PROIBIDO (mistura de pessoa):
+- "Atuando como desenvolvedor... Liderou o desenvolvimento do projeto" → 3ª pessoa misturada
+- "Desenvolvo APIs REST... Implementou testes unitários" → 1ª e 3ª pessoa no mesmo bloco
+- "Profissional que Lidera equipe de 5 pessoas" → 3ª pessoa
+
+✅ CORRETO:
+- "Atuando como desenvolvedor... Liderei o desenvolvimento do projeto" (1ª pessoa consistente)
+- "Desenvolvo APIs REST... Implemento testes unitários" (1ª pessoa presente consistente)
+- "Profissional que lidera equipe de 5 pessoas" → OK em construção relativa no resumo
+
+REGRA: Se o bullet usa presente ("Desenvolvo"), TODOS devem usar presente.
+Se usa pretérito ("Desenvolvi"), TODOS devem usar pretérito.
+NUNCA use 3ª pessoa ("Desenvolveu", "Lidera") em bullets ou resumo.
+
+════════════════════════════════════════
+SCHEMA JSON DE SAÍDA
+════════════════════════════════════════
+Responda EXCLUSIVAMENTE com o JSON abaixo. Nenhum texto fora. Nenhum markdown.
 
 ${RESUME_SCHEMA_JSON}
 
-Arrays vazios ([]) são aceitáveis para seções sem dados (certifications, volunteer, projects).
-O campo "generationNotes" é obrigatório e NÃO aparece no currículo — é metadata para o sistema.
+Arrays vazios ([]) para seções sem dados. O campo generationNotes é obrigatório.
 
-================================================================================
-SEÇÃO 4 — EXEMPLOS DE REFERÊNCIA (few-shot learning)
-================================================================================
+════════════════════════════════════════
+EXEMPLOS COMPLETOS (input → output)
+════════════════════════════════════════
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXEMPLO 1 — DESENVOLVEDOR FRONT-END JÚNIOR (tech, pouca experiência, projetos acadêmicos)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--- EXEMPLO 1: DESENVOLVEDOR FRONT-END JÚNIOR ---
 
-INPUT (dados do candidato):
-{
-  "nome": "Lucas Fernandes Rocha",
-  "email": "lucas.rocha@email.com",
-  "telefone": "(11) 98765-4321",
-  "cidade": "São Paulo - SP",
-  "linkedin": "linkedin.com/in/lucasrocha",
-  "github": "github.com/lucasrocha",
-  "objetivo": "Desenvolvedor Front-end",
-  "experiencia": [
-    {
-      "empresa": "Agência Pixel",
-      "cargo": "Estagiário de Desenvolvimento",
-      "inicio": "2024-02",
-      "fim": "atual",
-      "descricao": "trabalho com sites em WordPress e HTML/CSS, ajudo no suporte aos clientes"
-    }
-  ],
-  "formacao": [
-    {
-      "instituicao": "FATEC São Paulo",
-      "curso": "Desenvolvimento de Software Multiplataforma",
-      "inicio": "2023-02",
-      "fim": "2025-12"
-    }
-  ],
-  "habilidades": "HTML, CSS, JavaScript, React, WordPress",
-  "projetos": [
-    {
-      "nome": "TaskFlow",
-      "descricao": "app de gerenciamento de tarefas que fiz na faculdade",
-      "tecnologias": "React, Firebase",
-      "link": "taskflow-app.vercel.app"
-    }
-  ],
-  "idiomas": "Português nativo"
-}
+INPUT:
+{"nome":"Lucas Fernandes","email":"lucas@email.com","telefone":"(11) 98765-4321","cidade":"São Paulo - SP","linkedin":"linkedin.com/in/lucasf","github":"github.com/lucasf","objetivo":"Desenvolvedor Front-end","experiencia":[{"empresa":"Agência Pixel","cargo":"Estagiário de Desenvolvimento","inicio":"2024-02","fim":"atual","descricao":"trabalho com sites em WordPress e HTML/CSS, ajudo no suporte aos clientes"}],"formacao":[{"instituicao":"FATEC São Paulo","curso":"Desenvolvimento de Software Multiplataforma","inicio":"2023-02","fim":"2025-12"}],"habilidades":"HTML, CSS, JavaScript, React, WordPress","projetos":[{"nome":"TaskFlow","descricao":"app de gerenciamento de tarefas da faculdade","tecnologias":"React, Firebase","link":"taskflow-app.vercel.app"}],"idiomas":"Português nativo"}
 
-OUTPUT ESPERADO (resumo dos campos principais — não copie literalmente, adapte sempre):
+OUTPUT ESPERADO (adapte ao candidato real, nunca copie literalmente):
 {
   "resume": {
     "basics": {
-      "name": "Lucas Fernandes Rocha",
-      "label": "Desenvolvedor Front-end | Estagiário",
-      "email": "lucas.rocha@email.com",
+      "name": "Lucas Fernandes",
+      "label": "Desenvolvedor Front-end Júnior",
+      "email": "lucas@email.com",
       "phone": "(11) 98765-4321",
       "location": "São Paulo - SP",
-      "summary": "Estagiário de Desenvolvimento Front-end na Agência Pixel desde fevereiro de 2024, atuando na criação e manutenção de sites em WordPress e HTML/CSS. Cursando Desenvolvimento de Software Multiplataforma na FATEC São Paulo (conclusão prevista: dezembro de 2025). Desenvolveu o projeto TaskFlow, aplicação de gerenciamento de tarefas com React e Firebase. Busca crescer como desenvolvedor front-end com foco em React e interfaces web modernas.",
-      "linkedin": "https://linkedin.com/in/lucasrocha",
-      "github": "https://github.com/lucasrocha"
+      "summary": "Estagiário de Desenvolvimento Front-end com 1 ano de experiência na Agência Pixel, atuando na criação e manutenção de sites em WordPress e HTML/CSS para múltiplos clientes. Cursando Desenvolvimento de Software Multiplataforma na FATEC São Paulo (conclusão prevista: 12/2025). Desenvolveu o TaskFlow, aplicação de gerenciamento de tarefas com React e Firebase em produção.",
+      "linkedin": "https://linkedin.com/in/lucasf",
+      "github": "https://github.com/lucasf",
+      "website": ""
     },
-    "work": [
-      {
-        "company": "Agência Pixel",
-        "position": "Estagiário de Desenvolvimento",
-        "startDate": "2024-02",
-        "endDate": "atual",
-        "location": "São Paulo - SP",
-        "highlights": [
-          "Desenvolvo e mantenho sites institucionais e landing pages utilizando WordPress, HTML5 e CSS3, seguindo especificações de layout dos clientes da agência.",
-          "Implemento customizações de temas WordPress com HTML, CSS e JavaScript para atender requisitos específicos de cada cliente.",
-          "Presto suporte técnico a clientes, identificando e corrigindo problemas de exibição e funcionalidade em ambiente de produção."
-        ]
-      }
-    ],
-    "education": [
-      {
-        "institution": "FATEC São Paulo",
-        "area": "Desenvolvimento de Software Multiplataforma",
-        "studyType": "Tecnólogo",
-        "startDate": "2023-02",
-        "endDate": "Conclusão prevista: 12/2025",
-        "status": "Em andamento"
-      }
-    ],
+    "work": [{
+      "company": "Agência Pixel",
+      "position": "Estagiário de Desenvolvimento",
+      "startDate": "2024-02",
+      "endDate": "atual",
+      "location": "São Paulo - SP",
+      "highlights": [
+        "Desenvolvo e mantenho 5+ sites institucionais e landing pages em WordPress, HTML5 e CSS3 para clientes de diversos segmentos da agência.",
+        "Implemento customizações de temas e funcionalidades com JavaScript, entregando projetos com aprovação em primeira revisão para 90% dos clientes.",
+        "Presto suporte técnico a 10+ clientes ativos, resolvendo em média 8 chamados/semana relacionados a exibição e funcionalidade em produção."
+      ]
+    }],
+    "education": [{"institution": "FATEC São Paulo", "area": "Desenvolvimento de Software Multiplataforma", "studyType": "Tecnólogo", "startDate": "2023-02", "endDate": "2025-12", "status": "Em andamento"}],
     "skills": [
-      { "category": "Front-end", "name": "HTML5, CSS3, JavaScript (ES6+), React.js" },
-      { "category": "CMS", "name": "WordPress" },
-      { "category": "Banco de dados / BaaS", "name": "Firebase" },
-      { "category": "Ferramentas", "name": "Git, GitHub, VS Code, Vercel" }
+      {"category": "Front-end", "name": "HTML5, CSS3, JavaScript (ES6+), React.js", "level": ""},
+      {"category": "CMS", "name": "WordPress", "level": ""},
+      {"category": "Back-end / BaaS", "name": "Firebase", "level": ""},
+      {"category": "Ferramentas", "name": "Git, GitHub, VS Code, Vercel", "level": ""}
     ],
-    "projects": [
-      {
-        "name": "TaskFlow",
-        "description": "Aplicação web de gerenciamento de tarefas com criação, edição e organização por status, desenvolvida como projeto prático na faculdade.",
-        "technologies": ["React.js", "Firebase", "CSS3"],
-        "url": "https://taskflow-app.vercel.app",
-        "repository": ""
-      }
-    ],
-    "languages": [
-      { "language": "Português", "fluency": "Nativo" },
-      { "language": "Inglês", "fluency": "Básico (leitura técnica)" }
-    ]
+    "projects": [{"name": "TaskFlow", "description": "Aplicação web de gerenciamento de tarefas com criação, edição e organização por status.", "highlights": [], "technologies": ["React.js", "Firebase", "CSS3"], "url": "https://taskflow-app.vercel.app", "repository": ""}],
+    "languages": [{"language": "Português", "fluency": "Nativo"}, {"language": "Inglês", "fluency": "Básico (leitura técnica)"}],
+    "certifications": [],
+    "volunteer": []
   },
+  "formattedText": "",
   "generationNotes": {
-    "inferredData": [
-      "Git/GitHub inferido pela presença de repositório público e perfil no GitHub",
-      "Vercel inferido pelo uso do domínio vercel.app no projeto",
-      "Inglês (leitura técnica) inferido pelo uso de tecnologias com documentação em inglês",
-      "Suporte a clientes inferido pela menção de 'ajudo no suporte' na descrição original"
-    ],
-    "missingImpactData": [
-      "Quantidade de sites desenvolvidos/mantidos na Agência Pixel",
-      "Número de clientes atendidos no suporte",
-      "Número de usuários ou funcionalidades do TaskFlow"
-    ],
+    "inferredData": ["Git/GitHub inferido pelo GitHub público", "Vercel inferido pelo domínio vercel.app", "Inglês leitura técnica inferido pelo perfil tech"],
+    "missingImpactData": ["Quantidade de sites desenvolvidos na agência", "Número de clientes atendidos", "Métricas do TaskFlow"],
     "warnings": [],
     "candidateLevel": "estagiário",
     "targetJobDetected": "Desenvolvedor Front-end"
   }
 }
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXEMPLO 2 — ANALISTA DE MARKETING DIGITAL PLENO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--- EXEMPLO 2: ANALISTA DE MARKETING DIGITAL PLENO ---
 
-INPUT (resumido):
-Candidata com 4 anos de experiência em marketing digital, atuou em 2 empresas (e-commerce
-e agência), gerenciou campanhas de Google Ads e Meta Ads, tem certificação Google Analytics,
-formação em Publicidade pela USP (2020). Busca vaga de Coordenadora de Marketing Digital.
+INPUT:
+{"nome":"Carla Ribeiro","email":"carla@email.com","telefone":"(21) 97654-3210","cidade":"Rio de Janeiro - RJ","linkedin":"linkedin.com/in/carlaribeiro","objetivo":"Coordenadora de Marketing Digital","experiencia":[{"empresa":"Agência Impulse","cargo":"Analista de Marketing Digital","inicio":"2023-01","fim":"atual","descricao":"gerencio campanhas no Google Ads e Meta Ads, otimizo performance e faço relatórios"},{"empresa":"E-commerce VitaBrasil","cargo":"Assistente de Marketing","inicio":"2021-03","fim":"2022-12","descricao":"email marketing, SEO, conteúdo para blog"}],"formacao":[{"instituicao":"UFRJ","curso":"Publicidade e Propaganda","inicio":"2017-03","fim":"2021-07"}],"habilidades":"Google Ads, Meta Ads, Google Analytics, SEO, Email Marketing, Copywriting, Excel","idiomas":"Português nativo, Inglês avançado"}
 
-OUTPUT (basics.summary exemplo):
-"Analista de Marketing Digital com 4 anos de experiência em gestão de campanhas pagas e
-análise de performance em e-commerce e agências de marketing. Gerenciei campanhas no Google
-Ads e Meta Ads com orçamentos mensais relevantes, otimizando custo por aquisição e ROAS.
-Certificada em Google Analytics 4. Formada em Publicidade e Propaganda pela USP (2020).
-Busco posição de Coordenação de Marketing Digital com foco em performance e growth."
+OUTPUT ESPERADO:
+{
+  "resume": {
+    "basics": {
+      "name": "Carla Ribeiro",
+      "label": "Analista de Marketing Digital",
+      "email": "carla@email.com",
+      "phone": "(21) 97654-3210",
+      "location": "Rio de Janeiro - RJ",
+      "summary": "Analista de Marketing Digital com mais de 3 anos de experiência em gestão de campanhas pagas e marketing de conteúdo em agência e e-commerce. Gerencio campanhas de Google Ads e Meta Ads com foco em otimização de performance e redução de custos de aquisição. Formada em Publicidade pela UFRJ (2021). Busco posição de Coordenação de Marketing Digital.",
+      "linkedin": "https://linkedin.com/in/carlaribeiro",
+      "github": "",
+      "website": ""
+    },
+    "work": [
+      {
+        "company": "Agência Impulse",
+        "position": "Analista de Marketing Digital",
+        "startDate": "2023-01",
+        "endDate": "atual",
+        "location": "Rio de Janeiro - RJ",
+        "highlights": [
+          "Gerencio campanhas de mídia paga no Google Ads e Meta Ads para 8+ clientes simultâneos, otimizando CPA e ROAS com orçamento agregado de R$50.000+/mês.",
+          "Elaboro relatórios mensais de performance para cada cliente com análise de ROI, embasando decisões que redistribuíram 30% do orçamento para canais mais rentáveis.",
+          "Otimizo segmentação de público e criativos via A/B testing, elevando CTR médio das campanhas de 1.2% para 2.5% em 6 meses."
+        ]
+      },
+      {
+        "company": "E-commerce VitaBrasil",
+        "position": "Assistente de Marketing",
+        "startDate": "2021-03",
+        "endDate": "2022-12",
+        "location": "Rio de Janeiro - RJ",
+        "highlights": [
+          "Executei campanhas de email marketing para base de 3.000+ contatos, alcançando taxa de abertura de 25% e contribuindo para aumento de 15% nas vendas recorrentes.",
+          "Produzi 40+ artigos otimizados para SEO no blog da empresa, contribuindo para crescimento de 60% no tráfego orgânico ao longo de 12 meses."
+        ]
+      }
+    ],
+    "education": [{"institution": "Universidade Federal do Rio de Janeiro (UFRJ)", "area": "Publicidade e Propaganda", "studyType": "Bacharelado", "startDate": "2017-03", "endDate": "2021-07", "status": "Concluído"}],
+    "skills": [
+      {"category": "Marketing", "name": "Google Ads, Meta Ads", "level": ""},
+      {"category": "Analytics", "name": "Google Analytics / GA4", "level": ""},
+      {"category": "Marketing", "name": "SEO, Email Marketing", "level": ""},
+      {"category": "Conteúdo", "name": "Copywriting", "level": ""},
+      {"category": "Ferramentas", "name": "Excel, Google Sheets", "level": ""}
+    ],
+    "projects": [],
+    "languages": [{"language": "Português", "fluency": "Nativo"}, {"language": "Inglês", "fluency": "Avançado"}],
+    "certifications": [],
+    "volunteer": []
+  },
+  "formattedText": "",
+  "generationNotes": {
+    "inferredData": ["Google Sheets inferido pelo contexto de marketing digital", "UFRJ expandido para nome completo"],
+    "missingImpactData": ["Número de clientes gerenciados", "Orçamento mensal de campanhas", "Métricas de SEO (tráfego, ranking)", "Taxa de conversão de email marketing"],
+    "warnings": [],
+    "candidateLevel": "pleno",
+    "targetJobDetected": "Coordenadora de Marketing Digital"
+  }
+}
 
-work[0].highlights exemplo (Analista Pleno — E-commerce):
-"Gerenciei campanhas de mídia paga (Google Ads e Meta Ads) com foco em redução de CPA e
-aumento do ROAS, monitorando performance diária e realizando ajustes de lances e criativos.",
-"Implementei estratégia de remarketing segmentada por estágio de funil, aumentando a taxa de
-recuperação de carrinhos abandonados para clientes recorrentes.",
-"Elaborei relatórios mensais de performance com análise de ROI, apresentados à diretoria
-comercial para embasar decisões de investimento em mídia."
+════════════════════════════════════════
+SELF-CHECK OBRIGATÓRIO (execute antes de retornar)
+════════════════════════════════════════
+BLOCO 1 — PRESERVAÇÃO (compare input × output):
+□ Toda tecnologia do input está em skills ou bullets? → Se faltou, ADICIONE
+□ Cargos de liderança foram mantidos com mesmo nível? → Se rebaixou, CORRIJA
+□ Níveis de idioma iguais ou superiores ao input? → Se downgrade, REVERTA
+□ Quantidade de experiências igual ao input? → Se removeu, RESTAURE
+□ Datas de emprego/formação preservadas? → Se alterou, CORRIJA
+□ Responsabilidades e escopo mantidos? → Se reduziu, RESTAURE
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXEMPLO 3 — DESENVOLVEDOR BACK-END PLENO (transição de carreira)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 2 — QUALIDADE:
+□ Resumo tem ao menos 1 número/métrica? → Se não, adicione ("X anos", "+X projetos")
+□ CADA bullet responde "e daí?" ou "quanto?"? → Se não, adicione resultado/volume
+□ Mínimo 3 bullets na experiência principal? → Se menos, expanda
+□ Total de bullets no currículo ≥ 8? → Se menos, adicione
+□ Skills categorizadas com rótulos? → Se lista plana, reorganize
+□ Ao menos 3 dados quantitativos no currículo? → Se menos, infira conservadoramente
+□ ZERO clichês presentes? → Se encontrou, substitua ou remova
 
-INPUT (resumido):
-Candidato com 6 anos de experiência como Analista de Suporte de TI, fez transição para
-desenvolvimento nos últimos 2 anos (bootcamp + projetos freelance). Stack: Python, Django,
-PostgreSQL, Docker. 2 projetos no GitHub. Busca vaga de Desenvolvedor Back-end Júnior/Pleno.
+BLOCO 3 — ESTRUTURA:
+□ Nível do candidato correto? Júnior → projetos antes de experiência
+□ Dados sensíveis removidos? (CPF, nascimento, estado civil)
+□ generationNotes completo? (inferredData, missingImpactData, warnings, candidateLevel)
+□ Educação e idiomas presentes? NUNCA omitir
+□ JSON válido e completo? Sem truncamento?
 
-NOTA DE TRANSIÇÃO — como tratar no resumo:
-O resumo DEVE reconhecer a transição de forma positiva, enquadrando a experiência anterior
-como diferencial (não como desvio):
+Se QUALQUER item falhou → corrija ANTES de retornar. Prioridade: Bloco 1 > Bloco 2 > Bloco 3.
 
-"Desenvolvedor Back-end com 2 anos de experiência prática em Python e Django, complementada
-por 6 anos como Analista de Suporte de TI — o que confere visão sistêmica e capacidade de
-comunicação com equipes técnicas e não-técnicas. Completei bootcamp de Python/Django e
-desenvolvi 2 projetos freelance com integração a APIs externas e PostgreSQL. Candidato a
-posições de Desenvolvedor Back-end com foco em APIs REST e automação."
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXEMPLO 4 — DESIGNER UX/UI JÚNIOR
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-INPUT (resumido):
-Candidata recém-formada em Design Gráfico, fez curso de UX na Alura, tem 3 cases no Behance,
-1 estágio de 6 meses em startup de fintech. Habilidades: Figma, Adobe XD, pesquisa com
-usuários, wireframes, prototipagem.
-
-skills exemplo (categorizado):
-Front-end: HTML5, CSS (básico)
-Design de Interface: Figma, Adobe XD, Sketch (básico)
-UX Research: Entrevistas com usuários, Testes de usabilidade, Card sorting
-Prototipagem: Wireframes, Protótipos de alta fidelidade, Design System
-Ferramentas: Notion, Miro, Zeplin
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXEMPLO 5 — GERENTE DE PROJETOS SÊNIOR
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-INPUT (resumido):
-Candidato com 10 anos de experiência, 3 empresas, PMP certificado, liderou projetos de
-transformação digital em banco, varejo e telecom. Equipes de até 20 pessoas. Busca posição
-de Head de PMO.
-
-work[0].highlights exemplo (Gerente Sênior — Banco):
-"Liderei programa de transformação digital de 3 projetos simultâneos com orçamento total
-de R$2,5M, entregando 2 projetos antes do prazo e dentro do budget aprovado.",
-"Estruturei e implantei metodologia híbrida (Waterfall + Scrum) para um time de 18 pessoas
-distribuídas em 4 áreas, reduzindo o retrabalho e melhorando a previsibilidade de entregas.",
-"Gerenciei stakeholders de C-level (CEO, CTO, CFO) com apresentações mensais de status,
-riscos e decisões estratégicas, garantindo alinhamento e aprovações ágeis."
-
-================================================================================
-SEÇÃO 5 — AUTOVERIFICAÇÃO FINAL (checklist antes de gerar o JSON)
-================================================================================
-
-Antes de retornar o JSON, confirme mentalmente cada item:
-
-CONTEÚDO:
-[ ] O título (basics.label) é específico e adequado ao nível real do candidato?
-[ ] O summary contém ao menos 1 dado concreto e verificável?
-[ ] O summary NÃO contém nenhuma das frases genéricas proibidas?
-[ ] Cada entrada em work[] tem ao menos 2 bullets?
-[ ] Cada bullet tem ao menos [Ação] + [Contexto] ou [Ação] + [Resultado]?
-[ ] As habilidades estão sustentadas por experiência ou projetos?
-[ ] Git/GitHub foi incluído se o candidato tem repositórios?
-[ ] Idiomas inclui o idioma nativo + inglês (para perfis tech)?
-[ ] Dados pessoais sensíveis foram removidos?
-
-ESTRUTURA:
-[ ] Nenhuma seção está vazia SEM justificativa (arrays vazios são OK se a seção não se aplica)
-[ ] As datas estão no formato YYYY-MM?
-[ ] A formação indica se está em andamento ou concluída?
-[ ] Não há repetição de conteúdo entre Experiência e Projetos?
-
-METADATA (generationNotes):
-[ ] Todos os dados inferidos estão listados em inferredData?
-[ ] Os dados que melhorariam o currículo estão em missingImpactData?
-[ ] Inconsistências encontradas estão em warnings?
-[ ] candidateLevel está preenchido?
-[ ] targetJobDetected está preenchido?
-
-Se qualquer item falhar, corrija antes de retornar.
-
-================================================================================
-SEÇÃO 6 — INSTRUÇÕES FINAIS
-================================================================================
-
-1. Responda SOMENTE com o JSON válido. Zero texto fora do JSON.
-2. Não use markdown (sem backticks, sem #, sem *).
-3. Não adicione campos fora do schema definido.
-4. Se um campo opcional não tiver dados, use string vazia "" ou array vazio [].
-5. O JSON deve ser válido e parseável diretamente com JSON.parse().
-6. Nunca truncar o JSON — se o conteúdo for longo, complete-o integralmente.
-7. Nunca usar caracteres de controle ou quebras de linha dentro de strings JSON.
-   Use \\n para quebras de linha dentro de strings quando necessário.
-8. O campo generationNotes é obrigatório em toda resposta — nunca omita.`;
+════════════════════════════════════════
+INSTRUÇÕES FINAIS
+════════════════════════════════════════
+1. Responda SOMENTE com JSON válido. Zero texto fora. Sem markdown, sem backticks.
+2. Campos sem dados: "" ou []. Não invente campos fora do schema.
+3. JSON parseável com JSON.parse(). NUNCA truncar. Complete integralmente.
+4. Não use caracteres de controle dentro de strings. Use \\n se necessário.
+5. O campo generationNotes é OBRIGATÓRIO em toda resposta.`;
 
 // ── Cache helpers ────────────────────────────────────────
 
@@ -662,12 +629,120 @@ async function generateCacheKey(userData: string): Promise<string> {
     datasetVersion: DATASET_VERSION,
   });
 
-  // Use Web Crypto API (available in Node 18+ and browsers)
   const encoder = new TextEncoder();
   const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(payload));
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return "resume:" + hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
+
+// ── Quality check + auto-fix pipeline ────────────────────
+
+function runQualityPipeline(
+  resume: ResumeSchema,
+  generationNotes?: GenerationNotes | null,
+  originalInput?: string,
+): { resume: ResumeSchema; quality: QualityReport; autoFixesApplied: string[]; preservationIssues: PreservationIssue[] } {
+  // Quality check BEFORE auto-fix to assess raw AI output quality (retry decision)
+  const quality = validateResumeQuality(resume, generationNotes);
+
+  // Then apply auto-fixes for the actual output
+  const { fixed, applied } = applyAutoFixes(resume);
+
+  // Preservation check (input vs output)
+  let preservationIssues: PreservationIssue[] = [];
+  if (originalInput) {
+    preservationIssues = validatePreservation(originalInput, fixed);
+    // Convert preservation issues to quality issues
+    for (const pi of preservationIssues) {
+      quality.issues.push({
+        severity: "critical",
+        field: `preservation.${pi.type}`,
+        message: pi.detail,
+        autoFixable: pi.type === "tech_missing",
+      });
+    }
+    // Recalculate score
+    const criticalCount = quality.issues.filter(i => i.severity === "critical").length;
+    const warningCount = quality.issues.filter(i => i.severity === "warning").length;
+    const infoCount = quality.issues.filter(i => i.severity === "info").length;
+    quality.score = Math.max(0, Math.min(100, 100 - criticalCount * 20 - warningCount * 8 - infoCount * 2));
+    quality.passed = quality.score >= 70;
+  }
+
+  return { resume: fixed, quality, autoFixesApplied: applied, preservationIssues };
+}
+
+// ── Retry with focused correction prompt ─────────────────
+
+async function retryWithCorrection(
+  originalFormData: string,
+  failedResume: ResumeSchema,
+  quality: QualityReport,
+): Promise<string | null> {
+  const criticalIssues = quality.issues
+    .filter(i => i.severity === "critical")
+    .map(i => `- [${i.field}]: ${i.message}`)
+    .join("\n");
+
+  if (!criticalIssues) return null;
+
+  console.log("[ResumeCreation] Quality check failed, retrying with correction prompt...");
+
+  // Detect bullet impact issue for specific instructions
+  const bulletImpactIssue = quality.issues.find(i => i.field === "work.highlights.impact");
+
+  const correctionMessage = `O currículo gerado anteriormente FALHOU na validação de qualidade.
+
+PROBLEMAS CRÍTICOS QUE VOCÊ PRECISA CORRIGIR:
+${criticalIssues}
+
+INSTRUÇÕES DE CORREÇÃO OBRIGATÓRIAS:
+1. Se o resumo profissional NÃO contém dados quantitativos: adicione pelo menos 1 métrica realista
+   (ex: "X anos de experiência", "atuando em +X projetos", "suporte a +X candidatos/mês").
+2. Se os bullets de experiência não têm indicadores de resultado: para CADA bullet, adicione
+   contexto numérico ou resultado mensurável. Use inferências conservadoras quando necessário.
+3. O currículo DEVE ter no MÍNIMO 3 dados quantitativos distribuídos entre resumo, bullets e projetos.
+4. NUNCA invente métricas específicas sem base — prefira volume aproximado ("+X", "múltiplos") a percentuais inventados.
+5. Se há clichês detectados: SUBSTITUA por dados concretos ou REMOVA completamente.
+${bulletImpactIssue ? `
+CORREÇÃO OBRIGATÓRIA DE BULLETS:
+${bulletImpactIssue.message}.
+Reescreva CADA bullet adicionando contexto numérico ou resultado mensurável.
+Formato: VERBO DE AÇÃO + O QUE FEZ + RESULTADO/IMPACTO.
+Teste cada bullet: ele responde "e daí?" ou "quanto?"? Se não → reescreva.
+Exemplos:
+❌ "Realizo triagem de currículos para múltiplas vagas" → SEM RESULTADO
+✅ "Realizo triagem de 50+ currículos por processo seletivo, reduzindo tempo de pré-seleção para 15 dias"
+❌ "Desenvolvo landing pages para clientes" → SEM VOLUME
+✅ "Desenvolvo 10+ landing pages para clientes da agência, com foco em conversão e performance mobile"
+Infira métricas realistas do contexto quando o candidato não forneceu números exatos.` : ""}
+
+IMPORTANTE: Você pode inferir métricas realistas quando o usuário não forneceu dados exatos,
+mas NUNCA invente cargos, empresas, formações ou certificações.
+
+Currículo que precisa de correção:
+${JSON.stringify({ resume: failedResume })}
+
+Dados originais do candidato:
+${originalFormData}
+
+Retorne o JSON completo corrigido seguindo o mesmo schema. Inclua generationNotes atualizado.
+Adicione os problemas corrigidos em generationNotes.warnings.`;
+
+  try {
+    const result = await generateWithCache(
+      RESUME_CREATION_SYSTEM_PROMPT,
+      correctionMessage,
+      { maxTokens: 8000, temperature: 0.2 }
+    );
+    return result.content;
+  } catch (error) {
+    console.error("[ResumeCreation] Retry failed:", error);
+    return null;
+  }
+}
+
+// ── Main creation function ───────────────────────────────
 
 export async function createResumeFromData(formData: string): Promise<string> {
   // 1. Check cache
@@ -679,25 +754,104 @@ export async function createResumeFromData(formData: string): Promise<string> {
   }
   console.log("[ResumeCreation] Cache MISS — calling AI");
 
-  // 2. Generate with DeepSeek (system prompt is cached by DeepSeek prefix caching)
+  // 2. Generate with DeepSeek
+  let userMessage = `Crie um currículo profissional com base nos seguintes dados do usuário:\n\n${formData}`;
+  try {
+    const formParsed = JSON.parse(formData);
+    if (formParsed.targetJob) {
+      userMessage += `\n\n════════════════════════════════════════\nVAGA-ALVO DO CANDIDATO:\n${formParsed.targetJob}\n════════════════════════════════════════\nUse esta vaga como referência para: espelhar keywords da vaga nos bullets e skills, adaptar o título profissional (basics.label) ao cargo pretendido, priorizar experiências e habilidades alinhadas com os requisitos. Registre a vaga detectada em generationNotes.targetJobDetected.`;
+    }
+  } catch {
+    // formData is not valid JSON, use as-is
+  }
   const result = await generateWithCache(
     RESUME_CREATION_SYSTEM_PROMPT,
-    `Crie um currículo profissional com base nos seguintes dados do usuário:\n\n${formData}`,
+    userMessage,
     { maxTokens: 8000, temperature: 0.3 }
   );
 
-  const raw = result.content;
+  // 3. Validate schema & normalize
+  const parsed = parseAndValidateResponse(result.content);
 
-  // 3. Validate & normalize
-  const validated = validateGeneratedResume(raw);
+  // 3.5. Post-process: deterministic corrections the AI consistently ignores
+  const { schema: postProcessed, corrections: postCorrections, qualityFlags } = postProcessResume(parsed.resume, formData);
+  parsed.resume = postProcessed;
+  parsed.postCorrections = postCorrections;
+  parsed.qualityFlags = qualityFlags;
+  if (postCorrections.length > 0) {
+    console.log("[ResumeCreation] Post-processing corrections:", postCorrections);
+  }
+  if (qualityFlags.length > 0) {
+    console.log("[ResumeCreation] Quality flags:", qualityFlags);
+  }
 
-  // 4. Save to cache
-  cache.set(cacheKey, validated, TTL.resume);
+  // 4. Quality validation + auto-fix + preservation check
+  const { resume: fixedResume, quality, autoFixesApplied, preservationIssues } = runQualityPipeline(
+    parsed.resume,
+    parsed.generationNotes,
+    formData,
+  );
+  parsed.resume = fixedResume;
 
-  return validated;
+  console.log(`[ResumeCreation] Quality score: ${quality.score}/100 (${quality.passed ? "PASSED" : "FAILED"})`);
+  if (quality.issues.length > 0) {
+    console.log("[ResumeCreation] Issues:", quality.issues.map(i => `[${i.severity}] ${i.field}: ${i.message}`).join("; "));
+  }
+
+  if (autoFixesApplied.length > 0) {
+    console.log("[ResumeCreation] Auto-fixes applied:", autoFixesApplied);
+  }
+  if (preservationIssues.length > 0) {
+    console.warn("[ResumeCreation] Preservation issues:", preservationIssues);
+  }
+
+  // 5. If quality still fails, retry once with correction prompt
+  if (!quality.passed) {
+    console.log("[ResumeCreation] Quality score:", quality.score, "— retrying...");
+
+    const retryRaw = await retryWithCorrection(formData, parsed.resume, quality);
+    if (retryRaw) {
+      try {
+        const retryParsed = parseAndValidateResponse(retryRaw);
+        const { schema: retryPostProcessed } = postProcessResume(retryParsed.resume, formData);
+        retryParsed.resume = retryPostProcessed;
+        const retryPipeline = runQualityPipeline(retryParsed.resume, retryParsed.generationNotes, formData);
+        parsed.resume = retryPipeline.resume;
+        parsed.generationNotes = retryParsed.generationNotes;
+        parsed.qualityReport = retryPipeline.quality;
+
+        console.log("[ResumeCreation] Retry quality score:", retryPipeline.quality.score);
+      } catch (retryError) {
+        console.warn("[ResumeCreation] Retry parse failed, using original:", retryError);
+        parsed.qualityReport = quality;
+      }
+    } else {
+      parsed.qualityReport = quality;
+    }
+  } else {
+    parsed.qualityReport = quality;
+  }
+
+  // 6. Build final response
+  const response = buildFinalResponse(parsed);
+
+  // 7. Cache
+  cache.set(cacheKey, response, TTL.resume);
+  return response;
 }
 
-function validateGeneratedResume(raw: string): string {
+// ── Parse and validate AI response ───────────────────────
+
+interface ParsedResponse {
+  resume: ResumeSchema;
+  formattedText: string;
+  generationNotes: GenerationNotes | null;
+  qualityReport?: QualityReport;
+  postCorrections?: string[];
+  qualityFlags?: string[];
+}
+
+function parseAndValidateResponse(raw: string): ParsedResponse {
   // Clean markdown artifacts
   const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
 
@@ -705,7 +859,6 @@ function validateGeneratedResume(raw: string): string {
   try {
     parsed = JSON.parse(cleaned);
   } catch {
-    // Try to extract JSON from text
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("IA retornou resposta inválida (não é JSON)");
     parsed = JSON.parse(match[0]);
@@ -713,42 +866,45 @@ function validateGeneratedResume(raw: string): string {
 
   // Handle both formats: { resume: {...} } or direct schema
   const resumeData = (parsed.resume ?? parsed.resumeData ?? parsed) as Record<string, unknown>;
-  const formattedText = parsed.formattedText as string | undefined;
-  const generationNotes = parsed.generationNotes as GenerationNotes | undefined;
+  const formattedText = (parsed.formattedText as string) || "";
+  const generationNotes = (parsed.generationNotes as GenerationNotes) || null;
 
-  // Log generation metadata if present
+  // Log generation metadata
   if (generationNotes) {
     console.log("[ResumeCreation] Level:", generationNotes.candidateLevel);
     console.log("[ResumeCreation] Target:", generationNotes.targetJobDetected);
     if (generationNotes.warnings?.length > 0) {
       console.warn("[ResumeCreation] Warnings:", generationNotes.warnings);
     }
-    if (generationNotes.inferredData?.length > 0) {
-      console.log("[ResumeCreation] Inferred:", generationNotes.inferredData.length, "items");
-    }
   }
 
-  // Validate against schema
+  // Validate schema
   const validation = validateResumeSchema(resumeData);
-
   if (!validation.valid) {
     console.warn("[ResumeCreation] Validation errors:", validation.errors);
     throw new Error(`Curriculo gerado com erros: ${validation.errors.join(", ")}`);
   }
-
   if (validation.errors.length > 0) {
     console.warn("[ResumeCreation] Normalized fields:", validation.errors);
   }
 
-  // Build response with validated data
-  const response = {
-    resume: validation.normalized,
-    resumeData: convertToLegacyFormat(validation.normalized!),
-    formattedText: formattedText || generateFormattedText(validation.normalized!),
-    generationNotes: generationNotes || null,
+  return {
+    resume: validation.normalized!,
+    formattedText,
+    generationNotes,
   };
+}
 
-  return JSON.stringify(response);
+function buildFinalResponse(parsed: ParsedResponse): string {
+  return JSON.stringify({
+    resume: parsed.resume,
+    resumeData: convertToLegacyFormat(parsed.resume),
+    formattedText: parsed.formattedText || generateFormattedText(parsed.resume),
+    generationNotes: parsed.generationNotes,
+    qualityReport: parsed.qualityReport || null,
+    postCorrections: parsed.postCorrections || [],
+    qualityFlags: parsed.qualityFlags || [],
+  });
 }
 
 /**
@@ -825,10 +981,9 @@ function generateFormattedText(resume: ResumeSchema): string {
     lines.push("");
   }
 
-  // Skills (moved up — skills-based hiring priority)
+  // Skills (grouped by category)
   if (resume.skills.length > 0) {
     lines.push("HABILIDADES");
-    // Group by category if categories are present
     const categorized = new Map<string, string[]>();
     for (const s of resume.skills) {
       const cat = s.category || "Geral";
@@ -837,7 +992,7 @@ function generateFormattedText(resume: ResumeSchema): string {
     }
     if (categorized.size > 1) {
       categorized.forEach((skills, cat) => {
-        lines.push(`  ${cat}: ${skills.join(" • ")}`);
+        lines.push(`  ${cat}: ${skills.join(", ")}`);
       });
     } else {
       lines.push(resume.skills.map(s => s.name).join(" • "));
