@@ -11,7 +11,7 @@ export interface TemplateOptions {
   hiddenSections?: SectionName[];
 }
 
-export type SectionName = "summary" | "skills" | "work" | "projects" | "education" | "certifications" | "languages";
+export type SectionName = "header" | "summary" | "skills" | "work" | "projects" | "education" | "certifications" | "languages";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -228,6 +228,17 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   const bulletLh = size === "xsmall" ? "1.7" : size === "small" ? "1.6" : "1.5";
   const margins = size === "xsmall" ? "22mm 24mm 20mm" : size === "small" ? "20mm 22mm 18mm" : size === "medium" ? "16mm 18mm 14mm" : "14mm 16mm 12mm";
 
+  // When user has manual adjustments, use @page margin for top/bottom so multi-page PDFs
+  // get consistent margins on every page. Otherwise keep padding on .page (single-page mode).
+  const hasAdjustments = !!(fsOff || spOff || options?.hiddenSections?.length);
+  const [mTop, mLR, mBottom] = margins.split(" ");
+  const pageAtRule = hasAdjustments
+    ? `@page { size: A4; margin: ${mTop} 0 ${mBottom || mTop} 0; }`
+    : `@page { size: A4; margin: 0; }`;
+  const pageCss = hasAdjustments
+    ? `width: 210mm; padding: 0 ${mLR};`
+    : `width: 210mm; min-height: 297mm; padding: ${margins};`;
+
   const contactLine = buildContactLine(data.basics, ATS_LINK_COLOR);
 
   // ── Build section HTML blocks ──
@@ -294,6 +305,7 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
 
   // ── Build sections map ──
   const sections: Record<SectionName, string> = {
+    header: "", // rendered separately
     summary: data.basics.summary
       ? `<div class="section"><div class="section-title">Resumo Profissional</div><p class="summary">${esc(data.basics.summary)}</p></div>`
       : "",
@@ -324,7 +336,7 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
 <html lang="pt-BR">
 <head><meta charset="UTF-8">
 <style>
-  @page { size: A4; margin: 0; }
+  ${pageAtRule}
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   html, body {
@@ -338,9 +350,7 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   }
 
   .page {
-    width: 210mm;
-    min-height: 297mm;
-    padding: ${margins};
+    ${pageCss}
   }
 
   /* ── Header ─────────────────────── */
@@ -512,6 +522,15 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   const bulletLh = size === "xsmall" ? "1.7" : size === "small" ? "1.6" : "1.5";
   const margins = size === "xsmall" ? "22mm 24mm 20mm" : size === "small" ? "20mm 22mm 18mm" : size === "medium" ? "16mm 18mm 14mm" : "14mm 16mm 12mm";
 
+  const hasAdjustments = !!(fsOff || spOff || options?.hiddenSections?.length);
+  const [mTop, mLR, mBottom] = margins.split(" ");
+  // Moderno: @page margin 0 always — accent bar must touch top of PDF page.
+  // All spacing via .page padding. Multi-page top/bottom handled via route.ts.
+  const pageAtRule = `@page { size: A4; margin: 0; }`;
+  const pageCss = hasAdjustments
+    ? `width: 210mm; padding: calc(${mTop} + 4pt) ${mLR} ${mBottom || mTop}; position: relative;`
+    : `width: 210mm; min-height: 297mm; padding: ${margins}; padding-top: calc(${mTop} + 4pt); position: relative;`;
+
   const contactLine = buildContactLine(data.basics, MODERNO_ACCENT);
 
   // ── Build section HTML blocks ──
@@ -578,6 +597,7 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
 
   // ── Build sections map ──
   const sections: Record<SectionName, string> = {
+    header: "", // rendered separately
     summary: data.basics.summary
       ? `<div class="section"><div class="section-title">Resumo Profissional</div><p class="summary">${esc(data.basics.summary)}</p></div>`
       : "",
@@ -608,7 +628,7 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
 <html lang="pt-BR">
 <head><meta charset="UTF-8">
 <style>
-  @page { size: A4; margin: 0; }
+  ${pageAtRule}
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   html, body {
@@ -622,21 +642,17 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   }
 
   .page {
-    width: 210mm;
-    min-height: 297mm;
-    padding: ${margins};
-    padding-top: calc(${margins.split(" ")[0]} + 4pt);
-    position: relative;
+    ${pageCss}
   }
 
-  /* ── 4px accent bar at top ──────── */
+  /* ── 4px accent bar at top of page ── */
   .accent-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
+    width: 210mm;
     height: 4pt;
     background: ${MODERNO_ACCENT};
+    position: fixed;
+    top: 0;
+    left: 0;
   }
 
   /* ── Header ─────────────────────── */

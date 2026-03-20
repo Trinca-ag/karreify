@@ -64,6 +64,7 @@ const TEMPLATE_OPTIONS: { id: TemplateName; label: string; desc: string }[] = [
 ];
 
 const SECTION_LABELS: Record<SectionName, string> = {
+  header: "Dados Pessoais",
   summary: "Resumo Profissional",
   skills: "Habilidades",
   work: "Experiência Profissional",
@@ -102,7 +103,8 @@ export default function CreateResumePage() {
   const [candidateLevel, setCandidateLevel] = useState<string | undefined>();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(null);
-  const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_qualityReport, setQualityReport] = useState<QualityReport | null>(null);
   const [postCorrections, setPostCorrections] = useState<string[]>([]);
   const [qualityFlags, setQualityFlags] = useState<string[]>([]);
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -111,7 +113,10 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   const [fontSizeOffset, setFontSizeOffset] = useState(0);
   const [spacingOffset, setSpacingOffset] = useState(0);
   const [hiddenSections, setHiddenSections] = useState<SectionName[]>([]);
+  const [editingSection, setEditingSection] = useState<SectionName | null>(null);
+  const [availableSections, setAvailableSections] = useState<SectionName[]>([]);
   const editorDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTextEdit = useRef(false);
 
   // Form state
   const [name, setName] = useState("");
@@ -124,7 +129,6 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   const [objective, setObjective] = useState("");
   const [skills, setSkills] = useState("");
   const [languages, setLanguages] = useState("");
-  const [targetJob, setTargetJob] = useState("");
   const [experiences, setExperiences] = useState<FormExperience[]>([{ company: "", position: "", startDate: "", endDate: "", description: "" }]);
   const [educations, setEducations] = useState<FormEducation[]>([{ institution: "", degree: "", field: "", startDate: "", endDate: "" }]);
   const [projects, setProjects] = useState<FormProject[]>([]);
@@ -306,6 +310,24 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fontSizeOffset, spacingOffset, hiddenSections]);
 
+  // When text is edited, regenerate PDF with longer debounce
+  useEffect(() => {
+    if (!resumeData || !pendingTextEdit.current) return;
+    pendingTextEdit.current = false;
+    if (editorDebounce.current) clearTimeout(editorDebounce.current);
+    editorDebounce.current = setTimeout(() => {
+      generatePdf(resumeData, selectedTemplate, candidateLevel, currentAdjustments());
+    }, 700);
+    return () => { if (editorDebounce.current) clearTimeout(editorDebounce.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeData]);
+
+  // Helper to update resumeData from text edits
+  const updateResume = useCallback((updater: (data: ResumeSchema) => ResumeSchema) => {
+    pendingTextEdit.current = true;
+    setResumeData(prev => prev ? updater(prev) : prev);
+  }, []);
+
   // Pre-validate uploaded resume
   async function validateUploadedResume(text: string): Promise<ValidationResult | null> {
     try {
@@ -320,6 +342,18 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     } catch {
       return null;
     }
+  }
+
+  function getPopulatedSections(data: ResumeSchema): SectionName[] {
+    const s: SectionName[] = ["header"];
+    if (data.basics.summary) s.push("summary");
+    if (data.skills.length > 0) s.push("skills");
+    if (data.work.length > 0) s.push("work");
+    if (data.projects.length > 0) s.push("projects");
+    if (data.education.length > 0) s.push("education");
+    if (data.certifications.length > 0) s.push("certifications");
+    if (data.languages.length > 0) s.push("languages");
+    return s;
   }
 
   // Main create handler
@@ -352,6 +386,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       setPostCorrections((data.data?.postCorrections as string[]) || []);
       setQualityFlags((data.data?.qualityFlags as string[]) || []);
       setResumeData(schema);
+      setAvailableSections(getPopulatedSections(schema));
       stopProgress();
 
       // Generate PDF preview
@@ -391,7 +426,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       setValidationWarnings(validation.campos_importantes_ausentes);
     }
 
-    handleCreate({ existingResume: text, mode: "improve", targetJob: targetJob || undefined });
+    handleCreate({ existingResume: text, mode: "improve" });
   };
 
   const handleScratchCreate = () => {
@@ -404,7 +439,6 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       projects: projects.filter((p) => p.name.trim()),
       skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
       languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
-      targetJob: targetJob || undefined,
     });
   };
 
@@ -430,10 +464,11 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     setQualityReport(null);
     setPostCorrections([]);
     setQualityFlags([]);
-    setTargetJob("");
     setFontSizeOffset(0);
     setSpacingOffset(0);
     setHiddenSections([]);
+    setEditingSection(null);
+    setAvailableSections([]);
     if (pdfUrl) {
       URL.revokeObjectURL(pdfUrl);
       setPdfUrl(null);
@@ -635,46 +670,67 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                 </div>
               </div>
 
-              {/* Section visibility */}
+              {/* Section visibility + editing */}
               <div>
                 <label className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5" /> Seções
                 </label>
-                <div className="space-y-1">
-                  {(Object.entries(SECTION_LABELS) as [SectionName, string][])
-                    .filter(([key]) => {
-                      if (!resumeData) return false;
-                      if (key === "summary") return !!resumeData.basics.summary;
-                      if (key === "skills") return resumeData.skills.length > 0;
-                      if (key === "work") return resumeData.work.length > 0;
-                      if (key === "projects") return resumeData.projects.length > 0;
-                      if (key === "education") return resumeData.education.length > 0;
-                      if (key === "certifications") return resumeData.certifications.length > 0;
-                      if (key === "languages") return resumeData.languages.length > 0;
-                      return false;
-                    })
-                    .map(([key, label]) => {
-                      const isHidden = hiddenSections.includes(key);
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => {
-                            setHiddenSections(prev =>
-                              isHidden ? prev.filter(s => s !== key) : [...prev, key]
-                            );
-                          }}
-                          disabled={pdfLoading}
-                          className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
-                            isHidden
-                              ? "bg-red-500/10 text-red-400/70 border border-red-500/20"
-                              : "bg-white/[0.02] text-gray-300 border border-white/[0.06] hover:bg-white/[0.05]"
-                          }`}
-                        >
-                          {isHidden ? <EyeOff className="w-3.5 h-3.5 flex-shrink-0" /> : <Eye className="w-3.5 h-3.5 flex-shrink-0" />}
-                          <span className={isHidden ? "line-through" : ""}>{label}</span>
-                        </button>
-                      );
-                    })}
+                <div className="space-y-1.5">
+                  {availableSections.map(key => {
+                    const label = SECTION_LABELS[key];
+                    const isHeader = key === "header";
+                    const isHidden = !isHeader && hiddenSections.includes(key);
+                    const isEditing = editingSection === key && !isHidden;
+                    return (
+                      <div key={key}>
+                        <div className="flex items-center gap-1">
+                          {isHeader ? (
+                            <span className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs bg-white/[0.02] text-gray-300 border border-white/[0.06]">
+                              <PenLine className="w-3.5 h-3.5 flex-shrink-0" />
+                              {label}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setHiddenSections(prev =>
+                                  isHidden ? prev.filter(s => s !== key) : [...prev, key]
+                                );
+                                if (!isHidden) setEditingSection(prev => prev === key ? null : prev);
+                              }}
+                              disabled={pdfLoading}
+                              className={`flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                                isHidden
+                                  ? "bg-red-500/10 text-red-400/70 border border-red-500/20"
+                                  : "bg-white/[0.02] text-gray-300 border border-white/[0.06] hover:bg-white/[0.05]"
+                              }`}
+                            >
+                              {isHidden ? <EyeOff className="w-3.5 h-3.5 flex-shrink-0" /> : <Eye className="w-3.5 h-3.5 flex-shrink-0" />}
+                              <span className={isHidden ? "line-through" : ""}>{label}</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setEditingSection(prev => prev === key ? null : key)}
+                            disabled={isHidden || pdfLoading}
+                            className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-all ${
+                              isEditing
+                                ? "bg-primary-500/20 border-primary-500/40 text-primary-400"
+                                : "bg-white/[0.02] border-white/[0.06] text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]"
+                            } disabled:opacity-30 disabled:cursor-not-allowed`}
+                          >
+                            <PenLine className="w-3 h-3" />
+                          </button>
+                        </div>
+                        {isEditing && resumeData && (
+                          <SectionEditor
+                            section={key}
+                            data={resumeData}
+                            onUpdate={updateResume}
+                            pdfLoading={pdfLoading}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -683,46 +739,6 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
               postCorrections={postCorrections}
               qualityFlags={qualityFlags}
             />
-
-            {/* Quality Report */}
-            {qualityReport && (
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-white">Qualidade</h3>
-                  <span className={`text-sm font-bold ${
-                    qualityReport.score >= 90 ? "text-green-400" :
-                    qualityReport.score >= 70 ? "text-yellow-400" : "text-red-400"
-                  }`}>
-                    {qualityReport.score}/100
-                  </span>
-                </div>
-                {qualityReport.issues.length > 0 && (
-                  <ul className="space-y-1">
-                    {qualityReport.issues.map((issue, i) => (
-                      <li key={i} className={`text-xs flex items-start gap-1.5 ${
-                        issue.severity === "critical" ? "text-red-400/80" :
-                        issue.severity === "warning" ? "text-yellow-400/80" : "text-gray-400"
-                      }`}>
-                        <span className="mt-0.5 flex-shrink-0">
-                          {issue.severity === "critical" ? "\u25CF" : issue.severity === "warning" ? "\u25B2" : "\u25CB"}
-                        </span>
-                        {issue.message}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {qualityReport.suggestions.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-green-400 mb-1">Sugestoes:</p>
-                    <ul className="space-y-0.5">
-                      {qualityReport.suggestions.map((s, i) => (
-                        <li key={i} className="text-xs text-green-300/70">{"\u2192"} {s}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
@@ -813,19 +829,6 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           </div>
           <div className="p-6 space-y-4">
             <FileUpload onFileSelect={setFile} selectedFile={file} onClear={() => setFile(null)} />
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Para qual vaga você está se candidatando? <span className="text-gray-500">(opcional)</span></label>
-              <textarea
-                value={targetJob}
-                onChange={(e) => setTargetJob(e.target.value.slice(0, 2000))}
-                maxLength={2000}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[60px]"
-                placeholder="Cole a descrição da vaga ou digite o título do cargo"
-              />
-              {targetJob.length > 0 && (
-                <span className="text-xs text-gray-500 mt-1 block text-right">{targetJob.length}/2000</span>
-              )}
-            </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500">Custo: 1 crédito</span>
               <Button onClick={handleUploadCreate} disabled={!file || loading || validating} loading={loading || validating}>
@@ -1020,6 +1023,502 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       )}
     </div>
   );
+}
+
+// ════════════════════════════════════════════════════
+// Section Editor — inline editing of resume content
+// ════════════════════════════════════════════════════
+
+const editCls = "w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-500/50 resize-none";
+const editLabel = "text-[10px] text-gray-500 mb-0.5 block";
+
+function SectionEditor({
+  section,
+  data,
+  onUpdate,
+  pdfLoading,
+}: {
+  section: SectionName;
+  data: ResumeSchema;
+  onUpdate: (updater: (d: ResumeSchema) => ResumeSchema) => void;
+  pdfLoading: boolean;
+}) {
+  switch (section) {
+    // ── Header (personal info) ──
+    case "header":
+      return (
+        <div className="mt-2 pl-2 border-l border-primary-500/30 space-y-1.5">
+          <label className={editLabel}>Nome</label>
+          <input
+            value={data.basics.name}
+            onChange={e => onUpdate(d => ({ ...d, basics: { ...d.basics, name: e.target.value } }))}
+            className={editCls}
+            placeholder="Nome completo"
+          />
+          <label className={editLabel}>Cargo / Título</label>
+          <input
+            value={data.basics.label}
+            onChange={e => onUpdate(d => ({ ...d, basics: { ...d.basics, label: e.target.value } }))}
+            className={editCls}
+            placeholder="Ex: Desenvolvedor Full Stack"
+          />
+          <div className="grid grid-cols-2 gap-1">
+            <div>
+              <label className={editLabel}>Email</label>
+              <input
+                value={data.basics.email}
+                onChange={e => onUpdate(d => ({ ...d, basics: { ...d.basics, email: e.target.value } }))}
+                className={editCls}
+                placeholder="Email"
+              />
+            </div>
+            <div>
+              <label className={editLabel}>Telefone</label>
+              <input
+                value={data.basics.phone}
+                onChange={e => onUpdate(d => ({ ...d, basics: { ...d.basics, phone: e.target.value } }))}
+                className={editCls}
+                placeholder="Telefone"
+              />
+            </div>
+          </div>
+          <label className={editLabel}>Localização</label>
+          <input
+            value={data.basics.location}
+            onChange={e => onUpdate(d => ({ ...d, basics: { ...d.basics, location: e.target.value } }))}
+            className={editCls}
+            placeholder="Cidade - Estado"
+          />
+          <label className={editLabel}>LinkedIn</label>
+          <input
+            value={data.basics.linkedin || ""}
+            onChange={e => onUpdate(d => ({ ...d, basics: { ...d.basics, linkedin: e.target.value } }))}
+            className={editCls}
+            placeholder="linkedin.com/in/seu-perfil"
+          />
+          <label className={editLabel}>GitHub / Link</label>
+          <input
+            value={data.basics.github || ""}
+            onChange={e => onUpdate(d => ({ ...d, basics: { ...d.basics, github: e.target.value } }))}
+            className={editCls}
+            placeholder="github.com/usuario"
+          />
+          <label className={editLabel}>Portfolio / Site</label>
+          <input
+            value={data.basics.website || ""}
+            onChange={e => onUpdate(d => ({ ...d, basics: { ...d.basics, website: e.target.value } }))}
+            className={editCls}
+            placeholder="meusite.com.br"
+          />
+        </div>
+      );
+
+    // ── Summary ──
+    case "summary":
+      return (
+        <div className="mt-2 pl-2 border-l border-primary-500/30 space-y-1">
+          <textarea
+            rows={4}
+            value={data.basics.summary}
+            onChange={e => onUpdate(d => ({ ...d, basics: { ...d.basics, summary: e.target.value } }))}
+            className={editCls}
+            placeholder="Resumo profissional"
+          />
+        </div>
+      );
+
+    // ── Skills ──
+    case "skills": {
+      // Group by category for display
+      const groups = new Map<string, number[]>();
+      data.skills.forEach((s, i) => {
+        const cat = s.category || "";
+        if (!groups.has(cat)) groups.set(cat, []);
+        groups.get(cat)!.push(i);
+      });
+      return (
+        <div className="mt-2 pl-2 border-l border-primary-500/30 space-y-2">
+          {Array.from(groups.entries()).map(([cat, indices]) => (
+            <div key={cat || "__no_cat"} className="space-y-1">
+              <div className="flex items-center gap-1">
+                <input
+                  value={cat}
+                  onChange={e => {
+                    const newCat = e.target.value;
+                    onUpdate(d => {
+                      const skills = [...d.skills];
+                      for (const idx of indices) skills[idx] = { ...skills[idx], category: newCat };
+                      return { ...d, skills };
+                    });
+                  }}
+                  className={`${editCls} flex-1`}
+                  placeholder="Categoria"
+                />
+                <button
+                  onClick={() => onUpdate(d => ({
+                    ...d,
+                    skills: d.skills.filter((_, i) => !indices.includes(i)),
+                  }))}
+                  className="text-red-400/60 hover:text-red-400 p-0.5"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+              <textarea
+                rows={2}
+                value={indices.map(i => data.skills[i].name).join(", ")}
+                onChange={e => {
+                  const names = e.target.value.split(",").map(n => n.trim());
+                  onUpdate(d => {
+                    let skills = d.skills.filter((_, i) => !indices.includes(i));
+                    const catVal = cat;
+                    const newSkills = names.filter(Boolean).map(name => ({ category: catVal, name, level: "" }));
+                    skills = [...skills, ...newSkills];
+                    return { ...d, skills };
+                  });
+                }}
+                className={editCls}
+                placeholder="Skill1, Skill2, Skill3"
+              />
+            </div>
+          ))}
+          <button
+            onClick={() => onUpdate(d => ({
+              ...d,
+              skills: [...d.skills, { category: "", name: "Nova skill", level: "" }],
+            }))}
+            disabled={pdfLoading}
+            className="flex items-center gap-1 text-[10px] text-primary-400 hover:text-primary-300"
+          >
+            <Plus className="w-3 h-3" /> Grupo
+          </button>
+        </div>
+      );
+    }
+
+    // ── Work ──
+    case "work":
+      return (
+        <div className="mt-2 pl-2 border-l border-primary-500/30 space-y-3">
+          {data.work.map((w, i) => (
+            <div key={i} className="space-y-1 bg-white/[0.02] rounded-lg p-2">
+              <div className="flex items-center justify-between">
+                <span className={editLabel}>{w.position || "Experiência"} — {w.company || "Empresa"}</span>
+                <button
+                  onClick={() => onUpdate(d => ({ ...d, work: d.work.filter((_, idx) => idx !== i) }))}
+                  className="text-red-400/60 hover:text-red-400 p-0.5"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-1">
+                <input
+                  value={w.position}
+                  onChange={e => onUpdate(d => {
+                    const work = [...d.work]; work[i] = { ...work[i], position: e.target.value }; return { ...d, work };
+                  })}
+                  className={editCls}
+                  placeholder="Cargo"
+                />
+                <input
+                  value={w.company}
+                  onChange={e => onUpdate(d => {
+                    const work = [...d.work]; work[i] = { ...work[i], company: e.target.value }; return { ...d, work };
+                  })}
+                  className={editCls}
+                  placeholder="Empresa"
+                />
+                <input
+                  value={w.startDate}
+                  onChange={e => onUpdate(d => {
+                    const work = [...d.work]; work[i] = { ...work[i], startDate: e.target.value }; return { ...d, work };
+                  })}
+                  className={editCls}
+                  placeholder="Início"
+                />
+                <input
+                  value={w.endDate}
+                  onChange={e => onUpdate(d => {
+                    const work = [...d.work]; work[i] = { ...work[i], endDate: e.target.value }; return { ...d, work };
+                  })}
+                  className={editCls}
+                  placeholder="Fim"
+                />
+              </div>
+              <span className={editLabel}>Bullets:</span>
+              {w.highlights.map((h, j) => (
+                <div key={j} className="flex items-start gap-1">
+                  <textarea
+                    rows={2}
+                    value={h}
+                    onChange={e => onUpdate(d => {
+                      const work = [...d.work];
+                      const highlights = [...work[i].highlights];
+                      highlights[j] = e.target.value;
+                      work[i] = { ...work[i], highlights };
+                      return { ...d, work };
+                    })}
+                    className={`${editCls} flex-1`}
+                  />
+                  <button
+                    onClick={() => onUpdate(d => {
+                      const work = [...d.work];
+                      work[i] = { ...work[i], highlights: work[i].highlights.filter((_, idx) => idx !== j) };
+                      return { ...d, work };
+                    })}
+                    className="text-red-400/60 hover:text-red-400 p-1 mt-1"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => onUpdate(d => {
+                  const work = [...d.work];
+                  work[i] = { ...work[i], highlights: [...work[i].highlights, ""] };
+                  return { ...d, work };
+                })}
+                className="flex items-center gap-1 text-[10px] text-primary-400 hover:text-primary-300"
+              >
+                <Plus className="w-3 h-3" /> Bullet
+              </button>
+            </div>
+          ))}
+        </div>
+      );
+
+    // ── Education ──
+    case "education":
+      return (
+        <div className="mt-2 pl-2 border-l border-primary-500/30 space-y-2">
+          {data.education.map((e, i) => (
+            <div key={i} className="space-y-1 bg-white/[0.02] rounded-lg p-2">
+              <div className="flex items-center justify-between">
+                <span className={editLabel}>{e.studyType || "Formação"} {e.area ? `em ${e.area}` : ""}</span>
+                <button
+                  onClick={() => onUpdate(d => ({ ...d, education: d.education.filter((_, idx) => idx !== i) }))}
+                  className="text-red-400/60 hover:text-red-400 p-0.5"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+              <input
+                value={e.institution}
+                onChange={ev => onUpdate(d => {
+                  const education = [...d.education]; education[i] = { ...education[i], institution: ev.target.value }; return { ...d, education };
+                })}
+                className={editCls}
+                placeholder="Instituição"
+              />
+              <div className="grid grid-cols-2 gap-1">
+                <input
+                  value={e.studyType}
+                  onChange={ev => onUpdate(d => {
+                    const education = [...d.education]; education[i] = { ...education[i], studyType: ev.target.value }; return { ...d, education };
+                  })}
+                  className={editCls}
+                  placeholder="Grau"
+                />
+                <input
+                  value={e.area}
+                  onChange={ev => onUpdate(d => {
+                    const education = [...d.education]; education[i] = { ...education[i], area: ev.target.value }; return { ...d, education };
+                  })}
+                  className={editCls}
+                  placeholder="Área"
+                />
+                <input
+                  value={e.startDate}
+                  onChange={ev => onUpdate(d => {
+                    const education = [...d.education]; education[i] = { ...education[i], startDate: ev.target.value }; return { ...d, education };
+                  })}
+                  className={editCls}
+                  placeholder="Início"
+                />
+                <input
+                  value={e.endDate}
+                  onChange={ev => onUpdate(d => {
+                    const education = [...d.education]; education[i] = { ...education[i], endDate: ev.target.value }; return { ...d, education };
+                  })}
+                  className={editCls}
+                  placeholder="Fim"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+
+    // ── Projects ──
+    case "projects":
+      return (
+        <div className="mt-2 pl-2 border-l border-primary-500/30 space-y-2">
+          {data.projects.map((p, i) => (
+            <div key={i} className="space-y-1 bg-white/[0.02] rounded-lg p-2">
+              <div className="flex items-center justify-between">
+                <span className={editLabel}>{p.name || "Projeto"}</span>
+                <button
+                  onClick={() => onUpdate(d => ({ ...d, projects: d.projects.filter((_, idx) => idx !== i) }))}
+                  className="text-red-400/60 hover:text-red-400 p-0.5"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+              <input
+                value={p.name}
+                onChange={e => onUpdate(d => {
+                  const projects = [...d.projects]; projects[i] = { ...projects[i], name: e.target.value }; return { ...d, projects };
+                })}
+                className={editCls}
+                placeholder="Nome"
+              />
+              <textarea
+                rows={2}
+                value={p.description}
+                onChange={e => onUpdate(d => {
+                  const projects = [...d.projects]; projects[i] = { ...projects[i], description: e.target.value }; return { ...d, projects };
+                })}
+                className={editCls}
+                placeholder="Descrição"
+              />
+              <input
+                value={p.technologies.join(", ")}
+                onChange={e => onUpdate(d => {
+                  const projects = [...d.projects];
+                  projects[i] = { ...projects[i], technologies: e.target.value.split(",").map(t => t.trim()).filter(Boolean) };
+                  return { ...d, projects };
+                })}
+                className={editCls}
+                placeholder="Tecnologias (separadas por vírgula)"
+              />
+              {p.highlights.length > 0 && (
+                <>
+                  <span className={editLabel}>Bullets:</span>
+                  {p.highlights.map((h, j) => (
+                    <div key={j} className="flex items-start gap-1">
+                      <textarea
+                        rows={2}
+                        value={h}
+                        onChange={e => onUpdate(d => {
+                          const projects = [...d.projects];
+                          const highlights = [...projects[i].highlights];
+                          highlights[j] = e.target.value;
+                          projects[i] = { ...projects[i], highlights };
+                          return { ...d, projects };
+                        })}
+                        className={`${editCls} flex-1`}
+                      />
+                      <button
+                        onClick={() => onUpdate(d => {
+                          const projects = [...d.projects];
+                          projects[i] = { ...projects[i], highlights: projects[i].highlights.filter((_, idx) => idx !== j) };
+                          return { ...d, projects };
+                        })}
+                        className="text-red-400/60 hover:text-red-400 p-1 mt-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+
+    // ── Certifications ──
+    case "certifications":
+      return (
+        <div className="mt-2 pl-2 border-l border-primary-500/30 space-y-2">
+          {data.certifications.map((c, i) => (
+            <div key={i} className="space-y-1 bg-white/[0.02] rounded-lg p-2">
+              <div className="flex items-center justify-between">
+                <span className={editLabel}>{c.name || "Certificação"}</span>
+                <button
+                  onClick={() => onUpdate(d => ({ ...d, certifications: d.certifications.filter((_, idx) => idx !== i) }))}
+                  className="text-red-400/60 hover:text-red-400 p-0.5"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+              <input
+                value={c.name}
+                onChange={e => onUpdate(d => {
+                  const certifications = [...d.certifications]; certifications[i] = { ...certifications[i], name: e.target.value }; return { ...d, certifications };
+                })}
+                className={editCls}
+                placeholder="Nome"
+              />
+              <div className="grid grid-cols-2 gap-1">
+                <input
+                  value={c.issuer}
+                  onChange={e => onUpdate(d => {
+                    const certifications = [...d.certifications]; certifications[i] = { ...certifications[i], issuer: e.target.value }; return { ...d, certifications };
+                  })}
+                  className={editCls}
+                  placeholder="Emissor"
+                />
+                <input
+                  value={c.date}
+                  onChange={e => onUpdate(d => {
+                    const certifications = [...d.certifications]; certifications[i] = { ...certifications[i], date: e.target.value }; return { ...d, certifications };
+                  })}
+                  className={editCls}
+                  placeholder="Data"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+
+    // ── Languages ──
+    case "languages":
+      return (
+        <div className="mt-2 pl-2 border-l border-primary-500/30 space-y-1.5">
+          {data.languages.map((l, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <input
+                value={l.language}
+                onChange={e => onUpdate(d => {
+                  const languages = [...d.languages]; languages[i] = { ...languages[i], language: e.target.value }; return { ...d, languages };
+                })}
+                className={`${editCls} flex-1`}
+                placeholder="Idioma"
+              />
+              <input
+                value={l.fluency}
+                onChange={e => onUpdate(d => {
+                  const languages = [...d.languages]; languages[i] = { ...languages[i], fluency: e.target.value }; return { ...d, languages };
+                })}
+                className={`${editCls} flex-1`}
+                placeholder="Nível"
+              />
+              <button
+                onClick={() => onUpdate(d => ({ ...d, languages: d.languages.filter((_, idx) => idx !== i) }))}
+                className="text-red-400/60 hover:text-red-400 p-0.5"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => onUpdate(d => ({
+              ...d,
+              languages: [...d.languages, { language: "", fluency: "" }],
+            }))}
+            disabled={pdfLoading}
+            className="flex items-center gap-1 text-[10px] text-primary-400 hover:text-primary-300"
+          >
+            <Plus className="w-3 h-3" /> Idioma
+          </button>
+        </div>
+      );
+
+    default:
+      return null;
+  }
 }
 
 function ProgressBar({ progress, message }: { progress: number; message: string }) {

@@ -4,7 +4,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { FileText, KeyRound, Mail, ArrowLeft, CheckCircle } from "lucide-react";
+import Image from "next/image";
+import { KeyRound, Mail, ArrowLeft, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 type Step = "email" | "code" | "success";
@@ -149,13 +150,13 @@ export default function ResetPasswordPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 bg-white/[0.07] backdrop-blur-xl border border-white/[0.1] rounded-xl flex items-center justify-center">
-              <FileText className="w-5 h-5 text-primary-400" />
-            </div>
-            <span className="text-xl font-heading font-bold">
-              <span className="text-white">Next</span>
-              <span className="gradient-text">CV</span>
-            </span>
+            <Image
+              src="/images/logo_nextcv_new.png"
+              alt="NextCV"
+              width={220}
+              height={110}
+              className="object-contain h-20 w-auto"
+            />
           </Link>
         </div>
 

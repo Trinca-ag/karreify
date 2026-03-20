@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { FileText, Github, Twitter, Linkedin } from "lucide-react";
+import Image from "next/image";
+import { Github, Twitter, Linkedin } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -12,12 +13,13 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-5">
             <div className="flex items-center gap-2.5 mb-5">
-              <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-accent-violet rounded-xl flex items-center justify-center glow-blue">
-                <FileText className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-heading font-bold text-white">
-                Next<span className="gradient-text">CV</span>
-              </span>
+              <Image
+                src="/images/logo_nextcv_new.png"
+                alt="NextCV"
+                width={200}
+                height={100}
+                className="object-contain h-[4.5rem] w-auto"
+              />
             </div>
             <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
               Plataforma inteligente para impulsionar sua carreira. Use IA para

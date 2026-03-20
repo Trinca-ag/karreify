@@ -9,7 +9,8 @@ import { registerDevice } from "@/services/device-manager";
 import { getDeviceId, getDeviceInfo } from "@/utils/device-fingerprint";
 import Button from "@/components/ui/Button";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import { FileText, ShieldCheck, Mail } from "lucide-react";
+import Image from "next/image";
+import { ShieldCheck, Mail } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function VerifyPage() {
@@ -156,13 +157,13 @@ export default function VerifyPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 bg-white/[0.07] backdrop-blur-xl border border-white/[0.1] rounded-xl flex items-center justify-center">
-              <FileText className="w-5 h-5 text-primary-400" />
-            </div>
-            <span className="text-xl font-heading font-bold">
-              <span className="text-white">Next</span>
-              <span className="gradient-text">CV</span>
-            </span>
+            <Image
+              src="/images/logo_nextcv_new.png"
+              alt="NextCV"
+              width={220}
+              height={110}
+              className="object-contain h-20 w-auto"
+            />
           </Link>
         </div>
 

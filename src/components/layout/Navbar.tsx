@@ -40,29 +40,13 @@ export default function Navbar() {
             href={isAuthenticated ? "/dashboard" : "/"}
             className="flex items-center gap-2.5 group"
           >
-            <div
-              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                isLanding
-                  ? "bg-gradient-to-br from-primary-500 to-accent-violet glow-blue"
-                  : "bg-primary-600"
-              }`}
-            >
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <span
-              className={`text-xl font-heading font-bold ${
-                isLanding ? "text-white" : "text-gray-900"
-              }`}
-            >
-              Next
-              <span
-                className={
-                  isLanding ? "gradient-text" : "text-primary-600"
-                }
-              >
-                CV
-              </span>
-            </span>
+            <Image
+              src="/images/logo_nextcv_new.png"
+              alt="NextCV"
+              width={200}
+              height={100}
+              className="object-contain h-[4.5rem] w-auto"
+            />
           </Link>
 
           {/* Desktop navigation */}

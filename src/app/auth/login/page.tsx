@@ -6,7 +6,8 @@ import Link from "next/link";
 import { loginUser, loginWithGoogle } from "@/services/firebase-auth";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { FileText, Sparkles, Shield, Zap } from "lucide-react";
+import Image from "next/image";
+import { Sparkles, Shield, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
@@ -62,13 +63,13 @@ export default function LoginPage() {
         {/* Content */}
         <div className="relative z-10 animate-fade-in-up">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-11 h-11 bg-white/[0.07] backdrop-blur-xl border border-white/[0.1] rounded-xl flex items-center justify-center group-hover:border-primary-500/30 transition-colors">
-              <FileText className="w-6 h-6 text-primary-400" />
-            </div>
-            <span className="text-2xl font-heading font-bold">
-              <span className="text-white">Next</span>
-              <span className="gradient-text">CV</span>
-            </span>
+            <Image
+              src="/images/logo_nextcv_new.png"
+              alt="NextCV"
+              width={240}
+              height={120}
+              className="object-contain h-24 w-auto"
+            />
           </Link>
         </div>
 
@@ -128,13 +129,13 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <div className="lg:hidden mb-8 animate-fade-in-up">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-white/[0.07] backdrop-blur-xl border border-white/[0.1] rounded-xl flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary-400" />
-              </div>
-              <span className="text-xl font-heading font-bold">
-                <span className="text-white">Next</span>
-                <span className="gradient-text">CV</span>
-              </span>
+              <Image
+                src="/images/logo_nextcv_new.png"
+                alt="NextCV"
+                width={200}
+                height={100}
+                className="object-contain h-[4.5rem] w-auto"
+              />
             </Link>
           </div>
 
