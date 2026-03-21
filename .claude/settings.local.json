@@ -44,7 +44,14 @@
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('puppeteer-core:', p.dependencies['puppeteer-core']\\); console.log\\('@sparticuz/chromium:', p.dependencies['@sparticuz/chromium']\\)\")",
       "Bash(find /c/NextCV/src -name *cache* -type f)",
       "Bash(node -e \":*)",
-      "Bash(taskkill //F //IM node.exe)"
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(find /c/NextCV/src -type f -name *download* -o -name *pdf*)",
+      "Bash(xargs ls:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c \"taskkill /IM node.exe /F\")",
+      "Bash(cmd /c \"netstat -ano | findstr :3000\")",
+      "Bash(cmd /c \"rmdir /S /Q C:\\\\NextCV\\\\src\\\\app\\\\dashboard\\\\linkedin-analysis && rmdir /S /Q C:\\\\NextCV\\\\src\\\\app\\\\api\\\\analyze-linkedin && rmdir /S /Q C:\\\\NextCV\\\\src\\\\app\\\\api\\\\fetch-linkedin-profile && del C:\\\\NextCV\\\\src\\\\services\\\\ai-linkedin.ts\")",
+      "Bash(cmd /c \"mkdir C:\\\\NextCV\\\\src\\\\app\\\\dashboard\\\\cover-letter\")"
     ]
   }
 }

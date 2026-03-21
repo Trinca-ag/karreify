@@ -12,6 +12,7 @@ import { deductCredits, checkCredits, hasUsedFeature } from "@/services/credits"
 import { FileSearch, AlertTriangle, CheckCircle, Lightbulb, RefreshCw, Zap, Sparkles, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import Modal from "@/components/ui/Modal";
 
 const PROGRESS_MESSAGES = [
   "Enviando seu currículo...",
@@ -58,6 +59,7 @@ export default function ResumeAnalysisPage() {
   const [isFirstUse, setIsFirstUse] = useState<boolean | null>(null);
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState("");
+  const [showAnalyzeConfirm, setShowAnalyzeConfirm] = useState(false);
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -95,67 +97,25 @@ export default function ResumeAnalysisPage() {
 
   const handleDownloadPDF = useCallback(async () => {
     if (!result) return;
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 20;
-    const contentWidth = pageWidth - margin * 2;
-    let y = 20;
-
-    const checkPage = (needed: number) => {
-      if (y + needed > 280) {
-        doc.addPage();
-        y = 20;
-      }
-    };
-
-    // Title
-    doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.text("Analise de Curriculo - NextCV", margin, y);
-    y += 10;
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(120);
-    doc.text(`Gerado em ${new Date().toLocaleDateString("pt-BR")}`, margin, y);
-    y += 12;
-    doc.setTextColor(0);
-
-    // Overall score
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Pontuação Geral: ${result.analysis.overallScore}/100`, margin, y);
-    y += 10;
-
-    // Score breakdown
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Estrutura: ${result.analysis.structure.score}/100  |  Conteúdo: ${result.analysis.content.score}/100  |  Linguagem: ${result.analysis.language.score}/100`, margin, y);
-    y += 12;
-
-    // Section helper
-    const addSection = (title: string, items: string[], icon: string) => {
-      checkPage(20);
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text(`${icon} ${title}`, margin, y);
-      y += 8;
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      items.forEach((item) => {
-        const lines = doc.splitTextToSize(`• ${item}`, contentWidth);
-        checkPage(lines.length * 5 + 2);
-        doc.text(lines, margin, y);
-        y += lines.length * 5 + 2;
+    try {
+      const response = await fetch("/api/generate-analysis-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysis: result.analysis }),
       });
-      y += 6;
-    };
-
-    addSection("Pontos Fortes", result.analysis.strengths, "✓");
-    addSection("Pontos Fracos", result.analysis.weaknesses, "!");
-    addSection("Sugestões de Melhoria", result.analysis.suggestions, "→");
-
-    doc.save("analise-curriculo-nextcv.pdf");
+      if (!response.ok) throw new Error("Erro ao gerar PDF");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "analise-curriculo-nextcv.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Erro ao gerar PDF.");
+    }
   }, [result]);
 
   const handleAnalyze = async () => {
@@ -263,7 +223,7 @@ export default function ResumeAnalysisPage() {
               }`}>
                 {isFirstUse ? "Primeira analise gratuita!" : "Custo: 1 credito"}
               </span>
-              <Button onClick={handleAnalyze} disabled={!file || loading} loading={loading}>
+              <Button onClick={() => setShowAnalyzeConfirm(true)} disabled={!file || loading} loading={loading}>
                 {loading ? "Analisando..." : "Analisar currículo"}
               </Button>
             </div>
@@ -432,6 +392,20 @@ export default function ResumeAnalysisPage() {
           </div>
         </div>
       )}
+
+      <Modal isOpen={showAnalyzeConfirm} onClose={() => setShowAnalyzeConfirm(false)} title="Analisar currículo" size="sm">
+        <div className="space-y-4">
+          <p className="text-gray-300 text-sm">
+            {isFirstUse
+              ? "Sua primeira análise é gratuita! Deseja continuar?"
+              : <>A análise de currículo custa <span className="text-primary-400 font-semibold">1 crédito</span>. Deseja continuar?</>}
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setShowAnalyzeConfirm(false)}>Cancelar</Button>
+            <Button onClick={() => { setShowAnalyzeConfirm(false); handleAnalyze(); }}>Confirmar</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

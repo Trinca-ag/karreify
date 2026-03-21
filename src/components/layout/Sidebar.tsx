@@ -5,13 +5,13 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   FileSearch,
-  Linkedin,
   FilePlus,
-  FileEdit,
   Target,
-  Map,
   Settings,
   CreditCard,
+  FileText,
+  Building2,
+  TrendingUp,
 } from "lucide-react";
 
 const menuItems = [
@@ -20,11 +20,6 @@ const menuItems = [
     label: "Análise de Currículo",
     href: "/dashboard/resume-analysis",
     icon: FileSearch,
-  },
-  {
-    label: "Análise LinkedIn",
-    href: "/dashboard/linkedin-analysis",
-    icon: Linkedin,
   },
   {
     label: "Criar Currículo",
@@ -37,14 +32,19 @@ const menuItems = [
     icon: Target,
   },
   {
-    label: "Editor de Currículo",
-    href: "/dashboard/resume-editor",
-    icon: FileEdit,
+    label: "Carta de Apresentação",
+    href: "/dashboard/cover-letter",
+    icon: FileText,
   },
   {
-    label: "Roadmap de Carreira",
-    href: "/dashboard/career-roadmap",
-    icon: Map,
+    label: "Análise de Empresa",
+    href: "/dashboard/company-analysis",
+    icon: Building2,
+  },
+  {
+    label: "Mercado",
+    href: "/dashboard/market",
+    icon: TrendingUp,
   },
 ];
 

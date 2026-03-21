@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import type { ResumeSchema, GenerationNotes, QualityReport } from "@/lib/resume-schema";
 import type { TemplateName, SectionName } from "@/lib/resume-templates";
 import ResumeFeedback from "@/components/ui/ResumeFeedback";
+import Modal from "@/components/ui/Modal";
 
 const PROGRESS_MESSAGES = [
   "Enviando seus dados...",
@@ -46,6 +47,7 @@ export default function AdaptResumePage() {
   const [jobDescription, setJobDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
   const [resumeData, setResumeData] = useState<ResumeSchema | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateName>("profissional");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -157,7 +159,7 @@ export default function AdaptResumePage() {
     return raw as unknown as ResumeSchema;
   }
 
-  // Generate PDF via server API
+  // Generate PDF preview via server API
   const generatePdf = useCallback(async (data: ResumeSchema, template: TemplateName, level?: string, adj?: PdfAdjustments) => {
     setPdfLoading(true);
     try {
@@ -459,6 +461,7 @@ export default function AdaptResumePage() {
             <Download className="w-4 h-4 mr-2" /> Baixar PDF
           </Button>
         </div>
+
       </div>
     );
   }
@@ -501,7 +504,7 @@ export default function AdaptResumePage() {
 
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-500">Custo: 1 crédito</span>
-            <Button onClick={handleAdapt} disabled={!file || !jobDescription.trim() || loading} loading={loading}>
+            <Button onClick={() => setShowGenerateConfirm(true)} disabled={!file || !jobDescription.trim() || loading} loading={loading}>
               Adaptar currículo
             </Button>
           </div>
@@ -509,6 +512,17 @@ export default function AdaptResumePage() {
           {loading && <ProgressBar progress={progress} message={progressMsg} />}
         </div>
       </div>
+
+      {/* Confirm generate modal */}
+      <Modal isOpen={showGenerateConfirm} onClose={() => setShowGenerateConfirm(false)} title="Adaptar currículo" size="sm">
+        <div className="space-y-4">
+          <p className="text-gray-300 text-sm">A adaptação do currículo custa <span className="text-primary-400 font-semibold">1 crédito</span>. Deseja continuar?</p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setShowGenerateConfirm(false)}>Cancelar</Button>
+            <Button onClick={() => { setShowGenerateConfirm(false); handleAdapt(); }}>Confirmar</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

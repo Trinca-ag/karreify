@@ -232,11 +232,12 @@ export interface CreditTransaction {
 
 export const FEATURE_COSTS: Record<string, number> = {
   "resume-analysis": 1,
-  "linkedin-analysis": 1,
   "resume-creation": 1,
   "resume-adaptation": 1,
   "resume-editor": 1,
   "career-roadmap": 20,
+  "cover-letter": 1,
+  "company-analysis": 1,
 };
 
 export const PLANS: PlanInfo[] = [

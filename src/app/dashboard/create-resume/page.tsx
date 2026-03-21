@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import type { ResumeSchema, GenerationNotes, QualityReport } from "@/lib/resume-schema";
 import type { TemplateName, SectionName } from "@/lib/resume-templates";
 import ResumeFeedback from "@/components/ui/ResumeFeedback";
+import Modal from "@/components/ui/Modal";
 
 type Mode = "upload" | "scratch" | null;
 
@@ -93,6 +94,8 @@ export default function CreateResumePage() {
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
+  const pendingFormData = useRef<Record<string, unknown> | null>(null);
   const [resumeData, setResumeData] = useState<ResumeSchema | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateName>("profissional");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -267,7 +270,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     return raw as unknown as ResumeSchema;
   }
 
-  // Generate PDF via server API
+  // Generate PDF preview via server API
   const generatePdf = useCallback(async (data: ResumeSchema, template: TemplateName, level?: string, adj?: PdfAdjustments) => {
     setPdfLoading(true);
     try {
@@ -361,7 +364,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     if (!user) return;
 
     const hasCredits = await checkCredits(user.uid, "resume-creation");
-    if (!hasCredits) { toast.error("Creditos insuficientes."); return; }
+    if (!hasCredits) { toast.error("Créditos insuficientes."); return; }
 
     setLoading(true);
     setValidationBlock(null);
@@ -426,11 +429,12 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       setValidationWarnings(validation.campos_importantes_ausentes);
     }
 
-    handleCreate({ existingResume: text, mode: "improve" });
+    pendingFormData.current = { existingResume: text, mode: "improve" };
+    setShowGenerateConfirm(true);
   };
 
   const handleScratchCreate = () => {
-    handleCreate({
+    pendingFormData.current = {
       mode: "scratch",
       personalInfo: { name, email, phone, location, linkedin, github, website },
       objective,
@@ -439,7 +443,13 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       projects: projects.filter((p) => p.name.trim()),
       skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
       languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
-    });
+    };
+    setShowGenerateConfirm(true);
+  };
+
+  const confirmGenerate = () => {
+    setShowGenerateConfirm(false);
+    if (pendingFormData.current) handleCreate(pendingFormData.current);
   };
 
   const handleDownloadPDF = async () => {
@@ -749,6 +759,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
             Baixar PDF
           </Button>
         </div>
+
       </div>
     );
   }
@@ -1021,6 +1032,17 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           </div>
         </div>
       )}
+
+      {/* Confirm generate modal */}
+      <Modal isOpen={showGenerateConfirm} onClose={() => setShowGenerateConfirm(false)} title="Criar currículo" size="sm">
+        <div className="space-y-4">
+          <p className="text-gray-300 text-sm">A criação do currículo custa <span className="text-primary-400 font-semibold">1 crédito</span>. Deseja continuar?</p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setShowGenerateConfirm(false)}>Cancelar</Button>
+            <Button onClick={confirmGenerate}>Confirmar</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -6,14 +6,15 @@ import Link from "next/link";
 import {
   Coins,
   FileSearch,
-  Linkedin,
   FilePlus,
   Target,
-  Map,
   ArrowRight,
   TrendingUp,
   FileText,
   Clock,
+  ScrollText,
+  Building2,
+  BarChart2,
 } from "lucide-react";
 
 const quickActions = [
@@ -23,13 +24,6 @@ const quickActions = [
     icon: FileSearch,
     color: "bg-primary-500/10 text-primary-400",
     description: "Envie e analise seu currículo",
-  },
-  {
-    label: "Analisar LinkedIn",
-    href: "/dashboard/linkedin-analysis",
-    icon: Linkedin,
-    color: "bg-sky-500/10 text-sky-400",
-    description: "Otimize seu perfil",
   },
   {
     label: "Criar Curriculo",
@@ -46,11 +40,25 @@ const quickActions = [
     description: "Adapte para uma vaga especifica",
   },
   {
-    label: "Roadmap de Carreira",
-    href: "/dashboard/career-roadmap",
-    icon: Map,
-    color: "bg-violet-500/10 text-violet-400",
-    description: "Planeje sua carreira",
+    label: "Carta de Apresentação",
+    href: "/dashboard/cover-letter",
+    icon: ScrollText,
+    color: "bg-teal-500/10 text-teal-400",
+    description: "Gere uma carta personalizada",
+  },
+  {
+    label: "Análise de Empresa",
+    href: "/dashboard/company-analysis",
+    icon: Building2,
+    color: "bg-sky-500/10 text-sky-400",
+    description: "Pesquise antes da entrevista",
+  },
+  {
+    label: "Mercado",
+    href: "/dashboard/market",
+    icon: BarChart2,
+    color: "bg-primary-500/10 text-primary-400",
+    description: "Carreiras e salários em alta",
   },
 ];
 
