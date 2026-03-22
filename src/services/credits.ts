@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, addDoc, collection, query, where, limit, getDocs, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, addDoc, collection, query, where, limit, getDocs, serverTimestamp, increment, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { FEATURE_COSTS } from "@/types";
 import { cache, CK, TTL } from "@/lib/cache";
@@ -50,6 +50,20 @@ export async function deductCredits(
   // Update cache with new value instead of invalidating
   cache.set(CK.credits(userId), newCredits, TTL.credits);
   cache.invalidate(CK.userData(userId));
+
+  // Track feature usage in global stats
+  const statsRef = doc(db, "stats", "global");
+  try {
+    await updateDoc(statsRef, {
+      totalCreditsUsed: increment(cost),
+      [`featureUsage.${feature}`]: increment(1),
+    });
+  } catch {
+    await setDoc(statsRef, {
+      totalCreditsUsed: cost,
+      featureUsage: { [feature]: 1 },
+    }, { merge: true });
+  }
 }
 
 export async function hasUsedFeature(userId: string, feature: string): Promise<boolean> {

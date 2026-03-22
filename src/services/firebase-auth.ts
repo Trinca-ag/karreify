@@ -8,7 +8,7 @@ import {
   onAuthStateChanged,
   User as FirebaseUser,
 } from "firebase/auth";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp, increment, updateDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { cache, CK, TTL, invalidateAll } from "@/lib/cache";
 import type { User } from "@/types";
@@ -37,6 +37,14 @@ export async function registerUser(
   };
 
   await setDoc(doc(db, "users", user.uid), userData);
+
+  // Track total users in stats
+  const statsRef = doc(db, "stats", "global");
+  try {
+    await updateDoc(statsRef, { totalUsers: increment(1) });
+  } catch {
+    await setDoc(statsRef, { totalUsers: 1 }, { merge: true });
+  }
 
   // Pre-populate cache
   cache.set(CK.userData(user.uid), { ...userData, createdAt: new Date(), updatedAt: new Date() }, TTL.userData);
@@ -72,6 +80,13 @@ export async function loginWithGoogle(): Promise<FirebaseUser> {
     };
 
     await setDoc(doc(db, "users", user.uid), userData);
+
+    const statsRef2 = doc(db, "stats", "global");
+    try {
+      await updateDoc(statsRef2, { totalUsers: increment(1) });
+    } catch {
+      await setDoc(statsRef2, { totalUsers: 1 }, { merge: true });
+    }
 
     cache.set(CK.userData(user.uid), { ...userData, createdAt: new Date(), updatedAt: new Date() }, TTL.userData);
     cache.set(CK.credits(user.uid), 5, TTL.credits);

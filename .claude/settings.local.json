@@ -51,7 +51,9 @@
       "Bash(cmd /c \"taskkill /IM node.exe /F\")",
       "Bash(cmd /c \"netstat -ano | findstr :3000\")",
       "Bash(cmd /c \"rmdir /S /Q C:\\\\NextCV\\\\src\\\\app\\\\dashboard\\\\linkedin-analysis && rmdir /S /Q C:\\\\NextCV\\\\src\\\\app\\\\api\\\\analyze-linkedin && rmdir /S /Q C:\\\\NextCV\\\\src\\\\app\\\\api\\\\fetch-linkedin-profile && del C:\\\\NextCV\\\\src\\\\services\\\\ai-linkedin.ts\")",
-      "Bash(cmd /c \"mkdir C:\\\\NextCV\\\\src\\\\app\\\\dashboard\\\\cover-letter\")"
+      "Bash(cmd /c \"mkdir C:\\\\NextCV\\\\src\\\\app\\\\dashboard\\\\cover-letter\")",
+      "Bash(dir \"C:\\\\NextCV\\\\src\\\\app\")",
+      "Bash(ls /c/NextCV/*.config.*)"
     ]
   }
 }

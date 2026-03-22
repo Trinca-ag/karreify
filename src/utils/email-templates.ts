@@ -183,6 +183,23 @@ export function passwordResetEmail(code: string): string {
   `);
 }
 
+export function adminVerificationEmail(code: string): string {
+  return baseLayout(`
+    <div style="text-align: center;">
+      ${iconCircle("&#128737;", "rgba(139,92,246,0.15)", "rgba(109,40,217,0.1)", "rgba(139,92,246,0.25)")}
+
+      ${heading("Cadastro de Administrador")}
+      ${subtext("Use o c&oacute;digo abaixo para confirmar seu cadastro no painel administrativo")}
+
+      ${codeBlock(code, "#a78bfa", "rgba(139,92,246,0.08)", "rgba(109,40,217,0.05)", "rgba(139,92,246,0.15)")}
+
+      ${infoPill("&#9200;", "Expira em", "15 minutos")}
+
+      ${footnote("Se voc&ecirc; n&atilde;o solicitou este c&oacute;digo, ignore este email.")}
+    </div>
+  `);
+}
+
 export function planUpgradeEmail(
   userName: string,
   planName: string,
