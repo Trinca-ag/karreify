@@ -1,32 +1,15 @@
 // ==================== User Types ====================
+export type UserRole = "user" | "tester";
+
 export interface User {
   uid: string;
   email: string;
   displayName: string | null;
   photoURL: string | null;
   credits: number;
-  plan: Plan;
-  planActivatedAt: Date | null;
-  planExpiresAt: Date | null;
+  role: UserRole;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export type Plan = "free" | "basic" | "intermediate" | "advanced";
-
-export const PLAN_RANK: Record<Plan, number> = {
-  free: 0,
-  basic: 1,
-  intermediate: 2,
-  advanced: 3,
-};
-
-export interface PlanInfo {
-  id: Plan;
-  name: string;
-  price: number;
-  credits: number;
-  features: string[];
 }
 
 // ==================== Resume Types ====================
@@ -240,42 +223,56 @@ export const FEATURE_COSTS: Record<string, number> = {
   "company-analysis": 1,
 };
 
-export const PLANS: PlanInfo[] = [
+// ==================== Credit Packs ====================
+export type CreditPackId = "starter" | "plus" | "pro";
+
+export interface CreditPack {
+  id: CreditPackId;
+  name: string;
+  price: number;
+  baseCredits: number;
+  bonusCredits: number;
+  totalCredits: number;
+  features: string[];
+}
+
+export const CREDIT_PACKS: CreditPack[] = [
   {
-    id: "basic",
-    name: "Básico",
+    id: "starter",
+    name: "Pacote Inicial",
+    price: 10,
+    baseCredits: 5,
+    bonusCredits: 0,
+    totalCredits: 5,
+    features: [
+      "5 moedas",
+      "Acesso a todas as funcionalidades",
+    ],
+  },
+  {
+    id: "plus",
+    name: "Pacote Plus",
     price: 30,
-    credits: 50,
+    baseCredits: 15,
+    bonusCredits: 5,
+    totalCredits: 20,
     features: [
-      "50 créditos/mês",
-      "Análise de currículo",
-      "Análise LinkedIn",
-      "Criação de currículo",
-      "Adaptação para vagas",
+      "15 moedas + 5 bônus",
+      "Total de 20 moedas",
+      "Acesso a todas as funcionalidades",
     ],
   },
   {
-    id: "intermediate",
-    name: "Intermediário",
+    id: "pro",
+    name: "Pacote Pro",
     price: 50,
-    credits: 120,
+    baseCredits: 25,
+    bonusCredits: 15,
+    totalCredits: 40,
     features: [
-      "120 créditos/mês",
-      "Tudo do plano Básico",
-      "Roadmap de carreira",
-      "Prioridade no suporte",
-    ],
-  },
-  {
-    id: "advanced",
-    name: "Avançado",
-    price: 100,
-    credits: 230,
-    features: [
-      "230 créditos/mês",
-      "Tudo do plano Intermediário",
-      "Relatórios avançados",
-      "Suporte prioritário",
+      "25 moedas + 15 bônus",
+      "Total de 40 moedas",
+      "Acesso a todas as funcionalidades",
     ],
   },
 ];

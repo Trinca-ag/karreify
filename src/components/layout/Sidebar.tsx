@@ -49,7 +49,7 @@ const menuItems = [
 ];
 
 const bottomItems = [
-  { label: "Planos", href: "/dashboard/plans", icon: CreditCard },
+  { label: "Pacotes", href: "/dashboard/plans", icon: CreditCard },
   { label: "Configurações", href: "/dashboard/profile", icon: Settings },
 ];
 

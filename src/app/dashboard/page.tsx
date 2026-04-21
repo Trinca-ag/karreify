@@ -10,7 +10,6 @@ import {
   Target,
   ArrowRight,
   TrendingUp,
-  FileText,
   Clock,
   ScrollText,
   Building2,
@@ -76,27 +75,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardBody className="flex items-center gap-4">
             <div className="w-12 h-12 bg-primary-500/10 rounded-xl flex items-center justify-center">
               <Coins className="w-6 h-6 text-primary-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Creditos</p>
+              <p className="text-sm text-gray-500">Moedas</p>
               <p className="text-2xl font-bold text-white font-heading">{userData?.credits ?? 0}</p>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardBody className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center">
-              <FileText className="w-6 h-6 text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Plano</p>
-              <p className="text-2xl font-bold text-white font-heading capitalize">{userData?.plan || "Free"}</p>
             </div>
           </CardBody>
         </Card>
@@ -156,16 +143,16 @@ export default function DashboardPage() {
         <div className="bg-gradient-to-r from-primary-600 to-accent-violet rounded-xl border border-white/[0.06] glow-blue">
           <div className="p-6 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-white font-heading">Poucos creditos restantes</h3>
+              <h3 className="text-lg font-semibold text-white font-heading">Poucas moedas restantes</h3>
               <p className="text-gray-300 text-sm mt-1">
-                Faca upgrade do seu plano para continuar usando todas as funcionalidades.
+                Compre um pacote de moedas para continuar usando todas as funcionalidades.
               </p>
             </div>
             <Link
               href="/dashboard/plans"
               className="px-6 py-2.5 bg-white/10 backdrop-blur-sm text-white rounded-xl font-semibold hover:bg-white/20 transition-colors flex-shrink-0 border border-white/20"
             >
-              Ver planos
+              Ver pacotes
             </Link>
           </div>
         </div>

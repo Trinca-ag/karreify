@@ -200,33 +200,45 @@ export function adminVerificationEmail(code: string): string {
   `);
 }
 
-export function planUpgradeEmail(
+export function packPurchaseEmail(
   userName: string,
-  planName: string,
-  credits: number,
+  packName: string,
+  baseCredits: number,
+  bonusCredits: number,
+  totalCredits: number,
   price: number
 ): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const bonusRow = bonusCredits > 0 ? `
+              <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+                  <span style="font-size: 13px; color: #6b7280;">Moedas b&ocirc;nus</span>
+                </td>
+                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); text-align: right;">
+                  <span style="font-size: 14px; color: #4ade80; font-weight: 600;">+${bonusCredits}</span>
+                </td>
+              </tr>` : "";
 
   return baseLayout(`
     <div style="text-align: center;">
       ${iconCircle("&#127881;", "rgba(34,197,94,0.15)", "rgba(16,185,129,0.1)", "rgba(34,197,94,0.25)")}
 
-      ${heading("Upgrade realizado!")}
-      ${subtext(`Ol&aacute; <span style="color: #e5e7eb; font-weight: 700;">${userName}</span>, seu plano foi atualizado com sucesso.`)}
+      ${heading("Compra realizada!")}
+      ${subtext(`Ol&aacute; <span style="color: #e5e7eb; font-weight: 700;">${userName}</span>, sua compra foi conclu&iacute;da com sucesso.`)}
 
-      <!-- Plan details card -->
+      <!-- Pack details card -->
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 28px;">
         <tr>
           <td style="background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.05)); border: 1px solid rgba(59,130,246,0.15); border-radius: 16px; padding: 24px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-              <!-- Plan name -->
+              <!-- Pack name -->
               <tr>
                 <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
-                  <span style="font-size: 13px; color: #6b7280;">Plano</span>
+                  <span style="font-size: 13px; color: #6b7280;">Pacote</span>
                 </td>
                 <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); text-align: right;">
-                  <span style="font-size: 14px; color: #ffffff; font-weight: 700; background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${planName}</span>
+                  <span style="font-size: 14px; color: #ffffff; font-weight: 700; background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${packName}</span>
                 </td>
               </tr>
               <!-- Price -->
@@ -235,16 +247,25 @@ export function planUpgradeEmail(
                   <span style="font-size: 13px; color: #6b7280;">Valor</span>
                 </td>
                 <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); text-align: right;">
-                  <span style="font-size: 14px; color: #e5e7eb; font-weight: 600;">R$${price}<span style="font-size: 12px; color: #6b7280; font-weight: 400;">/m&ecirc;s</span></span>
+                  <span style="font-size: 14px; color: #e5e7eb; font-weight: 600;">R$${price}<span style="font-size: 12px; color: #6b7280; font-weight: 400;"> &middot; compra &uacute;nica</span></span>
                 </td>
               </tr>
-              <!-- Credits -->
+              <!-- Base credits -->
+              <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+                  <span style="font-size: 13px; color: #6b7280;">Moedas base</span>
+                </td>
+                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); text-align: right;">
+                  <span style="font-size: 14px; color: #e5e7eb; font-weight: 600;">${baseCredits}</span>
+                </td>
+              </tr>${bonusRow}
+              <!-- Total credits -->
               <tr>
                 <td style="padding: 10px 0;">
-                  <span style="font-size: 13px; color: #6b7280;">Cr&eacute;ditos</span>
+                  <span style="font-size: 13px; color: #6b7280;">Total adicionado</span>
                 </td>
                 <td style="padding: 10px 0; text-align: right;">
-                  <span style="display: inline-block; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 8px; padding: 4px 12px; font-size: 14px; color: #4ade80; font-weight: 700;">+${credits}</span>
+                  <span style="display: inline-block; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 8px; padding: 4px 12px; font-size: 14px; color: #4ade80; font-weight: 700;">+${totalCredits} moedas</span>
                 </td>
               </tr>
             </table>
@@ -263,7 +284,7 @@ export function planUpgradeEmail(
         </tr>
       </table>
 
-      ${footnote("Seus cr&eacute;ditos j&aacute; est&atilde;o dispon&iacute;veis. Aproveite todos os recursos!")}
+      ${footnote("Suas moedas j&aacute; est&atilde;o dispon&iacute;veis. Aproveite todos os recursos!")}
     </div>
   `);
 }

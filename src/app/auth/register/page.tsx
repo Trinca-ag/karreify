@@ -35,7 +35,7 @@ export default function RegisterPage() {
     try {
       await registerUser(email, password, name);
       toast.success("Conta criada com sucesso!");
-      router.push("/dashboard");
+      router.push("/auth/verify");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "";
       if (message.includes("email-already-in-use")) {

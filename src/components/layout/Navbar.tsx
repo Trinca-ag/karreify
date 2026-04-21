@@ -55,7 +55,7 @@ export default function Navbar() {
               {[
                 { href: "#features", label: "Funcionalidades" },
                 { href: "#how-it-works", label: "Como funciona" },
-                { href: "#pricing", label: "Planos" },
+                { href: "#pricing", label: "Pacotes" },
               ].map((link) => (
                 <a
                   key={link.href}
@@ -173,7 +173,7 @@ export default function Navbar() {
                 {[
                   { href: "#features", label: "Funcionalidades" },
                   { href: "#how-it-works", label: "Como funciona" },
-                  { href: "#pricing", label: "Planos" },
+                  { href: "#pricing", label: "Pacotes" },
                 ].map((link) => (
                   <a
                     key={link.href}

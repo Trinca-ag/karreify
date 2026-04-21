@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import { verificationEmail, planUpgradeEmail, passwordResetEmail } from "@/utils/email-templates";
+import { verificationEmail, packPurchaseEmail, passwordResetEmail } from "@/utils/email-templates";
 
 function getTransporter() {
   const user = process.env.EMAIL_USER;
@@ -17,7 +17,7 @@ function getTransporter() {
 
 const SUBJECTS: Record<string, string> = {
   verification: "Código de verificação — NextCV",
-  "plan-upgrade": "Seu plano foi atualizado — NextCV",
+  "pack-purchase": "Compra de moedas confirmada — NextCV",
   "password-reset": "Recuperação de senha — NextCV",
 };
 
@@ -37,11 +37,18 @@ export async function POST(request: NextRequest) {
         if (!body.code) return NextResponse.json({ error: "code é obrigatório" }, { status: 400 });
         html = verificationEmail(body.code);
         break;
-      case "plan-upgrade":
-        if (!body.userName || !body.planName || !body.credits || !body.price) {
-          return NextResponse.json({ error: "Dados do plano são obrigatórios" }, { status: 400 });
+      case "pack-purchase":
+        if (!body.userName || !body.packName || body.baseCredits == null || body.totalCredits == null || body.price == null) {
+          return NextResponse.json({ error: "Dados do pacote são obrigatórios" }, { status: 400 });
         }
-        html = planUpgradeEmail(body.userName, body.planName, body.credits, body.price);
+        html = packPurchaseEmail(
+          body.userName,
+          body.packName,
+          body.baseCredits,
+          body.bonusCredits ?? 0,
+          body.totalCredits,
+          body.price
+        );
         break;
       case "password-reset":
         if (!body.code) return NextResponse.json({ error: "code é obrigatório" }, { status: 400 });

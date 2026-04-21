@@ -53,7 +53,10 @@
       "Bash(cmd /c \"rmdir /S /Q C:\\\\NextCV\\\\src\\\\app\\\\dashboard\\\\linkedin-analysis && rmdir /S /Q C:\\\\NextCV\\\\src\\\\app\\\\api\\\\analyze-linkedin && rmdir /S /Q C:\\\\NextCV\\\\src\\\\app\\\\api\\\\fetch-linkedin-profile && del C:\\\\NextCV\\\\src\\\\services\\\\ai-linkedin.ts\")",
       "Bash(cmd /c \"mkdir C:\\\\NextCV\\\\src\\\\app\\\\dashboard\\\\cover-letter\")",
       "Bash(dir \"C:\\\\NextCV\\\\src\\\\app\")",
-      "Bash(ls /c/NextCV/*.config.*)"
+      "Bash(ls /c/NextCV/*.config.*)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(grep -r \"R\\\\$\\\\|reais\\\\|BRL\" /c/NextCV/src --include=\"*.ts\" --include=\"*.tsx\")",
+      "Bash(grep -r \"30.*reais\\\\|50.*reais\\\\|100.*reais\\\\|R\\\\$ 30\\\\|R\\\\$ 50\\\\|R\\\\$ 100\" /c/NextCV/src --include=\"*.ts\" --include=\"*.tsx\")"
     ]
   }
 }

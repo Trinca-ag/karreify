@@ -23,15 +23,13 @@ export default function DashboardLayout({
     }
   }, [isAuthenticated, loading, deviceVerified, router]);
 
-  if (loading) {
+  if (loading || !isAuthenticated || !deviceVerified) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-900">
         <LoadingSpinner size="lg" text="Carregando..." />
       </div>
     );
   }
-
-  if (!isAuthenticated || !deviceVerified) return null;
 
   return (
     <div className="min-h-screen bg-dark-900 text-white">

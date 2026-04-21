@@ -16,8 +16,12 @@ export function useAuth() {
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (user) => {
-      setFirebaseUser(user);
       if (user) {
+        // Keep loading true while we resolve user data + device trust so
+        // downstream guards don't briefly see `authenticated && !deviceVerified`
+        // and bounce through /auth/verify.
+        setLoading(true);
+        setFirebaseUser(user);
         const data = await getUserData(user.uid);
         setUserData(data);
 
@@ -38,6 +42,7 @@ export function useAuth() {
           }
         }
       } else {
+        setFirebaseUser(null);
         setUserData(null);
         setDeviceVerified(false);
       }

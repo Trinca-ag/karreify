@@ -15,23 +15,35 @@ import type { User } from "@/types";
 
 const googleProvider = new GoogleAuthProvider();
 
+const DEFAULT_AVATARS = [
+  "/avatars/avatar-1.png",
+  "/avatars/avatar-2.png",
+  "/avatars/avatar-3.png",
+  "/avatars/avatar-4.png",
+  "/avatars/avatar-5.png",
+  "/avatars/avatar-6.png",
+];
+
+function pickRandomAvatar(): string {
+  return DEFAULT_AVATARS[Math.floor(Math.random() * DEFAULT_AVATARS.length)];
+}
+
 export async function registerUser(
   email: string,
   password: string,
   displayName: string
 ): Promise<FirebaseUser> {
   const { user } = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(user, { displayName });
+  const photoURL = pickRandomAvatar();
+  await updateProfile(user, { displayName, photoURL });
 
   const userData = {
     uid: user.uid,
     email: user.email,
     displayName,
-    photoURL: null,
-    credits: 5,
-    plan: "free",
-    planActivatedAt: null,
-    planExpiresAt: null,
+    photoURL,
+    credits: 0,
+    role: "user" as const,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -48,7 +60,7 @@ export async function registerUser(
 
   // Pre-populate cache
   cache.set(CK.userData(user.uid), { ...userData, createdAt: new Date(), updatedAt: new Date() }, TTL.userData);
-  cache.set(CK.credits(user.uid), 5, TTL.credits);
+  cache.set(CK.credits(user.uid), 0, TTL.credits);
 
   return user;
 }
@@ -66,15 +78,17 @@ export async function loginWithGoogle(): Promise<FirebaseUser> {
 
   const userDoc = await getDoc(doc(db, "users", user.uid));
   if (!userDoc.exists()) {
+    const photoURL = user.photoURL ?? pickRandomAvatar();
+    if (!user.photoURL) {
+      await updateProfile(user, { photoURL });
+    }
     const userData = {
       uid: user.uid,
       email: user.email,
       displayName: user.displayName,
-      photoURL: user.photoURL,
-      credits: 5,
-      plan: "free",
-      planActivatedAt: null,
-      planExpiresAt: null,
+      photoURL,
+      credits: 0,
+      role: "user" as const,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -89,7 +103,7 @@ export async function loginWithGoogle(): Promise<FirebaseUser> {
     }
 
     cache.set(CK.userData(user.uid), { ...userData, createdAt: new Date(), updatedAt: new Date() }, TTL.userData);
-    cache.set(CK.credits(user.uid), 5, TTL.credits);
+    cache.set(CK.credits(user.uid), 0, TTL.credits);
   } else {
     // Cache existing user data
     const data = userDoc.data() as User;

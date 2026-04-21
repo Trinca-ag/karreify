@@ -7,6 +7,7 @@ import { useAuthContext } from "@/components/providers/AuthProvider";
 import { createVerificationCode, verifyCode } from "@/services/verification";
 import { registerDevice } from "@/services/device-manager";
 import { getDeviceId, getDeviceInfo } from "@/utils/device-fingerprint";
+import { auth } from "@/lib/firebase";
 import Button from "@/components/ui/Button";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import Image from "next/image";
@@ -60,19 +61,28 @@ export default function VerifyPage() {
 
   // Redirect if already verified
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/auth/login");
-    } else if (!authLoading && deviceVerified) {
+    if (authLoading) return;
+    if (!user) {
+      // Firebase may have the user set even if the provider context hasn't
+      // propagated yet (e.g. right after a fresh register). Only bounce to
+      // login if the SDK itself confirms no session.
+      if (!auth.currentUser) {
+        router.push("/auth/login");
+      }
+      return;
+    }
+    if (deviceVerified) {
       router.push("/dashboard");
     }
   }, [authLoading, user, deviceVerified, router]);
 
   // Send code on mount
   useEffect(() => {
+    if (authLoading) return;
     if (user && !deviceVerified && !codeSent) {
       sendCode();
     }
-  }, [user, deviceVerified, codeSent, sendCode]);
+  }, [authLoading, user, deviceVerified, codeSent, sendCode]);
 
   // Cooldown timer
   useEffect(() => {
@@ -137,15 +147,13 @@ export default function VerifyPage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-900">
         <LoadingSpinner size="lg" text="Carregando..." />
       </div>
     );
   }
-
-  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4 relative overflow-hidden">

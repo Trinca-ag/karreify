@@ -7,7 +7,6 @@ import Button from "@/components/ui/Button";
 import FileUpload from "@/components/ui/FileUpload";
 import ScoreCircle from "@/components/ui/ScoreCircle";
 import { extractTextFromFile } from "@/utils/file-parser";
-import { uploadFile } from "@/services/firebase-storage";
 import { deductCredits, checkCredits, hasUsedFeature } from "@/services/credits";
 import { FileSearch, AlertTriangle, CheckCircle, Lightbulb, RefreshCw, Zap, Sparkles, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -127,7 +126,7 @@ export default function ResumeAnalysisPage() {
     if (usedBefore) {
       const hasCredits = await checkCredits(user.uid, "resume-analysis");
       if (!hasCredits) {
-        toast.error("Creditos insuficientes. Faca upgrade do seu plano.");
+        toast.error("Moedas insuficientes. Compre um pacote para continuar.");
         return;
       }
     }
@@ -136,7 +135,6 @@ export default function ResumeAnalysisPage() {
     startProgress();
     try {
       const resumeText = await extractTextFromFile(file);
-      await uploadFile(user.uid, file, "resumes");
 
       const response = await fetch("/api/analyze-resume", {
         method: "POST",

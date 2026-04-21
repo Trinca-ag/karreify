@@ -14,8 +14,8 @@ export interface AdminUserRow {
   uid: string;
   displayName: string | null;
   email: string;
-  plan: string;
   credits: number;
+  role: "user" | "tester";
   createdAt: string;
 }
 

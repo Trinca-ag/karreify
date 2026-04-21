@@ -23,13 +23,6 @@ const STAT_CONFIG = [
   { key: "topFeature",       label: "Funcionalidade Mais Usada", icon: Zap, gradient: "from-orange-500/20 to-orange-600/10", iconColor: "text-orange-400", border: "border-orange-500/10" },
 ] as const;
 
-function planColor(plan: string) {
-  if (plan === "advanced") return "text-violet-400";
-  if (plan === "intermediate") return "text-blue-400";
-  if (plan === "basic") return "text-emerald-400";
-  return "text-gray-400";
-}
-
 export default function AdminDashboardPage() {
   const { adminData } = useAdminAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -155,8 +148,8 @@ export default function AdminDashboardPage() {
                         <p className="text-sm text-white truncate">{u.displayName ?? "—"}</p>
                         <p className="text-xs text-gray-500 truncate">{u.email}</p>
                       </div>
-                      <span className={`text-xs font-medium capitalize flex-shrink-0 ${planColor(u.plan)}`}>
-                        {u.plan}
+                      <span className="text-xs font-medium text-emerald-400 flex-shrink-0 tabular-nums">
+                        {u.credits} moedas
                       </span>
                     </div>
                   ))

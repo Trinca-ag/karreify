@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
         uid: d.id,
         displayName: data.displayName ?? null,
         email: data.email ?? "",
-        plan: data.plan ?? "free",
         credits: data.credits ?? 0,
+        role: data.role === "tester" ? "tester" : "user",
         createdAt,
       };
     });

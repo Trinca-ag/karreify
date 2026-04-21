@@ -51,7 +51,7 @@ export default function Footer() {
             <ul className="space-y-3">
               {[
                 { href: "#features", label: "Funcionalidades" },
-                { href: "#pricing", label: "Planos" },
+                { href: "#pricing", label: "Pacotes" },
                 { href: "#how-it-works", label: "Como funciona" },
                 { href: "/auth/register", label: "Criar conta" },
               ].map((link) => (

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
  * This endpoint will:
  * 1. Receive payment notifications from Abacate Pay
  * 2. Verify webhook signature
- * 3. Update user plan and credits
+ * 3. Credit the user with the purchased pack's moedas
  * 4. Return 200 OK
  */
 export async function POST(_request: NextRequest) {
@@ -21,7 +21,7 @@ export async function POST(_request: NextRequest) {
     // }
     //
     // const event = JSON.parse(body);
-    // await handlePaymentSuccess(event.userId, event.plan);
+    // await handlePaymentSuccess(event.userId, event.packId);
 
     return NextResponse.json({ received: true });
   } catch (error) {

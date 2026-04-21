@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { updateProfile } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { invalidateUser } from "@/lib/cache";
 import { getUserDevices, removeDevice } from "@/services/device-manager";
+import { deleteOwnAccount, hasPasswordProvider } from "@/services/account";
 import { getDeviceId } from "@/utils/device-fingerprint";
 import Image from "next/image";
 import Card, { CardBody, CardHeader } from "@/components/ui/Card";
@@ -16,7 +18,6 @@ import Modal from "@/components/ui/Modal";
 import {
   User,
   Mail,
-  Shield,
   Coins,
   Calendar,
   Monitor,
@@ -26,6 +27,7 @@ import {
   CheckCircle,
   Camera,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import type { Device } from "@/types";
@@ -45,6 +47,7 @@ function getDeviceIcon(os: string) {
 }
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { user, userData, refreshUserData } = useAuthContext();
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [loading, setLoading] = useState(false);
@@ -54,6 +57,9 @@ export default function ProfilePage() {
   const [removing, setRemoving] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const currentDeviceId = typeof window !== "undefined" ? getDeviceId() : "";
   const currentPhoto = userData?.photoURL || user?.photoURL || null;
@@ -128,6 +134,41 @@ export default function ProfilePage() {
     } finally {
       setSavingAvatar(false);
     }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    const usesPassword = hasPasswordProvider();
+    if (usesPassword && !deletePassword.trim()) {
+      toast.error("Informe sua senha para continuar.");
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteOwnAccount(usesPassword ? deletePassword : undefined);
+      toast.success("Conta excluída.");
+      router.replace("/");
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        toast.error("Senha incorreta.");
+      } else if (code === "auth/too-many-requests") {
+        toast.error("Muitas tentativas. Tente novamente mais tarde.");
+      } else if (code === "auth/popup-closed-by-user") {
+        toast.error("Autenticação cancelada.");
+      } else {
+        console.error(error);
+        toast.error("Erro ao excluir a conta. Tente novamente.");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const closeDeleteModal = () => {
+    if (deleting) return;
+    setShowDeleteModal(false);
+    setDeletePassword("");
   };
 
   const handleRemoveDevice = async () => {
@@ -242,21 +283,11 @@ export default function ProfilePage() {
           <Card>
             <CardBody className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary-500/10 rounded-lg flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-primary-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Plano</p>
-                  <p className="font-semibold text-white capitalize">{userData?.plan || "Free"}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center">
                   <Coins className="w-5 h-5 text-yellow-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Creditos</p>
+                  <p className="text-sm text-gray-500">Moedas</p>
                   <p className="font-semibold text-white">{userData?.credits ?? 0}</p>
                 </div>
               </div>
@@ -379,6 +410,33 @@ export default function ProfilePage() {
         </CardBody>
       </Card>
 
+      {/* Danger zone */}
+      <Card>
+        <CardHeader>
+          <h2 className="font-semibold text-white font-heading flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            Zona de perigo
+          </h2>
+        </CardHeader>
+        <CardBody>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-xl border border-red-500/20 bg-red-500/5">
+            <div>
+              <p className="text-sm font-medium text-white">Excluir conta</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Remove permanentemente sua conta, currículos, dispositivos e histórico.
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              className="!bg-red-600 hover:!bg-red-700"
+              onClick={() => setShowDeleteModal(true)}
+            >
+              Excluir a conta
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
+
       {/* Avatar Picker Modal */}
       <Modal
         isOpen={showAvatarPicker}
@@ -429,6 +487,67 @@ export default function ProfilePage() {
           {savingAvatar && (
             <p className="text-center text-sm text-primary-400">Salvando...</p>
           )}
+        </div>
+      </Modal>
+
+      {/* Delete account modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={closeDeleteModal}
+        title="Excluir conta"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+            <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-200">
+              Tem certeza que deseja excluir sua conta? Esta ação é irreversível e todos os seus dados serão removidos do banco de dados.
+            </p>
+          </div>
+
+          {(userData?.credits ?? 0) > 0 && (
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+              <Coins className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-yellow-100">
+                Você possui <strong>{userData?.credits} crédito{userData?.credits === 1 ? "" : "s"}</strong>. Os créditos <strong>não serão recuperáveis</strong> caso você crie uma nova conta com o mesmo e-mail.
+              </p>
+            </div>
+          )}
+
+          {hasPasswordProvider() ? (
+            <Input
+              type="password"
+              label="Confirme sua senha"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Sua senha atual"
+              disabled={deleting}
+              autoComplete="current-password"
+            />
+          ) : (
+            <p className="text-sm text-gray-400">
+              Você será solicitado a confirmar com sua conta Google antes da exclusão.
+            </p>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={closeDeleteModal}
+              disabled={deleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-1 !bg-red-600 hover:!bg-red-700"
+              onClick={handleDeleteAccount}
+              loading={deleting}
+            >
+              Sim, excluir
+            </Button>
+          </div>
         </div>
       </Modal>
 

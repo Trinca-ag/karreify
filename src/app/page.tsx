@@ -108,41 +108,39 @@ const benefits = [
   },
 ];
 
-const plans = [
+const packs = [
   {
-    name: "Básico",
-    price: "R$ 30",
-    credits: 50,
+    name: "Pacote Inicial",
+    price: "R$ 10",
+    totalCredits: 5,
+    bonusCredits: 0,
     features: [
-      "50 créditos/mês",
-      "Análise de currículo",
-      "Análise LinkedIn",
-      "Criação de currículo",
-      "Adaptação para vagas",
+      "5 moedas",
+      "Acesso a todas as funcionalidades",
     ],
     popular: false,
   },
   {
-    name: "Intermediário",
-    price: "R$ 50",
-    credits: 120,
+    name: "Pacote Plus",
+    price: "R$ 30",
+    totalCredits: 20,
+    bonusCredits: 5,
     features: [
-      "120 créditos/mês",
-      "Tudo do plano Básico",
-      "Roadmap de carreira",
-      "Prioridade no suporte",
+      "15 moedas + 5 bônus",
+      "Total de 20 moedas",
+      "Acesso a todas as funcionalidades",
     ],
     popular: true,
   },
   {
-    name: "Avançado",
-    price: "R$ 100",
-    credits: 230,
+    name: "Pacote Pro",
+    price: "R$ 50",
+    totalCredits: 40,
+    bonusCredits: 15,
     features: [
-      "230 créditos/mês",
-      "Tudo do plano Intermediário",
-      "Relatórios avançados",
-      "Suporte prioritário",
+      "25 moedas + 15 bônus",
+      "Total de 40 moedas",
+      "Acesso a todas as funcionalidades",
     ],
     popular: false,
   },
@@ -679,27 +677,27 @@ export default function Home() {
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="inline-block px-4 py-1.5 rounded-full text-xs font-medium bg-accent-cyan/10 border border-accent-cyan/20 text-accent-cyan mb-6">
-              Planos
+              Pacotes de Moedas
             </span>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold">
               Invista na sua <span className="gradient-text">carreira</span>
             </h2>
             <p className="mt-5 text-lg text-gray-400">
-              Escolha o plano ideal para suas necessidades.
+              Compra única, sem assinatura. Escolha o pacote ideal para suas necessidades.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
-            {plans.map((plan) => (
+            {packs.map((pack) => (
               <div
-                key={plan.name}
-                className={`relative rounded-2xl p-8 transition-all duration-300 ${
-                  plan.popular
+                key={pack.name}
+                className={`relative rounded-2xl p-8 transition-all duration-300 flex flex-col ${
+                  pack.popular
                     ? "gradient-border pricing-popular glass-card md:scale-105"
                     : "glass-card"
                 }`}
               >
-                {plan.popular && (
+                {pack.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                     <span className="px-5 py-1.5 bg-gradient-to-r from-primary-500 to-accent-violet text-white text-xs font-bold rounded-full glow-blue">
                       MAIS POPULAR
@@ -708,22 +706,22 @@ export default function Home() {
                 )}
 
                 <h3 className="text-lg font-heading font-semibold text-white">
-                  {plan.name}
+                  {pack.name}
                 </h3>
 
                 <div className="mt-5 flex items-baseline gap-1">
                   <span className="text-5xl font-heading font-bold gradient-text">
-                    {plan.price}
+                    {pack.price}
                   </span>
-                  <span className="text-sm text-gray-500">/mês</span>
+                  <span className="text-sm text-gray-500">único</span>
                 </div>
 
                 <p className="mt-2 text-sm text-gray-500">
-                  {plan.credits} créditos inclusos
+                  {pack.totalCredits} moedas{pack.bonusCredits > 0 ? ` (inclui +${pack.bonusCredits} bônus)` : ""}
                 </p>
 
-                <ul className="mt-8 space-y-3.5">
-                  {plan.features.map((feature) => (
+                <ul className="mt-8 space-y-3.5 flex-1">
+                  {pack.features.map((feature) => (
                     <li
                       key={feature}
                       className="flex items-center gap-3 text-sm"
@@ -739,7 +737,7 @@ export default function Home() {
                 <Link
                   href="/auth/register"
                   className={`mt-8 block text-center py-3.5 px-6 rounded-xl font-semibold transition-all duration-300 ${
-                    plan.popular
+                    pack.popular
                       ? "bg-gradient-to-r from-primary-600 to-accent-violet text-white btn-glow"
                       : "bg-white/5 text-white border border-white/10 hover:bg-white/10 hover:border-white/20"
                   }`}
