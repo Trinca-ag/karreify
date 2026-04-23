@@ -138,18 +138,20 @@ export default function MyFilesPage() {
         );
         return;
       }
-      // PDF item — fetch blob via downloadUrl
-      const res = await fetch(item.downloadUrl);
-      if (!res.ok) throw new Error("fetch-failed");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      // PDF item — use the Storage URL directly with Content-Disposition override.
+      // Fetching it from the client would trigger CORS (bucket has no CORS policy by default).
+      const disposition = `attachment; filename="${item.fileName}"`;
+      const sep = item.downloadUrl.includes("?") ? "&" : "?";
+      const urlWithDisposition = `${item.downloadUrl}${sep}response-content-disposition=${encodeURIComponent(disposition)}`;
       const a = document.createElement("a");
-      a.href = url;
+      a.href = urlWithDisposition;
+      a.rel = "noopener noreferrer";
+      // download attribute is ignored for cross-origin URLs, but
+      // response-content-disposition forces the server to send attachment headers
       a.download = item.fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch {
       toast.error("Não foi possível baixar o arquivo.");
     }

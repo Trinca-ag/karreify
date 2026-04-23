@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Card, { CardBody } from "@/components/ui/Card";
 import Link from "next/link";
+import { listSavedItems } from "@/services/saved-items";
 import {
   Coins,
   FileSearch,
@@ -14,6 +16,8 @@ import {
   ScrollText,
   Building2,
   BarChart2,
+  FolderOpen,
+  MessageSquareHeart,
 } from "lucide-react";
 
 const quickActions = [
@@ -59,10 +63,39 @@ const quickActions = [
     color: "bg-primary-500/10 text-primary-400",
     description: "Carreiras e salários em alta",
   },
+  {
+    label: "Meus Arquivos",
+    href: "/dashboard/my-files",
+    icon: FolderOpen,
+    color: "bg-violet-500/10 text-violet-400",
+    description: "Currículos e PDFs gerados (10h)",
+  },
+  {
+    label: "Nos ajude a melhorar",
+    href: "/dashboard/feedback",
+    icon: MessageSquareHeart,
+    color: "bg-pink-500/10 text-pink-400",
+    description: "Envie sua avaliação e sugestões",
+  },
 ];
 
 export default function DashboardPage() {
   const { user, userData } = useAuthContext();
+  const [savedCounts, setSavedCounts] = useState({ analyses: 0, resumes: 0 });
+
+  useEffect(() => {
+    if (!user) return;
+    listSavedItems(user.uid)
+      .then((items) => {
+        setSavedCounts({
+          analyses: items.filter(
+            (i) => i.type === "resume-analysis" || i.type === "company-analysis"
+          ).length,
+          resumes: items.filter((i) => i.type === "resume").length,
+        });
+      })
+      .catch(() => {});
+  }, [user]);
 
   return (
     <div className="space-y-8">
@@ -88,34 +121,38 @@ export default function DashboardPage() {
           </CardBody>
         </Card>
 
-        <Card>
-          <CardBody className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-violet-500/10 rounded-xl flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-violet-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Analises</p>
-              <p className="text-2xl font-bold text-white font-heading">0</p>
-            </div>
-          </CardBody>
-        </Card>
+        <Link href="/dashboard/my-files">
+          <Card hover>
+            <CardBody className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-violet-500/10 rounded-xl flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-violet-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Análises salvas</p>
+                <p className="text-2xl font-bold text-white font-heading">{savedCounts.analyses}</p>
+              </div>
+            </CardBody>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardBody className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-500/10 rounded-xl flex items-center justify-center">
-              <Clock className="w-6 h-6 text-orange-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Curriculos</p>
-              <p className="text-2xl font-bold text-white font-heading">0</p>
-            </div>
-          </CardBody>
-        </Card>
+        <Link href="/dashboard/my-files">
+          <Card hover>
+            <CardBody className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-orange-500/10 rounded-xl flex items-center justify-center">
+                <Clock className="w-6 h-6 text-orange-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Currículos salvos</p>
+                <p className="text-2xl font-bold text-white font-heading">{savedCounts.resumes}</p>
+              </div>
+            </CardBody>
+          </Card>
+        </Link>
       </div>
 
       {/* Quick actions */}
       <div>
-        <h2 className="text-lg font-semibold text-white font-heading mb-4">Acoes rapidas</h2>
+        <h2 className="text-lg font-semibold text-white font-heading mb-4">Ações rápidas</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {quickActions.map((action) => (
             <Link key={action.href} href={action.href}>

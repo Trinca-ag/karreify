@@ -7,12 +7,14 @@ import FileUpload from "@/components/ui/FileUpload";
 import { extractTextFromFile } from "@/utils/file-parser";
 import { deductCredits, checkCredits } from "@/services/credits";
 import { generateResumePDFBlob, downloadResumePDF, type PdfAdjustments } from "@/utils/resume-pdf";
-import { Target, Download, RefreshCw, FileText, Minus, Plus, Type, AlignJustify, Eye, EyeOff, PenLine, Trash2, RotateCcw } from "lucide-react";
+import { Target, Download, RefreshCw, FileText, Minus, Plus, Type, AlignJustify, Eye, EyeOff, PenLine, Trash2, RotateCcw, Briefcase } from "lucide-react";
 import toast from "react-hot-toast";
 import type { ResumeSchema, GenerationNotes, QualityReport } from "@/lib/resume-schema";
 import type { TemplateName, SectionName } from "@/lib/resume-templates";
 import ResumeFeedback from "@/components/ui/ResumeFeedback";
 import Modal from "@/components/ui/Modal";
+import SaveLimitModal from "@/components/ui/SaveLimitModal";
+import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 
 const PROGRESS_MESSAGES = [
   "Enviando seus dados...",
@@ -43,7 +45,9 @@ const SECTION_LABELS: Record<SectionName, string> = {
 
 export default function AdaptResumePage() {
   const { user } = useAuthContext();
+  const saver = useSavedItemSaver();
   const [file, setFile] = useState<File | null>(null);
+  const [jobTitle, setJobTitle] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -236,11 +240,14 @@ export default function AdaptResumePage() {
     startProgress();
     try {
       const resumeText = await extractTextFromFile(file);
+      const composedTargetJob = jobTitle.trim()
+        ? `Título da vaga: ${jobTitle.trim()}\n\nDescrição:\n${jobDescription}`
+        : jobDescription;
       const response = await fetch("/api/create-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          formData: { existingResume: resumeText, mode: "improve", targetJob: jobDescription },
+          formData: { existingResume: resumeText, mode: "improve", targetJob: composedTargetJob },
           userId: user.uid,
         }),
       });
@@ -262,6 +269,7 @@ export default function AdaptResumePage() {
 
       await generatePdf(schema, selectedTemplate, level);
       toast.success("Currículo adaptado!");
+      void saveAdaptedResumeItem(schema, selectedTemplate, level);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error("Adapt error:", msg);
@@ -279,9 +287,37 @@ export default function AdaptResumePage() {
     } catch { toast.error("Erro ao baixar PDF."); }
   };
 
+  const saveAdaptedResumeItem = useCallback(
+    async (schema: ResumeSchema, template: TemplateName, level?: string) => {
+      if (!user) return;
+      const name = schema.basics?.name?.trim() || "Sem nome";
+      const role = schema.basics?.label?.trim();
+      const targetTitle = jobTitle.trim();
+      const title = targetTitle
+        ? `${name} — ${targetTitle}`
+        : `${name} (adaptado)`;
+      await saver.saveWithPrompt({
+        uid: user.uid,
+        type: "resume",
+        payload: {
+          kind: "resume",
+          data: {
+            resumeData: schema,
+            template,
+            candidateLevel: level,
+            title,
+            subtitle: role || (targetTitle ? "Adaptado" : undefined),
+          },
+        },
+      });
+    },
+    [user, saver, jobTitle]
+  );
+
   const handleReset = () => {
     setResumeData(null);
     setFile(null);
+    setJobTitle("");
     setJobDescription("");
     setProgress(0);
     setProgressMsg("");
@@ -489,6 +525,22 @@ export default function AdaptResumePage() {
           <FileUpload onFileSelect={setFile} selectedFile={file} onClear={() => setFile(null)} />
 
           <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center gap-1.5">
+              <Briefcase className="w-3.5 h-3.5 text-primary-400" />
+              Título da vaga
+            </label>
+            <input
+              type="text"
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value.slice(0, 120))}
+              maxLength={120}
+              disabled={loading}
+              placeholder="Ex: Desenvolvedor Backend Sênior, Analista de Marketing..."
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 disabled:opacity-50"
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Descrição da vaga</label>
             <textarea
               value={jobDescription}
@@ -523,6 +575,14 @@ export default function AdaptResumePage() {
           </div>
         </div>
       </Modal>
+
+      <SaveLimitModal
+        isOpen={!!saver.confirmState}
+        oldest={saver.confirmState?.oldest ?? null}
+        loading={saver.saving}
+        onConfirm={() => user && saver.confirmReplace(user.uid)}
+        onCancel={saver.cancelReplace}
+      />
     </div>
   );
 }

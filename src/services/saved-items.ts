@@ -208,18 +208,10 @@ export async function createPdfItem(
   const storagePath = `users/${uid}/files/${fileKey}`;
   const storageRef = ref(storage, storagePath);
 
-  if (typeof window !== "undefined") {
-    console.log("[saved-items] Upload diagnostic", {
-      uidFromArg: uid,
-      authCurrentUserUid: auth.currentUser?.uid,
-      storagePath,
-      blobSize: payload.pdf.size,
-      blobType: payload.pdf.type,
-      bucket: storage.app.options.storageBucket,
-    });
-  }
-
-  await uploadBytes(storageRef, payload.pdf, { contentType: "application/pdf" });
+  await uploadBytes(storageRef, payload.pdf, {
+    contentType: "application/pdf",
+    contentDisposition: `attachment; filename="${payload.fileName}"`,
+  });
   const downloadUrl = await getDownloadURL(storageRef);
 
   const refDoc = await addDoc(col(uid), {
