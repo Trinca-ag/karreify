@@ -12,6 +12,8 @@ import { FileSearch, AlertTriangle, CheckCircle, Lightbulb, RefreshCw, Zap, Spar
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
+import SaveLimitModal from "@/components/ui/SaveLimitModal";
+import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 
 const PROGRESS_MESSAGES = [
   "Enviando seu currículo...",
@@ -51,6 +53,7 @@ interface AnalysisResult {
 export default function ResumeAnalysisPage() {
   const { user } = useAuthContext();
   const router = useRouter();
+  const saver = useSavedItemSaver();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -117,6 +120,40 @@ export default function ResumeAnalysisPage() {
     }
   }, [result]);
 
+  const saveAnalysisInBackground = useCallback(
+    async (analysis: AnalysisResult["analysis"], originalName: string) => {
+      if (!user) return;
+      try {
+        const response = await fetch("/api/generate-analysis-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ analysis }),
+        });
+        if (!response.ok) return;
+        const blob = await response.blob();
+        const ts = Date.now();
+        const cleanName = originalName.replace(/\.(pdf|docx?|txt)$/i, "");
+        await saver.saveWithPrompt({
+          uid: user.uid,
+          type: "resume-analysis",
+          payload: {
+            kind: "pdf",
+            data: {
+              type: "resume-analysis",
+              title: `Análise — ${cleanName || "currículo"}`,
+              subtitle: `Pontuação ${analysis.overallScore}/100`,
+              fileName: `analise-curriculo-${ts}.pdf`,
+              pdf: blob,
+            },
+          },
+        });
+      } catch {
+        /* silent — user still has the result on screen */
+      }
+    },
+    [user, saver]
+  );
+
   const handleAnalyze = async () => {
     if (!file || !user) return;
 
@@ -164,6 +201,7 @@ export default function ResumeAnalysisPage() {
       setResult(data.data);
       if (data.cache) setCacheMetrics(data.cache);
       toast.success(usedBefore ? "Analise concluida!" : "Analise concluida! (primeira analise gratuita)");
+      void saveAnalysisInBackground(data.data.analysis, file.name);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error("Resume analysis error:", msg);
@@ -390,6 +428,14 @@ export default function ResumeAnalysisPage() {
           </div>
         </div>
       )}
+
+      <SaveLimitModal
+        isOpen={!!saver.confirmState}
+        oldest={saver.confirmState?.oldest ?? null}
+        loading={saver.saving}
+        onConfirm={() => user && saver.confirmReplace(user.uid)}
+        onCancel={saver.cancelReplace}
+      />
 
       <Modal isOpen={showAnalyzeConfirm} onClose={() => setShowAnalyzeConfirm(false)} title="Analisar currículo" size="sm">
         <div className="space-y-4">

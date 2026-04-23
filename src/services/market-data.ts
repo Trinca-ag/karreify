@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { doc, getDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { MarketData } from "@/services/ai-market";
 
@@ -20,12 +20,5 @@ export function formatUpdatedAt(updatedAt: Timestamp): string {
     day: "2-digit",
     month: "long",
     year: "numeric",
-  });
-}
-
-export async function saveMarketData(data: MarketData): Promise<void> {
-  await setDoc(MARKET_DOC(), {
-    ...data,
-    updatedAt: serverTimestamp(),
   });
 }

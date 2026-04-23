@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useCallback, useState, useRef } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Card, { CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
+import SaveLimitModal from "@/components/ui/SaveLimitModal";
+import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { deductCredits, checkCredits } from "@/services/credits";
 import type { CoverLetterResult } from "@/services/ai-cover-letter";
 import FileUpload from "@/components/ui/FileUpload";
@@ -23,6 +25,7 @@ const PROGRESS_MESSAGES = [
 
 export default function CoverLetterPage() {
   const { user } = useAuthContext();
+  const saver = useSavedItemSaver();
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [companyName, setCompanyName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -75,6 +78,7 @@ export default function CoverLetterPage() {
       stopProgress();
       setResult(data.data);
       toast.success("Carta gerada com sucesso!");
+      void saveCoverLetterInBackground(data.data, companyName, jobTitle);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao gerar carta.";
       toast.error(msg);
@@ -83,6 +87,39 @@ export default function CoverLetterPage() {
       if (progressInterval.current) { clearInterval(progressInterval.current); progressInterval.current = null; }
     }
   };
+
+  const saveCoverLetterInBackground = useCallback(
+    async (data: CoverLetterResult, company: string, role: string) => {
+      if (!user) return;
+      try {
+        const res = await fetch("/api/generate-cover-letter-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data }),
+        });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const ts = Date.now();
+        await saver.saveWithPrompt({
+          uid: user.uid,
+          type: "cover-letter",
+          payload: {
+            kind: "pdf",
+            data: {
+              type: "cover-letter",
+              title: `Carta — ${company}`,
+              subtitle: role || undefined,
+              fileName: `carta-${ts}.pdf`,
+              pdf: blob,
+            },
+          },
+        });
+      } catch {
+        /* silent */
+      }
+    },
+    [user, saver]
+  );
 
   const handleDownloadPDF = async () => {
     if (!result) return;
@@ -328,6 +365,14 @@ export default function CoverLetterPage() {
           </div>
         </div>
       )}
+
+      <SaveLimitModal
+        isOpen={!!saver.confirmState}
+        oldest={saver.confirmState?.oldest ?? null}
+        loading={saver.saving}
+        onConfirm={() => user && saver.confirmReplace(user.uid)}
+        onCancel={saver.cancelReplace}
+      />
 
       {/* Confirm modal */}
       <Modal isOpen={showConfirm} onClose={() => setShowConfirm(false)} title="Gerar carta de apresentação" size="sm">

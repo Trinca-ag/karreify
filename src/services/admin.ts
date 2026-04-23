@@ -19,6 +19,16 @@ export interface AdminUserRow {
   createdAt: string;
 }
 
+export interface AdminFeedbackRow {
+  id: string;
+  uid: string;
+  userName: string | null;
+  userEmail: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
 export interface AdminStats {
   totalUsers: number;
   totalAdmins: number;

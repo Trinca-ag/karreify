@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { User as FirebaseUser } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { onAuthChange, getUserData, logoutUser } from "@/services/firebase-auth";
 import { isDeviceTrusted, updateDeviceActivity } from "@/services/device-manager";
 import { getDeviceId } from "@/utils/device-fingerprint";
-import { invalidateUser, invalidateAll } from "@/lib/cache";
+import { cache, CK, TTL, invalidateUser, invalidateAll } from "@/lib/cache";
 import type { User } from "@/types";
 
 export function useAuth() {
@@ -15,15 +17,37 @@ export function useAuth() {
   const [deviceVerified, setDeviceVerified] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (user) => {
+    let unsubSnapshot: (() => void) | null = null;
+
+    const unsubAuth = onAuthChange(async (user) => {
       if (user) {
         // Keep loading true while we resolve user data + device trust so
         // downstream guards don't briefly see `authenticated && !deviceVerified`
         // and bounce through /auth/verify.
         setLoading(true);
         setFirebaseUser(user);
-        const data = await getUserData(user.uid);
-        setUserData(data);
+
+        if (unsubSnapshot) {
+          unsubSnapshot();
+          unsubSnapshot = null;
+        }
+
+        let firstEmission = true;
+        const ready = new Promise<void>((resolve) => {
+          unsubSnapshot = onSnapshot(doc(db, "users", user.uid), (snap) => {
+            const data = snap.exists() ? (snap.data() as User) : null;
+            setUserData(data);
+            if (data) {
+              cache.set(CK.userData(user.uid), data, TTL.userData);
+              cache.set(CK.credits(user.uid), data.credits ?? 0, TTL.credits);
+            }
+            if (firstEmission) {
+              firstEmission = false;
+              resolve();
+            }
+          });
+        });
+        await ready;
 
         if (typeof window !== "undefined") {
           const sessionFlag = sessionStorage.getItem("nextcv_verified");
@@ -42,6 +66,10 @@ export function useAuth() {
           }
         }
       } else {
+        if (unsubSnapshot) {
+          unsubSnapshot();
+          unsubSnapshot = null;
+        }
         setFirebaseUser(null);
         setUserData(null);
         setDeviceVerified(false);
@@ -49,7 +77,10 @@ export function useAuth() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (unsubSnapshot) unsubSnapshot();
+      unsubAuth();
+    };
   }, []);
 
   const refreshUserData = useCallback(async () => {

@@ -19,7 +19,6 @@ import {
   getStoredMarketData,
   isMarketDataStale,
   formatUpdatedAt,
-  saveMarketData,
 } from "@/services/market-data";
 import type { MarketData, MarketInsight } from "@/services/ai-market";
 
@@ -60,8 +59,6 @@ export default function MarketPage() {
       const res = await fetch("/api/refresh-market-data", { method: "POST" });
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
-      await saveMarketData(json.data);
-      // Re-read to get the server timestamp
       const stored = await getStoredMarketData();
       if (stored) {
         const { updatedAt: ts, ...rest } = stored;

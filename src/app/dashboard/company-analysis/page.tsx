@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useCallback, useState, useRef } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Card, { CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
+import SaveLimitModal from "@/components/ui/SaveLimitModal";
+import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { deductCredits, checkCredits } from "@/services/credits";
 import type { CompanyAnalysisResult } from "@/services/ai-company-analysis";
 import {
@@ -25,6 +27,7 @@ import {
   Users,
   Info,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -336,14 +339,75 @@ function ResultView({ result }: { result: CompanyAnalysisResult }) {
 
 export default function CompanyAnalysisPage() {
   const { user } = useAuthContext();
+  const saver = useSavedItemSaver();
   const [companyName, setCompanyName] = useState("");
   const [position, setPosition] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [result, setResult] = useState<CompanyAnalysisResult | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState("");
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const saveAnalysisInBackground = useCallback(
+    async (data: CompanyAnalysisResult) => {
+      if (!user) return;
+      try {
+        const res = await fetch("/api/generate-company-analysis-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data }),
+        });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const ts = Date.now();
+        await saver.saveWithPrompt({
+          uid: user.uid,
+          type: "company-analysis",
+          payload: {
+            kind: "pdf",
+            data: {
+              type: "company-analysis",
+              title: `${data.companyName}`,
+              subtitle: data.salaryInfo?.position || undefined,
+              fileName: `analise-empresa-${ts}.pdf`,
+              pdf: blob,
+            },
+          },
+        });
+      } catch {
+        /* silent */
+      }
+    },
+    [user, saver]
+  );
+
+  const handleDownloadPDF = useCallback(async () => {
+    if (!result) return;
+    setPdfLoading(true);
+    try {
+      const res = await fetch("/api/generate-company-analysis-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: result }),
+      });
+      if (!res.ok) throw new Error("Erro ao gerar PDF");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `analise-empresa-${result.companyName.replace(/\s+/g, "-")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Erro ao baixar PDF.");
+    } finally {
+      setPdfLoading(false);
+    }
+  }, [result]);
 
   const startProgress = () => {
     setProgress(0);
@@ -384,6 +448,7 @@ export default function CompanyAnalysisPage() {
       stopProgress();
       setResult(data.data);
       toast.success("Análise concluída!");
+      void saveAnalysisInBackground(data.data);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao analisar empresa.";
       toast.error(msg);
@@ -492,8 +557,24 @@ export default function CompanyAnalysisPage() {
           </div>
         </div>
       ) : (
-        <ResultView result={result} />
+        <div className="space-y-4">
+          <ResultView result={result} />
+          <div className="flex justify-center">
+            <Button onClick={handleDownloadPDF} disabled={pdfLoading} loading={pdfLoading} className="px-8">
+              <Download className="w-4 h-4 mr-2" />
+              Baixar PDF
+            </Button>
+          </div>
+        </div>
       )}
+
+      <SaveLimitModal
+        isOpen={!!saver.confirmState}
+        oldest={saver.confirmState?.oldest ?? null}
+        loading={saver.saving}
+        onConfirm={() => user && saver.confirmReplace(user.uid)}
+        onCancel={saver.cancelReplace}
+      />
 
       <Modal isOpen={showConfirm} onClose={() => setShowConfirm(false)} title="Analisar empresa" size="sm">
         <div className="space-y-4">

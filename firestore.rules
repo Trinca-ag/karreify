@@ -38,6 +38,19 @@ service cloud.firestore {
       match /devices/{deviceId} {
         allow read, write: if isOwner(userId);
       }
+
+      // Saved items (resumes + generated PDFs with 10h TTL)
+      match /savedItems/{itemId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.type in ['resume', 'resume-analysis', 'company-analysis', 'cover-letter'];
+        allow update: if isOwner(userId)
+          && resource.data.type == 'resume'
+          && request.resource.data.type == 'resume'
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.expiresAt == resource.data.expiresAt;
+        allow delete: if isOwner(userId);
+      }
     }
 
     // Stats - readable by all authenticated, writable by authenticated users
@@ -61,6 +74,20 @@ service cloud.firestore {
     match /market/{document} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
+    }
+
+    // Feedbacks - users create their own, only admins read/delete
+    match /feedbacks/{feedbackId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() <= 4000;
+      allow update: if false;
+      allow delete: if isAdmin();
     }
   }
 }

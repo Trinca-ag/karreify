@@ -12,6 +12,8 @@ import {
   FileText,
   Building2,
   TrendingUp,
+  MessageSquareHeart,
+  FolderOpen,
 } from "lucide-react";
 
 const menuItems = [
@@ -45,6 +47,16 @@ const menuItems = [
     label: "Mercado",
     href: "/dashboard/market",
     icon: TrendingUp,
+  },
+  {
+    label: "Meus Arquivos",
+    href: "/dashboard/my-files",
+    icon: FolderOpen,
+  },
+  {
+    label: "Nos ajude a melhorar",
+    href: "/dashboard/feedback",
+    icon: MessageSquareHeart,
   },
 ];
 

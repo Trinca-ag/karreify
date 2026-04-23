@@ -202,6 +202,66 @@ export interface Device {
   createdAt: Date;
 }
 
+// ==================== Saved Items Types ====================
+export type SavedItemType =
+  | "resume"
+  | "resume-analysis"
+  | "company-analysis"
+  | "cover-letter";
+
+export interface SavedItemBase {
+  id: string;
+  type: SavedItemType;
+  title: string;
+  subtitle?: string;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
+export interface SavedResumeItem extends SavedItemBase {
+  type: "resume";
+  resumeData: unknown;
+  template: string;
+  candidateLevel?: string;
+  adjustments?: {
+    fontSizeOffset?: number;
+    spacingOffset?: number;
+    hiddenSections?: string[];
+  };
+}
+
+export interface SavedPdfItem extends SavedItemBase {
+  type: "resume-analysis" | "company-analysis" | "cover-letter";
+  storagePath: string;
+  downloadUrl: string;
+  fileName: string;
+}
+
+export type SavedItem = SavedResumeItem | SavedPdfItem;
+
+export const SAVED_ITEM_MAX_PER_TYPE = 5;
+export const SAVED_ITEM_TTL_MS = 10 * 60 * 60 * 1000; // 10 hours
+
+export const SAVED_ITEM_LABELS: Record<SavedItemType, string> = {
+  "resume": "Currículo",
+  "resume-analysis": "Análise de Currículo",
+  "company-analysis": "Análise de Empresa",
+  "cover-letter": "Carta de Apresentação",
+};
+
+// ==================== Feedback Types ====================
+export interface Feedback {
+  id: string;
+  uid: string;
+  userName: string | null;
+  userEmail: string;
+  rating: number;
+  comment: string;
+  createdAt: Date;
+}
+
+export const FEEDBACK_MAX_COMMENT = 4000;
+
 // ==================== Credits Types ====================
 export interface CreditTransaction {
   id: string;

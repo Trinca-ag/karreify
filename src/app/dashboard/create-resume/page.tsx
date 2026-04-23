@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -14,6 +15,9 @@ import type { ResumeSchema, GenerationNotes, QualityReport } from "@/lib/resume-
 import type { TemplateName, SectionName } from "@/lib/resume-templates";
 import ResumeFeedback from "@/components/ui/ResumeFeedback";
 import Modal from "@/components/ui/Modal";
+import SaveLimitModal from "@/components/ui/SaveLimitModal";
+import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
+import { listSavedItems, updateResumeItem } from "@/services/saved-items";
 
 type Mode = "upload" | "scratch" | null;
 
@@ -89,6 +93,11 @@ const CAMPO_LABELS: Record<string, string> = {
 
 export default function CreateResumePage() {
   const { user } = useAuthContext();
+  const searchParams = useSearchParams();
+  const editItemId = searchParams?.get("itemId") ?? null;
+  const saver = useSavedItemSaver();
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const editDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mode, setMode] = useState<Mode>(null);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -359,6 +368,94 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     return s;
   }
 
+  // Save newly created resume (auto) and prompt-to-replace if at 5-item limit
+  const saveNewResumeItem = useCallback(
+    async (schema: ResumeSchema, template: TemplateName, level?: string) => {
+      if (!user) return;
+      const name = schema.basics?.name?.trim() || "Sem nome";
+      const title = name;
+      const subtitle = schema.basics?.label?.trim() || undefined;
+      await saver.saveWithPrompt({
+        uid: user.uid,
+        type: "resume",
+        payload: {
+          kind: "resume",
+          data: {
+            resumeData: schema,
+            template,
+            candidateLevel: level,
+            title,
+            subtitle,
+          },
+        },
+      });
+    },
+    [user, saver]
+  );
+
+  // Load a saved resume for editing when ?itemId= is present
+  useEffect(() => {
+    if (!user || !editItemId) return;
+    (async () => {
+      try {
+        const items = await listSavedItems(user.uid);
+        const item = items.find((i) => i.id === editItemId && i.type === "resume");
+        if (!item || item.type !== "resume") {
+          toast.error("Currículo não encontrado ou expirado.");
+          return;
+        }
+        setEditingItemId(item.id);
+        const schema = item.resumeData as ResumeSchema;
+        setResumeData(schema);
+        setAvailableSections(getPopulatedSections(schema));
+        setSelectedTemplate((item.template as TemplateName) || "profissional");
+        setCandidateLevel(item.candidateLevel);
+        if (item.adjustments) {
+          if (typeof item.adjustments.fontSizeOffset === "number")
+            setFontSizeOffset(item.adjustments.fontSizeOffset);
+          if (typeof item.adjustments.spacingOffset === "number")
+            setSpacingOffset(item.adjustments.spacingOffset);
+          if (Array.isArray(item.adjustments.hiddenSections))
+            setHiddenSections(item.adjustments.hiddenSections as SectionName[]);
+        }
+        await generatePdf(
+          schema,
+          (item.template as TemplateName) || "profissional",
+          item.candidateLevel,
+          {
+            fontSizeOffset: item.adjustments?.fontSizeOffset,
+            spacingOffset: item.adjustments?.spacingOffset,
+            hiddenSections: item.adjustments?.hiddenSections as SectionName[] | undefined,
+          }
+        );
+      } catch {
+        toast.error("Não foi possível carregar o currículo salvo.");
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, editItemId]);
+
+  // Persist edits back to Firestore (expiresAt is NOT reset). Debounced.
+  useEffect(() => {
+    if (!user || !editingItemId || !resumeData) return;
+    if (editDebounce.current) clearTimeout(editDebounce.current);
+    editDebounce.current = setTimeout(() => {
+      updateResumeItem(user.uid, editingItemId, {
+        resumeData,
+        template: selectedTemplate,
+        candidateLevel,
+        adjustments: {
+          fontSizeOffset: fontSizeOffset || undefined,
+          spacingOffset: spacingOffset || undefined,
+          hiddenSections: hiddenSections.length > 0 ? hiddenSections : undefined,
+        },
+      }).catch(() => {});
+    }, 800);
+    return () => {
+      if (editDebounce.current) clearTimeout(editDebounce.current);
+    };
+  }, [user, editingItemId, resumeData, selectedTemplate, candidateLevel, fontSizeOffset, spacingOffset, hiddenSections]);
+
   // Main create handler
   async function handleCreate(formData: Record<string, unknown>) {
     if (!user) return;
@@ -396,6 +493,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       await generatePdf(schema, selectedTemplate, level);
 
       toast.success("Curriculo criado!");
+      void saveNewResumeItem(schema, selectedTemplate, level);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error("Resume creation error:", msg);
@@ -464,6 +562,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   const handleReset = () => {
     setResumeData(null);
     setMode(null);
+    setEditingItemId(null);
     setFile(null);
     setProgress(0);
     setProgressMsg("");
@@ -1043,6 +1142,14 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           </div>
         </div>
       </Modal>
+
+      <SaveLimitModal
+        isOpen={!!saver.confirmState}
+        oldest={saver.confirmState?.oldest ?? null}
+        loading={saver.saving}
+        onConfirm={() => user && saver.confirmReplace(user.uid)}
+        onCancel={saver.cancelReplace}
+      />
     </div>
   );
 }
