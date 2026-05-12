@@ -498,8 +498,25 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
 // Font: Calibri, "Segoe UI", Arial, sans-serif
 // ══════════════════════════════════════════════════════════
 
-const MODERNO_ACCENT = "#1B3A6B";
+export const MODERNO_ACCENT = "#1B3A6B";
 const MODERNO_ACCENT_40 = "rgba(27,58,107,0.4)";
+
+// Computes per-page top/bottom margins for the Moderno template, used by the
+// PDF route when content spans multiple pages (puppeteer's margin override).
+// Left/right are 0 here because `.page` provides side padding internally.
+export function getModernoPdfMargins(
+  rawData: ResumeSchema,
+  options?: TemplateOptions
+): { top: string; right: string; bottom: string; left: string } {
+  const data = applyHiddenSections(rawData, options?.hiddenSections);
+  const size = estimateContentSize(data);
+  const margins =
+    size === "xsmall" ? "22mm 24mm 20mm" :
+    size === "small" ? "20mm 22mm 18mm" :
+    size === "medium" ? "16mm 18mm 14mm" : "14mm 16mm 12mm";
+  const [mTop, , mBottom] = margins.split(" ");
+  return { top: mTop, right: "0", bottom: mBottom || mTop, left: "0" };
+}
 
 export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions): string {
   const data = applyHiddenSections(rawData, options?.hiddenSections);
@@ -524,11 +541,18 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
 
   const hasAdjustments = !!(fsOff || spOff || options?.hiddenSections?.length);
   const [mTop, mLR, mBottom] = margins.split(" ");
-  // Moderno: @page margin 0 always — accent bar must touch top of PDF page.
-  // All spacing via .page padding. Multi-page top/bottom handled via route.ts.
-  const pageAtRule = `@page { size: A4; margin: 0; }`;
+  const mBot = mBottom || mTop;
+  // Single-page mode: @page margin 0 + .page padding — auto-layout fits 1 page; accent bar
+  // (in CSS, position:fixed top:0) touches the paper top edge.
+  // Multi-page mode: @page reserves real top/bottom margin space on every page so content
+  // never bleeds into the header area. Route.ts mirrors these margins to puppeteer's pdf
+  // options AND injects the accent bar via `headerTemplate` (which natively repeats on each
+  // page). The `.accent-bar` element is omitted from the body in this mode.
+  const pageAtRule = hasAdjustments
+    ? `@page { size: A4; margin: ${mTop} 0 ${mBot} 0; }`
+    : `@page { size: A4; margin: 0; }`;
   const pageCss = hasAdjustments
-    ? `width: 210mm; padding: calc(${mTop} + 4pt) ${mLR} ${mBottom || mTop}; position: relative;`
+    ? `width: 210mm; padding: 0 ${mLR}; position: relative;`
     : `width: 210mm; min-height: 297mm; padding: ${margins}; padding-top: calc(${mTop} + 4pt); position: relative;`;
 
   const contactLine = buildContactLine(data.basics, MODERNO_ACCENT);
@@ -645,7 +669,8 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
     ${pageCss}
   }
 
-  /* ── 4px accent bar at top of page ── */
+  /* ── 4px accent bar at top of page (single-page mode only) ── */
+  /* In multi-page mode the bar is rendered by puppeteer's headerTemplate instead. */
   .accent-bar {
     width: 210mm;
     height: 4pt;
@@ -784,7 +809,7 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
 <body>
 <div class="page">
 
-  <div class="accent-bar"></div>
+  ${hasAdjustments ? "" : `<div class="accent-bar"></div>`}
 
   <div class="header">
     <div class="name">${esc(data.basics.name)}</div>

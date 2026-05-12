@@ -309,7 +309,7 @@ export default function AdminLoginPage() {
                 <h1 className="text-xl font-bold text-white font-heading">Bem-vindo de volta</h1>
                 <p className="text-sm text-gray-500 mt-1">Entre com suas credenciais de administrador</p>
               </div>
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} action="javascript:void(0)" className="space-y-4">
                 <Input
                   label="Usuário ou e-mail"
                   type="text"
@@ -351,7 +351,7 @@ export default function AdminLoginPage() {
                 <h1 className="text-xl font-bold text-white font-heading mb-1">Recuperar senha</h1>
                 <p className="text-sm text-gray-500">Informe seu e-mail para receber o código de recuperação</p>
               </div>
-              <form onSubmit={handleSendResetCode} className="space-y-4">
+              <form onSubmit={handleSendResetCode} action="javascript:void(0)" className="space-y-4">
                 <Input
                   label="E-mail"
                   type="email"

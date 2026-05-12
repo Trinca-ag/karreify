@@ -16,8 +16,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async () => {
+    if (loading) return;
     setLoading(true);
     try {
       await loginUser(email, password);
@@ -175,7 +175,20 @@ export default function LoginPage() {
             </div>
 
             {/* Login form */}
-            <form onSubmit={handleLogin} className="space-y-4">
+            {/* Usamos type="button" + onClick (em vez de type="submit") para evitar
+                o submit nativo do <form> caso o usuário clique antes do React hidratar
+                (que causava reload com URL virando /auth/login?). onKeyDown cobre o UX
+                de Enter-para-enviar. */}
+            <form
+              onSubmit={(e) => { e.preventDefault(); handleLogin(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !loading) {
+                  e.preventDefault();
+                  handleLogin();
+                }
+              }}
+              className="space-y-4"
+            >
               <Input
                 label="Email"
                 type="email"
@@ -202,7 +215,7 @@ export default function LoginPage() {
                   </Link>
                 </div>
               </div>
-              <Button type="submit" loading={loading} className="w-full" size="lg">
+              <Button type="button" onClick={() => handleLogin()} loading={loading} className="w-full" size="lg">
                 Entrar
               </Button>
             </form>

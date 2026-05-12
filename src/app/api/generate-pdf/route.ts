@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { TEMPLATES, type TemplateName } from "@/lib/resume-templates";
+import { TEMPLATES, type TemplateName, getModernoPdfMargins, MODERNO_ACCENT } from "@/lib/resume-templates";
 import type { ResumeSchema } from "@/lib/resume-schema";
 import { PDFDocument } from "pdf-lib";
 
@@ -14,7 +14,11 @@ function sanitizeFilename(name: string): string {
 
 export const maxDuration = 60;
 
-async function generatePdfBuffer(html: string, skipAutoLayout = false): Promise<Buffer> {
+async function generatePdfBuffer(
+  html: string,
+  skipAutoLayout = false,
+  extraPdfOptions: Record<string, unknown> = {}
+): Promise<Buffer> {
   let browser = null;
   try {
     // Dynamic imports — only loaded server-side
@@ -267,6 +271,7 @@ async function generatePdfBuffer(html: string, skipAutoLayout = false): Promise<
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
+      ...extraPdfOptions,
     });
 
     // Verify actual PDF page count using pdf-lib
@@ -337,7 +342,32 @@ export async function POST(request: NextRequest) {
 
     // 2. HTML → PDF (Puppeteer)
     const hasManualAdjustments = !!(fontSizeOffset || spacingOffset || (hiddenSections && hiddenSections.length > 0));
-    const pdfBuffer = await generatePdfBuffer(html, hasManualAdjustments);
+
+    // Moderno with manual adjustments may overflow to multiple pages. Use puppeteer's
+    // headerTemplate to draw the navy accent bar at the top of every page (CSS
+    // `position: fixed` doesn't repeat reliably in Chromium's PDF print path), and
+    // override page margins so every page has consistent top/bottom spacing.
+    let extraPdfOptions: Record<string, unknown> = {};
+    if (template === "moderno" && hasManualAdjustments) {
+      const m = getModernoPdfMargins(resumeData, {
+        candidateLevel,
+        fontSizeOffset,
+        spacingOffset,
+        hiddenSections: hiddenSections as import("@/lib/resume-templates").SectionName[] | undefined,
+      });
+      // Chromium wraps the headerTemplate in a `<div id="header">` that has default
+      // padding (~5px), which creates a visible gap between the bar and the paper edge.
+      // The `<style>` block below resets all of Chromium's defaults so the bar sticks
+      // flush to the top of every page.
+      extraPdfOptions = {
+        displayHeaderFooter: true,
+        headerTemplate: `<style>*,*::before,*::after{margin:0!important;padding:0!important;border:0!important;box-sizing:border-box!important;}html,body{width:100%!important;height:100%!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}#header,#footer{width:100%!important;padding:0!important;margin:0!important;}</style><div style="width:100%;height:4pt;background:${MODERNO_ACCENT};margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>`,
+        footerTemplate: `<style>*{margin:0!important;padding:0!important;}</style><div style="height:0;"></div>`,
+        margin: m,
+      };
+    }
+
+    const pdfBuffer = await generatePdfBuffer(html, hasManualAdjustments, extraPdfOptions);
 
     // 3. Return PDF
     return new NextResponse(new Uint8Array(pdfBuffer), {

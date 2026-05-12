@@ -176,7 +176,7 @@ export default function ResetPasswordPage() {
                 </p>
               </div>
 
-              <form onSubmit={handleSendCode} className="space-y-4">
+              <form onSubmit={handleSendCode} action="javascript:void(0)" className="space-y-4">
                 <Input
                   label="Email"
                   type="email"
@@ -220,7 +220,7 @@ export default function ResetPasswordPage() {
                 </p>
               </div>
 
-              <form onSubmit={handleResetPassword} className="space-y-5">
+              <form onSubmit={handleResetPassword} action="javascript:void(0)" className="space-y-5">
                 {/* Code inputs */}
                 <div className="flex justify-center gap-2.5" onPaste={handlePaste}>
                   {digits.map((digit, i) => (

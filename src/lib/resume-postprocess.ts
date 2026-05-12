@@ -50,6 +50,22 @@ export function postProcessResume(
     corrections.push("Tempo de experiência ajustado para valor factual");
   }
 
+  // 4.25. Normalizar "X+" → "mais de X" em textos narrativos
+  const beforePlus = JSON.stringify([
+    result.basics.summary,
+    ...result.work.flatMap(w => w.highlights),
+    ...result.projects.flatMap(p => [p.description, ...p.highlights]),
+  ]);
+  result = normalizePlusToText(result);
+  const afterPlus = JSON.stringify([
+    result.basics.summary,
+    ...result.work.flatMap(w => w.highlights),
+    ...result.projects.flatMap(p => [p.description, ...p.highlights]),
+  ]);
+  if (afterPlus !== beforePlus) {
+    corrections.push('"X+" substituído por "mais de X" nos textos');
+  }
+
   // 4.5. Consistência de pessoa verbal (3ª → 1ª pessoa)
   const beforeVerbs = JSON.stringify([
     result.basics.summary,
@@ -465,12 +481,12 @@ function validateExperienceTime(schema: ResumeSchema): ResumeSchema {
 
   let correctLabel: string;
   if (months < 12) correctLabel = `${months} meses`;
-  else if (months < 24) correctLabel = "1+ ano";
-  else if (months < 36) correctLabel = "2+ anos";
-  else correctLabel = `${Math.floor(months / 12)}+ anos`;
+  else if (months < 24) correctLabel = "mais de 1 ano";
+  else if (months < 36) correctLabel = "mais de 2 anos";
+  else correctLabel = `mais de ${Math.floor(months / 12)} anos`;
 
   let summary = schema.basics.summary;
-  const timeClaimRegex = /(\d+)\+?\s*anos?\s+de\s+experi[eê]ncia/gi;
+  const timeClaimRegex = /(?:mais\s+de\s+)?(\d+)\+?\s*anos?\s+de\s+experi[eê]ncia/gi;
   const match = timeClaimRegex.exec(summary);
 
   if (match) {
@@ -485,6 +501,32 @@ function validateExperienceTime(schema: ResumeSchema): ResumeSchema {
   }
 
   return schema;
+}
+
+// ── 4.25. Normalize "X+" → "mais de X" ──────────────────
+// Matches a number followed by "+" that acts as a quantity indicator (e.g., "50+ clientes",
+// "10+ projetos", "5.000+ usuários"). Skips technical tokens like "C++", "ES6+", "A+" because
+// they don't have a word boundary before the digits and aren't followed by whitespace/end.
+
+const PLUS_QUANTITY_REGEX = /\b(\d+(?:[.,]\d+)*)\+(?=\s|$|[^\w+])/g;
+
+function replacePlusInText(text: string): string {
+  return text.replace(PLUS_QUANTITY_REGEX, "mais de $1");
+}
+
+function normalizePlusToText(schema: ResumeSchema): ResumeSchema {
+  const result: ResumeSchema = JSON.parse(JSON.stringify(schema));
+  if (result.basics?.summary) {
+    result.basics.summary = replacePlusInText(result.basics.summary);
+  }
+  for (const w of result.work || []) {
+    w.highlights = (w.highlights || []).map(replacePlusInText);
+  }
+  for (const p of result.projects || []) {
+    if (p.description) p.description = replacePlusInText(p.description);
+    p.highlights = (p.highlights || []).map(replacePlusInText);
+  }
+  return result;
 }
 
 // ── 4.5. Fix verb person consistency (3rd → 1st) ────────

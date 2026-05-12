@@ -82,7 +82,7 @@ export default function AdminRegisterPage() {
             <p className="text-sm text-gray-500 mt-1">Preencha os dados para criar a conta</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} action="javascript:void(0)" className="space-y-4">
             <Input
               label="Nome completo"
               type="text"

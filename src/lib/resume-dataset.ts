@@ -28,7 +28,7 @@ export const RESUME_EXAMPLES = [
           location: "São Paulo - SP",
           highlights: [
             "Organizei e digitalizei mais de 2.000 documentos fiscais, reduzindo o tempo de busca em 40%",
-            "Realizei atendimento telefônico a 30+ clientes por dia, mantendo índice de satisfação de 95%",
+            "Realizei atendimento telefônico a mais de 30 clientes por dia, mantendo índice de satisfação de 95%",
             "Auxiliei no controle de contas a pagar e receber utilizando Excel com tabelas dinâmicas",
             "Implementei sistema de arquivamento digital que eliminou o uso de 3 armários físicos"
           ]
@@ -97,7 +97,7 @@ export const RESUME_EXAMPLES = [
           location: "Remoto",
           highlights: [
             "Executei campanhas de email marketing com taxa de abertura média de 32% (acima da média do setor de 21%)",
-            "Produzi 60+ artigos otimizados para SEO que geraram aumento de 45% no tráfego orgânico em 6 meses",
+            "Produzi mais de 60 artigos otimizados para SEO que geraram aumento de 45% no tráfego orgânico em 6 meses",
             "Coordenei lançamento de produto digital que atingiu 500 vendas na primeira semana"
           ]
         }
@@ -150,7 +150,7 @@ export const RESUME_EXAMPLES = [
         email: "mariana.ferreira@email.com",
         phone: "(31) 96543-2109",
         location: "Belo Horizonte - MG",
-        summary: "Gerente de Projetos com 10+ anos de experiência liderando equipes multidisciplinares em projetos de transformação digital e desenvolvimento de software. Certificada PMP e CSM, com histórico de entregas dentro do prazo e orçamento em 95% dos projetos. Experiência em gestão de portfólios de até R$ 5M.",
+        summary: "Gerente de Projetos com mais de 10 anos de experiência liderando equipes multidisciplinares em projetos de transformação digital e desenvolvimento de software. Certificada PMP e CSM, com histórico de entregas dentro do prazo e orçamento em 95% dos projetos. Experiência em gestão de portfólios de até R$ 5M.",
         linkedin: "linkedin.com/in/mariana-ferreira",
         github: "",
         website: ""
@@ -176,9 +176,9 @@ export const RESUME_EXAMPLES = [
           endDate: "2020-12",
           location: "Belo Horizonte - MG",
           highlights: [
-            "Gerenciei 15+ projetos de implementação de ERP para clientes de médio e grande porte",
+            "Gerenciei mais de 15 projetos de implementação de ERP para clientes de médio e grande porte",
             "Entreguei projeto de R$ 2.3M para indústria farmacêutica 2 semanas antes do prazo, gerando bônus de performance",
-            "Estruturei PMO da empresa, padronizando processos e documentação para 20+ gerentes de projeto",
+            "Estruturei PMO da empresa, padronizando processos e documentação para mais de 20 gerentes de projeto",
             "Negociei contratos com fornecedores que resultaram em economia de 18% nos custos de infraestrutura"
           ]
         },
@@ -189,7 +189,7 @@ export const RESUME_EXAMPLES = [
           endDate: "2017-03",
           location: "Belo Horizonte - MG",
           highlights: [
-            "Coordenei sprints de desenvolvimento para 3 produtos SaaS com base de 10.000+ usuários",
+            "Coordenei sprints de desenvolvimento para 3 produtos SaaS com base de mais de 10.000 usuários",
             "Elaborei documentação técnica e funcional utilizada como referência por equipe de 15 desenvolvedores"
           ]
         }

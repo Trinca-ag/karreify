@@ -188,7 +188,7 @@ export default function RegisterPage() {
             </div>
 
             {/* Register form */}
-            <form onSubmit={handleRegister} className="space-y-4">
+            <form onSubmit={handleRegister} action="javascript:void(0)" className="space-y-4">
               <Input
                 label="Nome completo"
                 type="text"
