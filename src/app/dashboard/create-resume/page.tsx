@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
@@ -13,9 +13,11 @@ import { FilePlus, Upload, PenLine, Plus, Trash2, Download, RefreshCw, FileText,
 import toast from "react-hot-toast";
 import type { ResumeSchema, GenerationNotes, QualityReport } from "@/lib/resume-schema";
 import type { TemplateName, SectionName } from "@/lib/resume-templates";
+import { getDefaultSizesPx } from "@/lib/resume-templates";
 import ResumeFeedback from "@/components/ui/ResumeFeedback";
 import Modal from "@/components/ui/Modal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
+import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { listSavedItems, updateResumeItem } from "@/services/saved-items";
 
@@ -121,9 +123,12 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   const [qualityFlags, setQualityFlags] = useState<string[]>([]);
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Editor state
-  const [fontSizeOffset, setFontSizeOffset] = useState(0);
-  const [spacingOffset, setSpacingOffset] = useState(0);
+  // Editor state — granular px overrides per category. `null` means "use template default".
+  const [sectionTitleFontPx, setSectionTitleFontPx] = useState<number | null>(null);
+  const [entryTitleFontPx, setEntryTitleFontPx] = useState<number | null>(null);
+  const [bodyFontPx, setBodyFontPx] = useState<number | null>(null);
+  const [metaFontPx, setMetaFontPx] = useState<number | null>(null);
+  const [sectionSpacingPx, setSectionSpacingPx] = useState<number | null>(null);
   const [hiddenSections, setHiddenSections] = useState<SectionName[]>([]);
   const [editingSection, setEditingSection] = useState<SectionName | null>(null);
   const [availableSections, setAvailableSections] = useState<SectionName[]>([]);
@@ -296,12 +301,21 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfUrl]);
 
+  // Per-category default sizes (px) — recomputed when content or template changes.
+  const defaultSizes = useMemo(() => {
+    if (!resumeData) return null;
+    return getDefaultSizesPx(resumeData, selectedTemplate, { hiddenSections });
+  }, [resumeData, selectedTemplate, hiddenSections]);
+
   // Build current adjustments object
   const currentAdjustments = useCallback((): PdfAdjustments => ({
-    fontSizeOffset: fontSizeOffset || undefined,
-    spacingOffset: spacingOffset || undefined,
     hiddenSections: hiddenSections.length > 0 ? hiddenSections : undefined,
-  }), [fontSizeOffset, spacingOffset, hiddenSections]);
+    sectionTitleFontPx: sectionTitleFontPx ?? undefined,
+    entryTitleFontPx: entryTitleFontPx ?? undefined,
+    bodyFontPx: bodyFontPx ?? undefined,
+    metaFontPx: metaFontPx ?? undefined,
+    sectionSpacingPx: sectionSpacingPx ?? undefined,
+  }), [hiddenSections, sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx]);
 
   // When template changes and we already have resume data, regenerate PDF
   useEffect(() => {
@@ -320,7 +334,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     }, 400);
     return () => { if (editorDebounce.current) clearTimeout(editorDebounce.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fontSizeOffset, spacingOffset, hiddenSections]);
+  }, [sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx, hiddenSections]);
 
   // When text is edited, regenerate PDF with longer debounce
   useEffect(() => {
@@ -411,21 +425,26 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
         setSelectedTemplate((item.template as TemplateName) || "profissional");
         setCandidateLevel(item.candidateLevel);
         if (item.adjustments) {
-          if (typeof item.adjustments.fontSizeOffset === "number")
-            setFontSizeOffset(item.adjustments.fontSizeOffset);
-          if (typeof item.adjustments.spacingOffset === "number")
-            setSpacingOffset(item.adjustments.spacingOffset);
-          if (Array.isArray(item.adjustments.hiddenSections))
-            setHiddenSections(item.adjustments.hiddenSections as SectionName[]);
+          const adj = item.adjustments as Record<string, unknown>;
+          if (Array.isArray(adj.hiddenSections))
+            setHiddenSections(adj.hiddenSections as SectionName[]);
+          if (typeof adj.sectionTitleFontPx === "number") setSectionTitleFontPx(adj.sectionTitleFontPx);
+          if (typeof adj.entryTitleFontPx === "number") setEntryTitleFontPx(adj.entryTitleFontPx);
+          if (typeof adj.bodyFontPx === "number") setBodyFontPx(adj.bodyFontPx);
+          if (typeof adj.metaFontPx === "number") setMetaFontPx(adj.metaFontPx);
+          if (typeof adj.sectionSpacingPx === "number") setSectionSpacingPx(adj.sectionSpacingPx);
         }
         await generatePdf(
           schema,
           (item.template as TemplateName) || "profissional",
           item.candidateLevel,
           {
-            fontSizeOffset: item.adjustments?.fontSizeOffset,
-            spacingOffset: item.adjustments?.spacingOffset,
             hiddenSections: item.adjustments?.hiddenSections as SectionName[] | undefined,
+            sectionTitleFontPx: (item.adjustments as Record<string, unknown> | undefined)?.sectionTitleFontPx as number | undefined,
+            entryTitleFontPx: (item.adjustments as Record<string, unknown> | undefined)?.entryTitleFontPx as number | undefined,
+            bodyFontPx: (item.adjustments as Record<string, unknown> | undefined)?.bodyFontPx as number | undefined,
+            metaFontPx: (item.adjustments as Record<string, unknown> | undefined)?.metaFontPx as number | undefined,
+            sectionSpacingPx: (item.adjustments as Record<string, unknown> | undefined)?.sectionSpacingPx as number | undefined,
           }
         );
       } catch {
@@ -445,16 +464,19 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
         template: selectedTemplate,
         candidateLevel,
         adjustments: {
-          fontSizeOffset: fontSizeOffset || undefined,
-          spacingOffset: spacingOffset || undefined,
           hiddenSections: hiddenSections.length > 0 ? hiddenSections : undefined,
+          sectionTitleFontPx: sectionTitleFontPx ?? undefined,
+          entryTitleFontPx: entryTitleFontPx ?? undefined,
+          bodyFontPx: bodyFontPx ?? undefined,
+          metaFontPx: metaFontPx ?? undefined,
+          sectionSpacingPx: sectionSpacingPx ?? undefined,
         },
       }).catch(() => {});
     }, 800);
     return () => {
       if (editDebounce.current) clearTimeout(editDebounce.current);
     };
-  }, [user, editingItemId, resumeData, selectedTemplate, candidateLevel, fontSizeOffset, spacingOffset, hiddenSections]);
+  }, [user, editingItemId, resumeData, selectedTemplate, candidateLevel, hiddenSections, sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx]);
 
   // Main create handler
   async function handleCreate(formData: Record<string, unknown>) {
@@ -573,8 +595,11 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     setQualityReport(null);
     setPostCorrections([]);
     setQualityFlags([]);
-    setFontSizeOffset(0);
-    setSpacingOffset(0);
+    setSectionTitleFontPx(null);
+    setEntryTitleFontPx(null);
+    setBodyFontPx(null);
+    setMetaFontPx(null);
+    setSectionSpacingPx(null);
     setHiddenSections([]);
     setEditingSection(null);
     setAvailableSections([]);
@@ -705,9 +730,16 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">Ajustes</h3>
-                {(fontSizeOffset !== 0 || spacingOffset !== 0 || hiddenSections.length > 0) && (
+                {(sectionTitleFontPx != null || entryTitleFontPx != null || bodyFontPx != null || metaFontPx != null || sectionSpacingPx != null || hiddenSections.length > 0) && (
                   <button
-                    onClick={() => { setFontSizeOffset(0); setSpacingOffset(0); setHiddenSections([]); }}
+                    onClick={() => {
+                      setSectionTitleFontPx(null);
+                      setEntryTitleFontPx(null);
+                      setBodyFontPx(null);
+                      setMetaFontPx(null);
+                      setSectionSpacingPx(null);
+                      setHiddenSections([]);
+                    }}
                     className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors"
                   >
                     <RotateCcw className="w-3 h-3" /> Resetar
@@ -715,69 +747,12 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                 )}
               </div>
 
-              {/* Font size */}
-              <div>
-                <label className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
-                  <Type className="w-3.5 h-3.5" /> Tamanho da fonte
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setFontSizeOffset(Math.max(fontSizeOffset - 1, -5))}
-                    disabled={fontSizeOffset <= -5 || pdfLoading}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="flex-1 h-1.5 bg-white/5 rounded-full relative">
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary-400 border-2 border-dark-800 transition-all"
-                      style={{ left: `${((fontSizeOffset + 5) / 10) * 100}%`, transform: "translate(-50%, -50%)" }}
-                    />
-                  </div>
-                  <button
-                    onClick={() => setFontSizeOffset(Math.min(fontSizeOffset + 1, 5))}
-                    disabled={fontSizeOffset >= 5 || pdfLoading}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-xs text-gray-500 w-8 text-right font-mono">
-                    {fontSizeOffset > 0 ? `+${fontSizeOffset}` : fontSizeOffset}
-                  </span>
-                </div>
-              </div>
-
-              {/* Spacing */}
-              <div>
-                <label className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
-                  <AlignJustify className="w-3.5 h-3.5" /> Espaçamento
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setSpacingOffset(Math.max(spacingOffset - 1, -5))}
-                    disabled={spacingOffset <= -5 || pdfLoading}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="flex-1 h-1.5 bg-white/5 rounded-full relative">
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary-400 border-2 border-dark-800 transition-all"
-                      style={{ left: `${((spacingOffset + 5) / 10) * 100}%`, transform: "translate(-50%, -50%)" }}
-                    />
-                  </div>
-                  <button
-                    onClick={() => setSpacingOffset(Math.min(spacingOffset + 1, 5))}
-                    disabled={spacingOffset >= 5 || pdfLoading}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-xs text-gray-500 w-8 text-right font-mono">
-                    {spacingOffset > 0 ? `+${spacingOffset}` : spacingOffset}
-                  </span>
-                </div>
-              </div>
+              {/* ── Granular px controls ── */}
+              <PxControl icon={Type} label="Título da seção" value={sectionTitleFontPx} defaultPx={defaultSizes?.sectionTitleFontPx} onChange={setSectionTitleFontPx} min={8} max={32} disabled={pdfLoading} />
+              <PxControl icon={Type} label="Título da subseção" value={entryTitleFontPx} defaultPx={defaultSizes?.entryTitleFontPx} onChange={setEntryTitleFontPx} min={7} max={24} disabled={pdfLoading} />
+              <PxControl icon={Type} label="Conteúdo / descrições" value={bodyFontPx} defaultPx={defaultSizes?.bodyFontPx} onChange={setBodyFontPx} min={7} max={20} disabled={pdfLoading} />
+              <PxControl icon={Type} label="Informações complementares" value={metaFontPx} defaultPx={defaultSizes?.metaFontPx} onChange={setMetaFontPx} min={6} max={18} disabled={pdfLoading} />
+              <PxControl icon={AlignJustify} label="Espaçamento entre seções" value={sectionSpacingPx} defaultPx={defaultSizes?.sectionSpacingPx} onChange={setSectionSpacingPx} min={0} max={80} disabled={pdfLoading} />
 
               {/* Section visibility + editing */}
               <div>

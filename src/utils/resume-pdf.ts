@@ -5,6 +5,12 @@ export interface PdfAdjustments {
   fontSizeOffset?: number;
   spacingOffset?: number;
   hiddenSections?: SectionName[];
+  // Granular per-category px overrides (preferred). Undefined falls back to the template default.
+  sectionTitleFontPx?: number;
+  entryTitleFontPx?: number;
+  bodyFontPx?: number;
+  metaFontPx?: number;
+  sectionSpacingPx?: number;
 }
 
 /** Remove accents and special characters for safe filenames */
@@ -43,6 +49,11 @@ export async function generateResumePDFBlob(
       fontSizeOffset: adjustments?.fontSizeOffset,
       spacingOffset: adjustments?.spacingOffset,
       hiddenSections: adjustments?.hiddenSections,
+      sectionTitleFontPx: adjustments?.sectionTitleFontPx,
+      entryTitleFontPx: adjustments?.entryTitleFontPx,
+      bodyFontPx: adjustments?.bodyFontPx,
+      metaFontPx: adjustments?.metaFontPx,
+      sectionSpacingPx: adjustments?.sectionSpacingPx,
     }),
   });
 

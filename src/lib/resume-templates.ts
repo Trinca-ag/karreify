@@ -6,12 +6,60 @@ export type TemplateName = "profissional" | "moderno";
 
 export interface TemplateOptions {
   candidateLevel?: string;
-  fontSizeOffset?: number;     // steps of 1.5pt (body) / 2pt (name), range -5..+5
-  spacingOffset?: number;      // steps of 3pt (sections) / 2pt (entries), range -5..+5
+  fontSizeOffset?: number;     // steps of 1.5pt (body) / 2pt (name), range -5..+5 (legacy)
+  spacingOffset?: number;      // steps of 3pt (sections) / 2pt (entries), range -5..+5 (legacy)
   hiddenSections?: SectionName[];
+  // ── Granular px overrides (preferred over legacy offsets) ──
+  // When defined (non-undefined), the value is used verbatim as the CSS font-size/margin in px.
+  // When undefined, the legacy offset + computed pt default applies.
+  sectionTitleFontPx?: number;  // .section-title
+  entryTitleFontPx?: number;    // .entry-role + .entry-date (same px, weight/colour still differ)
+  bodyFontPx?: number;          // .summary, .bullets li, .entry-desc, .inline-list, .entry-role label
+  metaFontPx?: number;          // .entry-tech, .entry-links
+  sectionSpacingPx?: number;    // .section { margin-bottom }
+}
+
+export interface DefaultSizesPx {
+  sectionTitleFontPx: number;
+  entryTitleFontPx: number;
+  bodyFontPx: number;
+  metaFontPx: number;
+  sectionSpacingPx: number;
 }
 
 export type SectionName = "header" | "summary" | "skills" | "work" | "projects" | "education" | "certifications" | "languages";
+
+// CSS-defined unit conversion: 1pt = 4/3 px (regardless of device DPI).
+function ptToPx(pt: number): number {
+  return Math.round(((pt * 4) / 3) * 100) / 100;
+}
+
+// Returns the default px sizes used by a template at the current content size, so the frontend
+// can pre-fill its controls with the exact values it would otherwise have rendered.
+export function getDefaultSizesPx(
+  rawData: ResumeSchema,
+  template: TemplateName,
+  options?: Pick<TemplateOptions, "hiddenSections">
+): DefaultSizesPx {
+  const data = applyHiddenSections(rawData, options?.hiddenSections);
+  const size = estimateContentSize(data);
+
+  const sectionTitlePt = template === "moderno"
+    ? (size === "xsmall" ? 13 : size === "small" ? 12 : size === "medium" ? 10.5 : 10)
+    : (size === "xsmall" ? 14 : size === "small" ? 13 : size === "medium" ? 11 : 10.5);
+
+  const bodyPt = size === "xsmall" ? 12 : size === "small" ? 11.5 : size === "medium" ? 9.5 : 9;
+  const metaPt = 8.5;
+  const sectionGapPt = size === "xsmall" ? 20 : size === "small" ? 18 : size === "medium" ? 12 : 9;
+
+  return {
+    sectionTitleFontPx: ptToPx(sectionTitlePt),
+    entryTitleFontPx: ptToPx(bodyPt),
+    bodyFontPx: ptToPx(bodyPt),
+    metaFontPx: ptToPx(metaPt),
+    sectionSpacingPx: ptToPx(sectionGapPt),
+  };
+}
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -228,9 +276,24 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   const bulletLh = size === "xsmall" ? "1.7" : size === "small" ? "1.6" : "1.5";
   const margins = size === "xsmall" ? "22mm 24mm 20mm" : size === "small" ? "20mm 22mm 18mm" : size === "medium" ? "16mm 18mm 14mm" : "14mm 16mm 12mm";
 
+  // ── Granular px overrides (resolve to CSS-ready strings; fall back to legacy pt defaults) ──
+  const hasPxOverrides =
+    options?.sectionTitleFontPx != null ||
+    options?.entryTitleFontPx != null ||
+    options?.bodyFontPx != null ||
+    options?.metaFontPx != null ||
+    options?.sectionSpacingPx != null;
+  const sectionTitleFsEff = options?.sectionTitleFontPx != null ? `${options.sectionTitleFontPx}px` : sectionTitleFs;
+  const entryRoleFsEff = options?.entryTitleFontPx != null ? `${options.entryTitleFontPx}px` : bodyFs;
+  const entryDateFsEff = options?.entryTitleFontPx != null ? `${options.entryTitleFontPx}px` : entryDateFs;
+  const bodyFsEff = options?.bodyFontPx != null ? `${options.bodyFontPx}px` : bodyFs;
+  const hlFsEff = options?.bodyFontPx != null ? `${options.bodyFontPx}px` : hlFs;
+  const metaFsEff = options?.metaFontPx != null ? `${options.metaFontPx}px` : "8.5pt";
+  const sectionGapEff = options?.sectionSpacingPx != null ? `${options.sectionSpacingPx}px` : sectionGap;
+
   // When user has manual adjustments, use @page margin for top/bottom so multi-page PDFs
   // get consistent margins on every page. Otherwise keep padding on .page (single-page mode).
-  const hasAdjustments = !!(fsOff || spOff || options?.hiddenSections?.length);
+  const hasAdjustments = !!(fsOff || spOff || options?.hiddenSections?.length || hasPxOverrides);
   const [mTop, mLR, mBottom] = margins.split(" ");
   const pageAtRule = hasAdjustments
     ? `@page { size: A4; margin: ${mTop} 0 ${mBottom || mTop} 0; }`
@@ -278,7 +341,7 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   // Inline languages into education when 1-2 items and education exists
   const inlineLangs = data.languages.length > 0 && data.languages.length <= 2 && data.education.length > 0;
   const langsInlineHtml = inlineLangs
-    ? `<p style="margin-top: 8pt; font-size: ${bodyFs}; color: #333; line-height: 1.7;"><span style="font-weight: 700; color: #000;">Idiomas:</span> ${langsLine}</p>`
+    ? `<p style="margin-top: 8pt; font-size: ${bodyFsEff}; color: #333; line-height: 1.7;"><span style="font-weight: 700; color: #000;">Idiomas:</span> ${langsLine}</p>`
     : "";
 
   const projectsHtml = data.projects
@@ -383,10 +446,10 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   }
 
   /* ── Sections ───────────────────── */
-  .section { margin-bottom: ${sectionGap}; }
+  .section { margin-bottom: ${sectionGapEff}; }
   .section:last-child { margin-bottom: 0; }
   .section-title {
-    font-size: ${sectionTitleFs};
+    font-size: ${sectionTitleFsEff};
     font-weight: 700;
     color: #333;
     text-transform: uppercase;
@@ -396,7 +459,7 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   }
 
   .summary {
-    font-size: ${bodyFs};
+    font-size: ${bodyFsEff};
     color: #333;
     line-height: ${summaryLh};
   }
@@ -417,27 +480,27 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   .entry-role {
     font-weight: 700;
     color: #000;
-    font-size: ${bodyFs};
+    font-size: ${entryRoleFsEff};
   }
   .entry-date {
-    font-size: ${entryDateFs};
+    font-size: ${entryDateFsEff};
     color: #333;
     white-space: nowrap;
     flex-shrink: 0;
   }
   .entry-desc {
-    font-size: ${hlFs};
+    font-size: ${hlFsEff};
     color: #333;
     margin-top: 2pt;
     line-height: ${bulletLh};
   }
   .entry-tech {
-    font-size: 8.5pt;
+    font-size: ${metaFsEff};
     color: #333;
     margin-top: 2pt;
   }
   .entry-links {
-    font-size: 8.5pt;
+    font-size: ${metaFsEff};
     margin-top: 2pt;
   }
 
@@ -450,7 +513,7 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   .bullets li {
     position: relative;
     margin-bottom: ${bulletGap};
-    font-size: ${hlFs};
+    font-size: ${hlFsEff};
     color: #333;
     line-height: ${bulletLh};
   }
@@ -463,7 +526,7 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
 
   /* ── Skills ──────────────────────── */
   .inline-list {
-    font-size: ${bodyFs};
+    font-size: ${bodyFsEff};
     color: #333;
     line-height: 1.7;
   }
@@ -539,7 +602,22 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   const bulletLh = size === "xsmall" ? "1.7" : size === "small" ? "1.6" : "1.5";
   const margins = size === "xsmall" ? "22mm 24mm 20mm" : size === "small" ? "20mm 22mm 18mm" : size === "medium" ? "16mm 18mm 14mm" : "14mm 16mm 12mm";
 
-  const hasAdjustments = !!(fsOff || spOff || options?.hiddenSections?.length);
+  // ── Granular px overrides (resolve to CSS-ready strings; fall back to legacy pt defaults) ──
+  const hasPxOverrides =
+    options?.sectionTitleFontPx != null ||
+    options?.entryTitleFontPx != null ||
+    options?.bodyFontPx != null ||
+    options?.metaFontPx != null ||
+    options?.sectionSpacingPx != null;
+  const sectionTitleFsEff = options?.sectionTitleFontPx != null ? `${options.sectionTitleFontPx}px` : sectionTitleFs;
+  const entryRoleFsEff = options?.entryTitleFontPx != null ? `${options.entryTitleFontPx}px` : bodyFs;
+  const entryDateFsEff = options?.entryTitleFontPx != null ? `${options.entryTitleFontPx}px` : entryDateFs;
+  const bodyFsEff = options?.bodyFontPx != null ? `${options.bodyFontPx}px` : bodyFs;
+  const hlFsEff = options?.bodyFontPx != null ? `${options.bodyFontPx}px` : hlFs;
+  const metaFsEff = options?.metaFontPx != null ? `${options.metaFontPx}px` : "8.5pt";
+  const sectionGapEff = options?.sectionSpacingPx != null ? `${options.sectionSpacingPx}px` : sectionGap;
+
+  const hasAdjustments = !!(fsOff || spOff || options?.hiddenSections?.length || hasPxOverrides);
   const [mTop, mLR, mBottom] = margins.split(" ");
   const mBot = mBottom || mTop;
   // Single-page mode: @page margin 0 + .page padding — auto-layout fits 1 page; accent bar
@@ -594,7 +672,7 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   // Inline languages into education when 1-2 items and education exists
   const inlineLangs = data.languages.length > 0 && data.languages.length <= 2 && data.education.length > 0;
   const langsInlineHtml = inlineLangs
-    ? `<p style="margin-top: 8pt; font-size: ${bodyFs}; color: #444; line-height: 1.7;"><span style="font-weight: 700; color: ${MODERNO_ACCENT};">Idiomas:</span> ${langsLine}</p>`
+    ? `<p style="margin-top: 8pt; font-size: ${bodyFsEff}; color: #444; line-height: 1.7;"><span style="font-weight: 700; color: ${MODERNO_ACCENT};">Idiomas:</span> ${langsLine}</p>`
     : "";
 
   const projectsHtml = data.projects
@@ -711,10 +789,10 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   }
 
   /* ── Sections ───────────────────── */
-  .section { margin-bottom: ${sectionGap}; }
+  .section { margin-bottom: ${sectionGapEff}; }
   .section:last-child { margin-bottom: 0; }
   .section-title {
-    font-size: ${sectionTitleFs};
+    font-size: ${sectionTitleFsEff};
     font-weight: 700;
     color: ${MODERNO_ACCENT};
     text-transform: uppercase;
@@ -724,7 +802,7 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   }
 
   .summary {
-    font-size: ${bodyFs};
+    font-size: ${bodyFsEff};
     color: #444;
     line-height: ${summaryLh};
   }
@@ -745,7 +823,7 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   .entry-role {
     font-weight: 700;
     color: ${MODERNO_ACCENT};
-    font-size: ${bodyFs};
+    font-size: ${entryRoleFsEff};
   }
   .entry-sep {
     font-weight: 400;
@@ -756,24 +834,24 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
     color: #333;
   }
   .entry-date {
-    font-size: ${entryDateFs};
+    font-size: ${entryDateFsEff};
     color: #888;
     white-space: nowrap;
     flex-shrink: 0;
   }
   .entry-desc {
-    font-size: ${hlFs};
+    font-size: ${hlFsEff};
     color: #555;
     margin-top: 2pt;
     line-height: ${bulletLh};
   }
   .entry-tech {
-    font-size: 8.5pt;
+    font-size: ${metaFsEff};
     color: #777;
     margin-top: 2pt;
   }
   .entry-links {
-    font-size: 8.5pt;
+    font-size: ${metaFsEff};
     margin-top: 2pt;
   }
 
@@ -786,7 +864,7 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   .bullets li {
     position: relative;
     margin-bottom: ${bulletGap};
-    font-size: ${hlFs};
+    font-size: ${hlFsEff};
     color: #444;
     line-height: ${bulletLh};
   }
@@ -800,7 +878,7 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
 
   /* ── Inline lists ───────────────── */
   .inline-list {
-    font-size: ${bodyFs};
+    font-size: ${bodyFsEff};
     color: #444;
     line-height: 1.7;
   }

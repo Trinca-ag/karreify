@@ -227,6 +227,11 @@ export interface SavedResumeItem extends SavedItemBase {
     fontSizeOffset?: number;
     spacingOffset?: number;
     hiddenSections?: string[];
+    sectionTitleFontPx?: number;
+    entryTitleFontPx?: number;
+    bodyFontPx?: number;
+    metaFontPx?: number;
+    sectionSpacingPx?: number;
   };
 }
 

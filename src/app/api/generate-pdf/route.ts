@@ -322,6 +322,12 @@ export async function POST(request: NextRequest) {
     const fontSizeOffset: number | undefined = body.fontSizeOffset;
     const spacingOffset: number | undefined = body.spacingOffset;
     const hiddenSections: string[] | undefined = body.hiddenSections;
+    // Granular px overrides (preferred — undefined leaves the legacy default in place).
+    const sectionTitleFontPx: number | undefined = body.sectionTitleFontPx;
+    const entryTitleFontPx: number | undefined = body.entryTitleFontPx;
+    const bodyFontPx: number | undefined = body.bodyFontPx;
+    const metaFontPx: number | undefined = body.metaFontPx;
+    const sectionSpacingPx: number | undefined = body.sectionSpacingPx;
 
     if (!resumeData || !resumeData.basics?.name) {
       return NextResponse.json({ error: "Dados do currículo inválidos" }, { status: 400 });
@@ -332,16 +338,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Template não encontrado" }, { status: 400 });
     }
 
-    // 1. JSON → HTML
-    const html = templateFn.render(resumeData, {
+    const templateOptions = {
       candidateLevel,
       fontSizeOffset,
       spacingOffset,
       hiddenSections: hiddenSections as import("@/lib/resume-templates").SectionName[] | undefined,
-    });
+      sectionTitleFontPx,
+      entryTitleFontPx,
+      bodyFontPx,
+      metaFontPx,
+      sectionSpacingPx,
+    };
+
+    // 1. JSON → HTML
+    const html = templateFn.render(resumeData, templateOptions);
 
     // 2. HTML → PDF (Puppeteer)
-    const hasManualAdjustments = !!(fontSizeOffset || spacingOffset || (hiddenSections && hiddenSections.length > 0));
+    const hasPxOverrides =
+      sectionTitleFontPx != null ||
+      entryTitleFontPx != null ||
+      bodyFontPx != null ||
+      metaFontPx != null ||
+      sectionSpacingPx != null;
+    const hasManualAdjustments = !!(
+      fontSizeOffset ||
+      spacingOffset ||
+      (hiddenSections && hiddenSections.length > 0) ||
+      hasPxOverrides
+    );
 
     // Moderno with manual adjustments may overflow to multiple pages. Use puppeteer's
     // headerTemplate to draw the navy accent bar at the top of every page (CSS
@@ -349,12 +373,7 @@ export async function POST(request: NextRequest) {
     // override page margins so every page has consistent top/bottom spacing.
     let extraPdfOptions: Record<string, unknown> = {};
     if (template === "moderno" && hasManualAdjustments) {
-      const m = getModernoPdfMargins(resumeData, {
-        candidateLevel,
-        fontSizeOffset,
-        spacingOffset,
-        hiddenSections: hiddenSections as import("@/lib/resume-templates").SectionName[] | undefined,
-      });
+      const m = getModernoPdfMargins(resumeData, templateOptions);
       // Chromium wraps the headerTemplate in a `<div id="header">` that has default
       // padding (~5px), which creates a visible gap between the bar and the paper edge.
       // The `<style>` block below resets all of Chromium's defaults so the bar sticks
