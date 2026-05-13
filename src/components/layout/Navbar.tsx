@@ -27,10 +27,10 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`sticky top-0 z-40 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isLanding
-          ? "bg-dark-900/60 backdrop-blur-xl border-b border-white/5"
-          : "bg-dark-800/80 backdrop-blur-xl border-b border-white/[0.06]"
+          ? "bg-dark-900/75 backdrop-blur-xl border-b border-white/5"
+          : "bg-dark-800/85 backdrop-blur-xl border-b border-white/[0.06]"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -51,11 +51,12 @@ export default function Navbar() {
 
           {/* Desktop navigation */}
           {isLanding && !isAuthenticated && (
-            <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-7 lg:gap-8">
               {[
                 { href: "#features", label: "Funcionalidades" },
                 { href: "#how-it-works", label: "Como funciona" },
-                { href: "#pricing", label: "Pacotes" },
+                { href: "#diferenciais", label: "Diferenciais" },
+                { href: "#tecnologia", label: "Tecnologia" },
               ].map((link) => (
                 <a
                   key={link.href}
@@ -173,7 +174,8 @@ export default function Navbar() {
                 {[
                   { href: "#features", label: "Funcionalidades" },
                   { href: "#how-it-works", label: "Como funciona" },
-                  { href: "#pricing", label: "Pacotes" },
+                  { href: "#diferenciais", label: "Diferenciais" },
+                  { href: "#tecnologia", label: "Tecnologia" },
                 ].map((link) => (
                   <a
                     key={link.href}

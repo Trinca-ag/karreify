@@ -34,7 +34,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-dark-900 text-white">
       <Navbar />
-      <div className="flex">
+      <div className="flex pt-16">
         <Sidebar />
         <main className="flex-1 p-6 lg:p-8 overflow-auto">
           <div className="max-w-6xl mx-auto">{children}</div>

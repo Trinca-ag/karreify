@@ -1,148 +1,317 @@
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Link from "next/link";
+import ScrollReveal from "@/components/ui/ScrollReveal";
+import TiltCard from "@/components/ui/TiltCard";
 import {
   FileSearch,
-  Linkedin,
   FilePlus,
   Target,
-  Map,
+  ScrollText,
+  Briefcase,
+  Building2,
+  BarChart2,
   Sparkles,
   Upload,
   ArrowRight,
   Check,
   Zap,
   Shield,
-  Globe,
+  Smartphone,
+  Cpu,
   Brain,
   TrendingUp,
   Star,
+  MapPin,
+  Coins,
+  Clock,
+  Award,
+  Lightbulb,
+  Lock,
+  Globe,
+  Gauge,
+  Wifi,
+  Languages,
+  type LucideIcon,
 } from "lucide-react";
 
-const features = [
+/* =========================================================================
+   FEATURE SPOTLIGHTS — dados de cada seção
+   ========================================================================= */
+
+type Spotlight = {
+  id: string;
+  badge: string;
+  badgeColor: string;
+  icon: LucideIcon;
+  title: string;
+  highlight: string;
+  description: string;
+  bullets: { icon: LucideIcon; text: string }[];
+  ctaHref: string;
+  ctaLabel: string;
+  gradient: string;
+  glowColor: string;
+  mockup: "analysis" | "create" | "adapt" | "letter" | "jobs" | "company" | "market";
+};
+
+const spotlights: Spotlight[] = [
   {
+    id: "analise-curriculo",
+    badge: "Análise de Currículo",
+    badgeColor: "bg-primary-500/10 border-primary-500/20 text-primary-300",
     icon: FileSearch,
-    title: "Análise de Currículo com IA",
+    title: "Descubra o que está",
+    highlight: "freando suas entrevistas",
     description:
-      "Envie seu currículo e receba uma análise completa com pontuação, pontos fortes, fracos e sugestões de melhoria.",
+      "Envie seu currículo em PDF, DOC ou DOCX e receba uma análise profunda gerada por IA com pontuação, pontos fortes, fracos e sugestões acionáveis em segundos.",
+    bullets: [
+      { icon: Check, text: "Score detalhado de estrutura, conteúdo e linguagem" },
+      { icon: Check, text: "Compatibilidade com sistemas ATS de recrutamento" },
+      { icon: Check, text: "Sugestões específicas por seção, prontas para aplicar" },
+    ],
+    ctaHref: "/auth/register",
+    ctaLabel: "Analisar agora",
     gradient: "from-primary-500 to-accent-cyan",
+    glowColor: "rgba(59, 130, 246, 0.4)",
+    mockup: "analysis",
   },
   {
-    icon: Linkedin,
-    title: "Análise de Perfil LinkedIn",
-    description:
-      "Otimize seu perfil do LinkedIn com análise de SEO, sugestões de headline e seção sobre.",
-    gradient: "from-accent-violet to-accent-pink",
-  },
-  {
+    id: "criacao-curriculo",
+    badge: "Criação de Currículo",
+    badgeColor: "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
     icon: FilePlus,
-    title: "Criação de Currículo",
+    title: "Crie um currículo profissional",
+    highlight: "do zero ou a partir de um modelo",
     description:
-      "Crie um currículo profissional do zero ou a partir de um existente, otimizado para ATS.",
-    gradient: "from-accent-cyan to-primary-500",
+      "Templates modernos otimizados para ATS, geração automática de bullets pela IA e exportação em PDF pronta para enviar — sem precisar abrir o Word.",
+    bullets: [
+      { icon: Check, text: "Templates moderno, clássico e minimalista" },
+      { icon: Check, text: "IA escreve descrições de cargos por você" },
+      { icon: Check, text: "Edição visual com preview em tempo real" },
+    ],
+    ctaHref: "/auth/register",
+    ctaLabel: "Criar meu currículo",
+    gradient: "from-emerald-500 to-teal-500",
+    glowColor: "rgba(16, 185, 129, 0.4)",
+    mockup: "create",
   },
   {
+    id: "adaptacao-vagas",
+    badge: "Adaptação para Vagas",
+    badgeColor: "bg-orange-500/10 border-orange-500/20 text-orange-300",
     icon: Target,
-    title: "Adaptação para Vagas",
+    title: "Customize seu currículo para",
+    highlight: "cada vaga específica",
     description:
-      "Adapte seu currículo para vagas específicas com análise de compatibilidade e palavras-chave.",
-    gradient: "from-primary-500 to-accent-violet",
+      "Cole o anúncio da vaga e veja sua compatibilidade em tempo real. A IA destaca palavras-chave faltantes e adapta seu currículo para maximizar suas chances.",
+    bullets: [
+      { icon: Check, text: "Score de match instantâneo com a vaga" },
+      { icon: Check, text: "Palavras-chave do anúncio detectadas e injetadas" },
+      { icon: Check, text: "Versão adaptada salva no seu histórico" },
+    ],
+    ctaHref: "/auth/register",
+    ctaLabel: "Adaptar para vaga",
+    gradient: "from-orange-500 to-amber-500",
+    glowColor: "rgba(249, 115, 22, 0.4)",
+    mockup: "adapt",
   },
   {
-    icon: Map,
-    title: "Roadmap de Carreira",
+    id: "carta-apresentacao",
+    badge: "Carta de Apresentação",
+    badgeColor: "bg-teal-500/10 border-teal-500/20 text-teal-300",
+    icon: ScrollText,
+    title: "Cartas persuasivas geradas",
+    highlight: "em segundos, não em horas",
     description:
-      "Receba um plano personalizado com cursos, certificações e metas para alcançar seu objetivo profissional.",
-    gradient: "from-accent-pink to-primary-500",
+      "A IA combina seu perfil com a vaga e gera uma carta personalizada, com tom adequado e exemplos que demonstram fit cultural — pronta para enviar.",
+    bullets: [
+      { icon: Check, text: "Personalização por empresa e cargo" },
+      { icon: Check, text: "Tom ajustável: formal, casual ou criativo" },
+      { icon: Check, text: "Múltiplas versões para você escolher" },
+    ],
+    ctaHref: "/auth/register",
+    ctaLabel: "Gerar minha carta",
+    gradient: "from-teal-500 to-cyan-500",
+    glowColor: "rgba(20, 184, 166, 0.4)",
+    mockup: "letter",
+  },
+  {
+    id: "busca-vagas",
+    badge: "Busca de Vagas",
+    badgeColor: "bg-amber-500/10 border-amber-500/20 text-amber-300",
+    icon: Briefcase,
+    title: "Encontre vagas reais",
+    highlight: "publicadas nos últimos 30 dias",
+    description:
+      "Conectamos você a oportunidades reais da web, com filtros inteligentes por área, senioridade, localização e modalidade — sem perder tempo em portais lentos.",
+    bullets: [
+      { icon: Check, text: "Vagas atualizadas diariamente de múltiplas fontes" },
+      { icon: Check, text: "Filtros por remoto, híbrido e presencial" },
+      { icon: Check, text: "Adapte seu currículo direto na vaga encontrada" },
+    ],
+    ctaHref: "/auth/register",
+    ctaLabel: "Buscar vagas",
+    gradient: "from-amber-500 to-yellow-500",
+    glowColor: "rgba(245, 158, 11, 0.4)",
+    mockup: "jobs",
+  },
+  {
+    id: "analise-empresa",
+    badge: "Análise de Empresa",
+    badgeColor: "bg-sky-500/10 border-sky-500/20 text-sky-300",
+    icon: Building2,
+    title: "Chegue na entrevista",
+    highlight: "sabendo tudo sobre a empresa",
+    description:
+      "Pesquise cultura, valores, faixa salarial, modelo de trabalho e perguntas frequentes de processo seletivo — tudo consolidado em um relatório de IA.",
+    bullets: [
+      { icon: Check, text: "Cultura, valores e modelo de trabalho" },
+      { icon: Check, text: "Faixa salarial e benefícios reportados" },
+      { icon: Check, text: "Perguntas comuns no processo seletivo" },
+    ],
+    ctaHref: "/auth/register",
+    ctaLabel: "Analisar empresa",
+    gradient: "from-sky-500 to-blue-500",
+    glowColor: "rgba(14, 165, 233, 0.4)",
+    mockup: "company",
+  },
+  {
+    id: "mercado-tendencias",
+    badge: "Mercado e Tendências",
+    badgeColor: "bg-accent-violet/10 border-accent-violet/20 text-accent-violet",
+    icon: BarChart2,
+    title: "Visualize as carreiras",
+    highlight: "e habilidades em alta",
+    description:
+      "Dados de mercado, faixas salariais e habilidades mais valorizadas. Saiba onde investir seu tempo de aprendizado e qual carreira tem maior crescimento.",
+    bullets: [
+      { icon: Check, text: "Salários médios por cargo e senioridade" },
+      { icon: Check, text: "Skills mais demandadas no momento" },
+      { icon: Check, text: "Comparativo entre áreas e localidades" },
+    ],
+    ctaHref: "/auth/register",
+    ctaLabel: "Explorar mercado",
+    gradient: "from-accent-violet to-accent-pink",
+    glowColor: "rgba(139, 92, 246, 0.4)",
+    mockup: "market",
   },
 ];
+
+/* =========================================================================
+   OUTROS DADOS
+   ========================================================================= */
 
 const steps = [
   {
     icon: Upload,
     step: "01",
-    title: "Envie seu currículo",
+    title: "Envie ou comece do zero",
     description:
-      "Faça upload do seu currículo em PDF, DOC ou DOCX. Simples e rápido.",
+      "Faça upload do seu currículo em PDF, DOC, DOCX ou comece um novo direto na plataforma.",
   },
   {
     icon: Brain,
     step: "02",
-    title: "IA analisa tudo",
+    title: "A IA analisa tudo",
     description:
-      "Nossa IA processa e analisa cada detalhe do seu documento com precisão.",
+      "Modelos de última geração processam cada detalhe e geram recomendações em segundos.",
   },
   {
     icon: TrendingUp,
     step: "03",
-    title: "Receba resultados",
+    title: "Receba seus resultados",
     description:
-      "Veja pontuação, sugestões detalhadas e melhorias personalizadas.",
+      "Score detalhado, sugestões personalizadas e materiais prontos para enviar.",
   },
 ];
 
-const benefits = [
+type WhyChooseItem = {
+  id: string;
+  illustration: "speed" | "security" | "accessibility" | "ai";
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  stat: string;
+  statLabel: string;
+  bullets: { icon: LucideIcon; text: string }[];
+  gradient: string;
+  glowColor: string;
+  iconBg: string;
+};
+
+const whyChooseUs: WhyChooseItem[] = [
   {
+    id: "speed",
+    illustration: "speed",
     icon: Zap,
-    title: "Ultra rápido",
-    description: "Resultados em segundos, não em horas.",
-    gradient: "from-yellow-400 to-orange-500",
+    title: "Resultados em segundos",
+    description:
+      "Análise completa do seu currículo em menos de 10 segundos. Sem fila, sem espera — IA otimizada para máxima performance, mesmo em horários de pico.",
+    stat: "<10s",
+    statLabel: "tempo médio de análise",
+    bullets: [
+      { icon: Gauge, text: "Processamento paralelo distribuído" },
+      { icon: Sparkles, text: "Cache inteligente entre sessões" },
+      { icon: ArrowRight, text: "Sem limite de tentativas" },
+    ],
+    gradient: "from-amber-400 to-orange-500",
+    glowColor: "rgba(249, 115, 22, 0.4)",
+    iconBg: "bg-amber-500/10 text-amber-400",
   },
   {
+    id: "security",
+    illustration: "security",
     icon: Shield,
-    title: "100% Seguro",
-    description: "Seus dados protegidos com criptografia.",
-    gradient: "from-green-400 to-emerald-500",
+    title: "Seus dados, blindados",
+    description:
+      "Criptografia AES-256 end-to-end e conformidade total com LGPD. Seu currículo é armazenado em servidores seguros e nunca compartilhado com terceiros.",
+    stat: "AES-256",
+    statLabel: "criptografia ponta-a-ponta",
+    bullets: [
+      { icon: Lock, text: "Conformidade total com a LGPD" },
+      { icon: Shield, text: "Servidores hospedados no Brasil" },
+      { icon: Check, text: "Você deleta seus dados quando quiser" },
+    ],
+    gradient: "from-emerald-400 to-green-500",
+    glowColor: "rgba(16, 185, 129, 0.4)",
+    iconBg: "bg-emerald-500/10 text-emerald-400",
   },
   {
-    icon: Globe,
-    title: "Acessível",
-    description: "Use de qualquer lugar, qualquer dispositivo.",
+    id: "accessibility",
+    illustration: "accessibility",
+    icon: Smartphone,
+    title: "De qualquer dispositivo",
+    description:
+      "Web responsivo otimizado para celular, tablet e desktop. Comece a editar no ônibus, finalize no notebook em casa — tudo sincronizado em tempo real.",
+    stat: "100%",
+    statLabel: "responsivo em qualquer tela",
+    bullets: [
+      { icon: Smartphone, text: "Mobile-first para edição em movimento" },
+      { icon: Wifi, text: "Sincronização automática entre dispositivos" },
+      { icon: Globe, text: "Funciona em qualquer navegador moderno" },
+    ],
     gradient: "from-primary-400 to-accent-cyan",
+    glowColor: "rgba(59, 130, 246, 0.4)",
+    iconBg: "bg-primary-500/10 text-primary-400",
   },
   {
-    icon: Sparkles,
-    title: "IA Avançada",
-    description: "Powered by DeepSeek para melhores resultados.",
+    id: "ai",
+    illustration: "ai",
+    icon: Cpu,
+    title: "IA treinada para o Brasil",
+    description:
+      "Modelos de última geração treinados com vagas e currículos brasileiros. A IA entende o seu mercado, sua cultura corporativa e o seu idioma.",
+    stat: "+50",
+    statLabel: "critérios analisados por IA",
+    bullets: [
+      { icon: Languages, text: "Português nativo, sem traduções estranhas" },
+      { icon: TrendingUp, text: "Atualizações constantes baseadas no mercado" },
+      { icon: Brain, text: "Aprende com cada análise para evoluir" },
+    ],
     gradient: "from-accent-violet to-accent-pink",
-  },
-];
-
-const packs = [
-  {
-    name: "Pacote Inicial",
-    price: "R$ 10",
-    totalCredits: 5,
-    bonusCredits: 0,
-    features: [
-      "5 moedas",
-      "Acesso a todas as funcionalidades",
-    ],
-    popular: false,
-  },
-  {
-    name: "Pacote Plus",
-    price: "R$ 30",
-    totalCredits: 20,
-    bonusCredits: 5,
-    features: [
-      "15 moedas + 5 bônus",
-      "Total de 20 moedas",
-      "Acesso a todas as funcionalidades",
-    ],
-    popular: true,
-  },
-  {
-    name: "Pacote Pro",
-    price: "R$ 50",
-    totalCredits: 40,
-    bonusCredits: 15,
-    features: [
-      "25 moedas + 15 bônus",
-      "Total de 40 moedas",
-      "Acesso a todas as funcionalidades",
-    ],
-    popular: false,
+    glowColor: "rgba(139, 92, 246, 0.4)",
+    iconBg: "bg-accent-violet/10 text-accent-violet",
   },
 ];
 
@@ -153,26 +322,749 @@ const stats = [
   { value: "50+", label: "Empresas parceiras" },
 ];
 
+const marqueeTags = [
+  "ATS otimizado",
+  "Análise por IA",
+  "Score em tempo real",
+  "Templates modernos",
+  "Cartas personalizadas",
+  "Vagas reais",
+  "Insights de mercado",
+  "Compatibilidade de vaga",
+];
+
+/* =========================================================================
+   PARTICLES — fundo decorativo
+   ========================================================================= */
+
+function Particles({ count = 6, className = "" }: { count?: number; className?: string }) {
+  const particles = Array.from({ length: count }, (_, i) => {
+    const size = 4 + (i % 3) * 3;
+    const left = (i * 17) % 100;
+    const top = (i * 23) % 100;
+    const delay = (i % 6) * 2;
+    return { size, left, top, delay, key: i };
+  });
+  return (
+    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`} aria-hidden>
+      {particles.map((p) => (
+        <span
+          key={p.key}
+          className="particle"
+          style={{
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            left: `${p.left}%`,
+            top: `${p.top}%`,
+            animationDelay: `${p.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* =========================================================================
+   MOCKUPS — um para cada spotlight
+   ========================================================================= */
+
+function MockupShell({
+  children,
+  url,
+  className = "",
+}: {
+  children: React.ReactNode;
+  url: string;
+  className?: string;
+}) {
+  return (
+    <div className={`glass-card mockup-shadow overflow-hidden ${className}`}>
+      <div className="flex items-center gap-2 px-5 py-3 border-b border-white/5">
+        <div className="flex gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-red-500/70" />
+          <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
+          <div className="w-3 h-3 rounded-full bg-green-500/70" />
+        </div>
+        <div className="flex-1 flex justify-center">
+          <div className="px-4 py-1 rounded-lg bg-white/5 text-[11px] text-gray-500 font-mono">
+            {url}
+          </div>
+        </div>
+      </div>
+      <div className="p-6">{children}</div>
+    </div>
+  );
+}
+
+function AnalysisMockup() {
+  return (
+    <MockupShell url="nextcv.app/resume-analysis">
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-xs text-gray-500">Resultado da análise</div>
+            <div className="text-lg font-heading font-semibold text-white mt-0.5">
+              Currículo · Tech
+            </div>
+          </div>
+          <div className="relative w-20 h-20">
+            <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
+              <circle
+                cx="40"
+                cy="40"
+                r="34"
+                fill="none"
+                stroke="url(#scoreGradAnalysis)"
+                strokeWidth="6"
+                strokeLinecap="round"
+                strokeDasharray={`${(92 / 100) * 213.6} 213.6`}
+              />
+              <defs>
+                <linearGradient id="scoreGradAnalysis" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#06b6d4" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xl font-heading font-bold text-white">92</span>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {[
+            { label: "Estrutura", value: 95, color: "from-primary-500 to-accent-cyan" },
+            { label: "Conteúdo", value: 88, color: "from-accent-violet to-accent-pink" },
+            { label: "Linguagem", value: 90, color: "from-accent-cyan to-primary-500" },
+          ].map((b) => (
+            <div key={b.label}>
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="text-gray-400">{b.label}</span>
+                <span className="text-gray-300 font-medium">{b.value}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${b.color}`}
+                  style={{ width: `${b.value}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {["ATS Otimizado", "5 melhorias", "Score A+"].map((t) => (
+            <span
+              key={t}
+              className="px-3 py-1 rounded-lg bg-primary-500/10 border border-primary-500/20 text-xs text-primary-300 font-medium"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+    </MockupShell>
+  );
+}
+
+function CreateMockup() {
+  return (
+    <MockupShell url="nextcv.app/create-resume">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 pb-3 border-b border-white/5">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold">
+            JS
+          </div>
+          <div className="flex-1">
+            <div className="h-3 w-32 rounded bg-white/15" />
+            <div className="h-2 w-24 rounded bg-white/10 mt-2" />
+          </div>
+          <Sparkles className="w-5 h-5 text-emerald-400" />
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-2">
+            Experiência
+          </div>
+          <div className="space-y-2">
+            <div className="h-2 rounded bg-white/15 w-full" />
+            <div className="h-2 rounded bg-white/10 w-5/6" />
+            <div className="h-2 rounded bg-white/10 w-4/6" />
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-2">
+            Habilidades
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {["React", "Node.js", "TypeScript", "AWS", "SQL"].map((s) => (
+              <span
+                key={s}
+                className="px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-300 font-medium"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 pt-3 border-t border-white/5">
+          <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-full w-4/5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" />
+          </div>
+          <span className="text-xs text-emerald-300 font-semibold">80%</span>
+        </div>
+      </div>
+    </MockupShell>
+  );
+}
+
+function AdaptMockup() {
+  return (
+    <MockupShell url="nextcv.app/adapt-resume">
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
+              Seu currículo
+            </div>
+            <div className="glass p-3 rounded-lg space-y-1.5">
+              <div className="h-1.5 rounded bg-white/15 w-full" />
+              <div className="h-1.5 rounded bg-white/10 w-4/5" />
+              <div className="h-1.5 rounded bg-white/10 w-3/5" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold">
+              Vaga alvo
+            </div>
+            <div className="glass p-3 rounded-lg space-y-1.5 border border-orange-500/20">
+              <div className="h-1.5 rounded bg-orange-400/30 w-full" />
+              <div className="h-1.5 rounded bg-white/10 w-3/4" />
+              <div className="h-1.5 rounded bg-orange-400/30 w-2/3" />
+            </div>
+          </div>
+        </div>
+        <div className="text-center">
+          <div className="text-[10px] uppercase tracking-wider text-gray-500">
+            Compatibilidade
+          </div>
+          <div className="text-3xl font-heading font-bold gradient-text mt-1">87%</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
+            Palavras-chave detectadas
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {["TypeScript", "Liderança", "Scrum", "+API REST"].map((kw) => (
+              <span
+                key={kw}
+                className="px-2 py-0.5 rounded bg-orange-500/10 border border-orange-500/20 text-[11px] text-orange-300 font-medium"
+              >
+                {kw}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </MockupShell>
+  );
+}
+
+function LetterMockup() {
+  return (
+    <MockupShell url="nextcv.app/cover-letter">
+      <div className="space-y-3">
+        <div className="text-right">
+          <div className="text-[10px] text-gray-500">São Paulo, 13 de Maio</div>
+        </div>
+        <div>
+          <div className="text-sm font-heading font-semibold text-white">
+            Prezado(a) recrutador(a),
+          </div>
+        </div>
+        <div className="space-y-1.5 pt-2">
+          <div className="h-1.5 rounded bg-white/15 w-full" />
+          <div className="h-1.5 rounded bg-white/15 w-11/12" />
+          <div className="h-1.5 rounded bg-teal-400/30 w-9/12" />
+          <div className="h-1.5 rounded bg-white/15 w-full" />
+          <div className="h-1.5 rounded bg-white/15 w-10/12" />
+        </div>
+        <div className="space-y-1.5 pt-2">
+          <div className="h-1.5 rounded bg-white/15 w-full" />
+          <div className="h-1.5 rounded bg-white/15 w-8/12" />
+        </div>
+        <div className="flex items-center justify-between pt-3 border-t border-white/5">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="text-[11px] text-teal-300 font-medium">Gerado por IA</span>
+          </div>
+          <span className="px-2 py-0.5 rounded bg-teal-500/10 border border-teal-500/20 text-[11px] text-teal-300">
+            Formal
+          </span>
+        </div>
+      </div>
+    </MockupShell>
+  );
+}
+
+function JobsMockup() {
+  const jobs = [
+    { title: "Senior Frontend Engineer", company: "TechCorp", location: "Remoto", salary: "R$ 15k-20k", isNew: true },
+    { title: "Product Designer", company: "StartupX", location: "São Paulo · Híbrido", salary: "R$ 10k-14k", isNew: false },
+    { title: "DevOps Engineer", company: "Cloud Inc", location: "Remoto", salary: "R$ 12k-18k", isNew: true },
+  ];
+  return (
+    <MockupShell url="nextcv.app/jobs">
+      <div className="space-y-2.5">
+        {jobs.map((j, i) => (
+          <div
+            key={j.title}
+            className={`p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] ${
+              i === 0 ? "ring-1 ring-amber-500/30" : ""
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-sm font-semibold text-white truncate">{j.title}</span>
+                  {j.isNew && (
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-[9px] text-amber-300 font-bold">
+                      NOVA
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] text-gray-400">{j.company}</div>
+                <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-500">
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> {j.location}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Coins className="w-3 h-3" /> {j.salary}
+                  </span>
+                </div>
+              </div>
+              <Briefcase className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </MockupShell>
+  );
+}
+
+function CompanyMockup() {
+  return (
+    <MockupShell url="nextcv.app/company-analysis">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center">
+            <Building2 className="w-6 h-6 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-heading font-semibold text-white">TechCorp Brasil</div>
+            <div className="flex items-center gap-1 mt-0.5">
+              {[1, 2, 3, 4].map((s) => (
+                <Star key={s} className="w-3 h-3 text-amber-400 fill-amber-400" />
+              ))}
+              <Star className="w-3 h-3 text-gray-600" />
+              <span className="text-[11px] text-gray-400 ml-1">4.2</span>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+            <div className="text-[10px] uppercase text-gray-500 mb-0.5">Modalidade</div>
+            <div className="text-xs text-white font-medium">Remoto</div>
+          </div>
+          <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+            <div className="text-[10px] uppercase text-gray-500 mb-0.5">Salário</div>
+            <div className="text-xs text-white font-medium">R$ 12-25k</div>
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-sky-400 font-semibold mb-2">
+            Valores da cultura
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {["Inovação", "Diversidade", "Autonomia", "Crescimento"].map((v) => (
+              <span
+                key={v}
+                className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[11px] text-sky-300"
+              >
+                {v}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </MockupShell>
+  );
+}
+
+function MarketMockup() {
+  const bars = [60, 78, 95, 70, 88, 55, 82];
+  return (
+    <MockupShell url="nextcv.app/market">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-xs text-gray-500">Tendência salarial</div>
+            <div className="text-lg font-heading font-semibold text-white mt-0.5">
+              Engenharia · Sr
+            </div>
+          </div>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-violet/10 border border-accent-violet/20">
+            <TrendingUp className="w-3 h-3 text-accent-violet" />
+            <span className="text-[11px] text-accent-violet font-semibold">+18%</span>
+          </div>
+        </div>
+        <div className="h-28 flex items-end justify-between gap-1.5 px-1">
+          {bars.map((h, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-t-md bg-gradient-to-t from-accent-violet/40 to-accent-pink/80 transition-all"
+              style={{ height: `${h}%` }}
+            />
+          ))}
+        </div>
+        <div className="flex justify-between text-[9px] text-gray-500 px-1">
+          {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul"].map((m) => (
+            <span key={m}>{m}</span>
+          ))}
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-accent-violet font-semibold mb-2">
+            Skills em alta
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {["IA Generativa", "Cloud", "TypeScript", "Kubernetes"].map((s) => (
+              <span
+                key={s}
+                className="px-2 py-0.5 rounded bg-accent-violet/10 border border-accent-violet/20 text-[11px] text-accent-violet"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </MockupShell>
+  );
+}
+
+function renderMockup(kind: Spotlight["mockup"]) {
+  switch (kind) {
+    case "analysis":
+      return <AnalysisMockup />;
+    case "create":
+      return <CreateMockup />;
+    case "adapt":
+      return <AdaptMockup />;
+    case "letter":
+      return <LetterMockup />;
+    case "jobs":
+      return <JobsMockup />;
+    case "company":
+      return <CompanyMockup />;
+    case "market":
+      return <MarketMockup />;
+  }
+}
+
+/* =========================================================================
+   BENEFIT ILLUSTRATIONS — SVG customizados animados via SMIL
+   ========================================================================= */
+
+function SpeedIllustration() {
+  return (
+    <svg viewBox="0 0 140 140" className="w-full h-36" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="speedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fbbf24" />
+          <stop offset="100%" stopColor="#f97316" />
+        </linearGradient>
+        <radialGradient id="speedGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="70" cy="70" r="55" fill="url(#speedGlow)" />
+      <circle cx="70" cy="70" r="42" stroke="url(#speedGrad)" strokeWidth="1.5" fill="none" opacity="0.3" />
+      <circle cx="70" cy="70" r="48" stroke="url(#speedGrad)" strokeWidth="2" fill="none" opacity="0.6" strokeDasharray="120 200">
+        <animate attributeName="stroke-dashoffset" from="0" to="-320" dur="3s" repeatCount="indefinite" />
+      </circle>
+      {Array.from({ length: 12 }).map((_, i) => {
+        const angle = (i * 30 * Math.PI) / 180;
+        const x1 = 70 + Math.cos(angle) * 38;
+        const y1 = 70 + Math.sin(angle) * 38;
+        const x2 = 70 + Math.cos(angle) * 42;
+        const y2 = 70 + Math.sin(angle) * 42;
+        return (
+          <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(251, 191, 36, 0.5)" strokeWidth={i % 3 === 0 ? 2 : 1} strokeLinecap="round" />
+        );
+      })}
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="2.5s" repeatCount="indefinite" />
+        <line x1="70" y1="70" x2="70" y2="35" stroke="url(#speedGrad)" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="70" cy="35" r="3" fill="#fbbf24" />
+      </g>
+      <circle cx="70" cy="70" r="5" fill="url(#speedGrad)" />
+      <circle cx="70" cy="70" r="2" fill="#fff" />
+      <path
+        d="M105 35 L92 55 L98 55 L88 75 L108 50 L100 50 Z"
+        fill="url(#speedGrad)"
+        opacity="0.9"
+      >
+        <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite" />
+      </path>
+    </svg>
+  );
+}
+
+function SecurityIllustration() {
+  return (
+    <svg viewBox="0 0 140 140" className="w-full h-36" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="secGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#34d399" />
+          <stop offset="100%" stopColor="#10b981" />
+        </linearGradient>
+        <radialGradient id="secGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="70" cy="70" r="55" fill="url(#secGlow)" />
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="20s" repeatCount="indefinite" />
+        <circle cx="70" cy="70" r="55" stroke="url(#secGrad)" strokeWidth="1.5" fill="none" strokeDasharray="3 5" opacity="0.5" />
+      </g>
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from="360 70 70" to="0 70 70" dur="15s" repeatCount="indefinite" />
+        <circle cx="70" cy="70" r="46" stroke="url(#secGrad)" strokeWidth="1" fill="none" strokeDasharray="2 4" opacity="0.35" />
+      </g>
+      <path
+        d="M70 28 L96 38 L96 68 Q96 92 70 108 Q44 92 44 68 L44 38 Z"
+        fill="url(#secGrad)"
+        opacity="0.92"
+      />
+      <path
+        d="M70 28 L96 38 L96 68 Q96 92 70 108 Q44 92 44 68 L44 38 Z"
+        stroke="rgba(255,255,255,0.4)"
+        strokeWidth="1"
+        fill="none"
+      />
+      <path
+        d="M58 68 L66 76 L82 60"
+        stroke="white"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      >
+        <animate attributeName="stroke-dasharray" from="0 30" to="30 0" dur="1.2s" begin="0.3s" fill="freeze" />
+      </path>
+      {[
+        { x: 30, y: 50, d: 0 },
+        { x: 110, y: 55, d: 0.5 },
+        { x: 28, y: 90, d: 1 },
+        { x: 112, y: 95, d: 1.5 },
+      ].map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="2" fill="#34d399">
+          <animate attributeName="opacity" values="0;1;0" dur="3s" begin={`${p.d}s`} repeatCount="indefinite" />
+          <animate attributeName="r" values="1;3;1" dur="3s" begin={`${p.d}s`} repeatCount="indefinite" />
+        </circle>
+      ))}
+    </svg>
+  );
+}
+
+function AccessibilityIllustration() {
+  return (
+    <svg viewBox="0 0 140 140" className="w-full h-36" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="accGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#60a5fa" />
+          <stop offset="100%" stopColor="#06b6d4" />
+        </linearGradient>
+        <radialGradient id="accGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="70" cy="70" r="55" fill="url(#accGlow)" />
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0 0; 0 -3; 0 0" dur="4s" repeatCount="indefinite" />
+        <rect x="20" y="55" width="60" height="40" rx="3" fill="url(#accGrad)" opacity="0.85" />
+        <rect x="22" y="57" width="56" height="32" rx="2" fill="#0a1628" />
+        <rect x="13" y="95" width="74" height="4" rx="2" fill="url(#accGrad)" opacity="0.6" />
+        <line x1="30" y1="65" x2="65" y2="65" stroke="rgba(96, 165, 250, 0.7)" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="30" y1="70" x2="55" y2="70" stroke="rgba(96, 165, 250, 0.5)" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="30" y1="75" x2="60" y2="75" stroke="rgba(96, 165, 250, 0.5)" strokeWidth="1.5" strokeLinecap="round" />
+        <rect x="30" y="82" width="20" height="3" rx="1.5" fill="rgba(96, 165, 250, 0.4)" />
+      </g>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0 0; 0 -4; 0 0" dur="4s" begin="0.8s" repeatCount="indefinite" />
+        <rect x="72" y="38" width="38" height="50" rx="4" fill="url(#accGrad)" opacity="0.95" />
+        <rect x="74" y="42" width="34" height="40" rx="1.5" fill="#0a1628" />
+        <circle cx="91" cy="85" r="1.5" fill="rgba(255,255,255,0.5)" />
+        <rect x="80" y="48" width="22" height="2" rx="1" fill="rgba(96, 165, 250, 0.7)" />
+        <rect x="80" y="53" width="16" height="2" rx="1" fill="rgba(96, 165, 250, 0.5)" />
+        <rect x="80" y="62" width="22" height="14" rx="1" fill="rgba(96, 165, 250, 0.15)" />
+      </g>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0 0; 0 -5; 0 0" dur="4s" begin="1.6s" repeatCount="indefinite" />
+        <rect x="98" y="60" width="22" height="38" rx="3" fill="url(#accGrad)" />
+        <rect x="100" y="63" width="18" height="30" rx="1.5" fill="#0a1628" />
+        <line x1="103" y1="68" x2="115" y2="68" stroke="rgba(96, 165, 250, 0.8)" strokeWidth="1" />
+        <line x1="103" y1="72" x2="112" y2="72" stroke="rgba(96, 165, 250, 0.6)" strokeWidth="1" />
+        <rect x="103" y="78" width="12" height="10" rx="1" fill="rgba(96, 165, 250, 0.2)" />
+        <circle cx="109" cy="95" r="1" fill="rgba(255,255,255,0.6)" />
+      </g>
+    </svg>
+  );
+}
+
+function AIIllustration() {
+  const nodes = [
+    { cx: 30, cy: 40, r: 4, delay: 0 },
+    { cx: 30, cy: 70, r: 5, delay: 0.3 },
+    { cx: 30, cy: 100, r: 4, delay: 0.6 },
+    { cx: 70, cy: 50, r: 6, delay: 0.9 },
+    { cx: 70, cy: 90, r: 6, delay: 1.2 },
+    { cx: 110, cy: 70, r: 9, delay: 1.5, isOutput: true },
+  ];
+  const connections = [
+    [0, 3], [1, 3], [1, 4], [2, 4],
+    [3, 5], [4, 5],
+  ];
+  return (
+    <svg viewBox="0 0 140 140" className="w-full h-36" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="aiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#a78bfa" />
+          <stop offset="100%" stopColor="#ec4899" />
+        </linearGradient>
+        <radialGradient id="aiGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
+        </radialGradient>
+        <filter id="aiBlur">
+          <feGaussianBlur stdDeviation="1.5" />
+        </filter>
+      </defs>
+      <circle cx="70" cy="70" r="55" fill="url(#aiGlow)" />
+      {connections.map(([a, b], i) => {
+        const from = nodes[a];
+        const to = nodes[b];
+        return (
+          <line
+            key={i}
+            x1={from.cx}
+            y1={from.cy}
+            x2={to.cx}
+            y2={to.cy}
+            stroke="url(#aiGrad)"
+            strokeWidth="1"
+            opacity="0.35"
+          />
+        );
+      })}
+      {connections.map(([a, b], i) => {
+        const from = nodes[a];
+        const to = nodes[b];
+        return (
+          <line
+            key={`flow-${i}`}
+            x1={from.cx}
+            y1={from.cy}
+            x2={to.cx}
+            y2={to.cy}
+            stroke="url(#aiGrad)"
+            strokeWidth="1.5"
+            strokeDasharray="3 6"
+            opacity="0.8"
+          >
+            <animate
+              attributeName="stroke-dashoffset"
+              from="0"
+              to="-18"
+              dur={`${1.5 + i * 0.2}s`}
+              repeatCount="indefinite"
+            />
+          </line>
+        );
+      })}
+      {nodes.map((n, i) => (
+        <g key={i}>
+          {n.isOutput && (
+            <circle cx={n.cx} cy={n.cy} r={n.r + 6} fill="url(#aiGrad)" opacity="0.3" filter="url(#aiBlur)">
+              <animate attributeName="r" values={`${n.r + 4};${n.r + 10};${n.r + 4}`} dur="2s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.2;0.5;0.2" dur="2s" repeatCount="indefinite" />
+            </circle>
+          )}
+          <circle cx={n.cx} cy={n.cy} r={n.r} fill="url(#aiGrad)">
+            <animate
+              attributeName="r"
+              values={`${n.r};${n.r + 1.5};${n.r}`}
+              dur="2s"
+              begin={`${n.delay}s`}
+              repeatCount="indefinite"
+            />
+            <animate
+              attributeName="opacity"
+              values="0.7;1;0.7"
+              dur="2s"
+              begin={`${n.delay}s`}
+              repeatCount="indefinite"
+            />
+          </circle>
+        </g>
+      ))}
+      <text x="110" y="74" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" fontFamily="system-ui">
+        AI
+      </text>
+    </svg>
+  );
+}
+
+function renderIllustration(kind: WhyChooseItem["illustration"]) {
+  switch (kind) {
+    case "speed":
+      return <SpeedIllustration />;
+    case "security":
+      return <SecurityIllustration />;
+    case "accessibility":
+      return <AccessibilityIllustration />;
+    case "ai":
+      return <AIIllustration />;
+  }
+}
+
+/* =========================================================================
+   PÁGINA PRINCIPAL
+   ========================================================================= */
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-dark-900 text-white overflow-hidden">
       <Navbar />
 
-      {/* ========== HERO SECTION ========== */}
+      {/* ========== HERO ========== */}
       <section className="relative min-h-[90vh] flex items-center noise-overlay">
-        {/* Background effects */}
         <div className="absolute inset-0 bg-grid-pattern opacity-60" />
         <div className="orb w-[700px] h-[700px] bg-primary-600 -top-[200px] -left-[200px] animate-pulse-glow" />
         <div className="orb w-[500px] h-[500px] bg-accent-violet -bottom-[150px] -right-[150px] animate-pulse-glow animation-delay-500" />
         <div className="orb w-[300px] h-[300px] bg-accent-cyan top-[40%] left-[60%] animate-pulse-glow animation-delay-300" />
+        <Particles count={8} />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-32 w-full">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Left: Content */}
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-8 bg-white/5 border border-white/10 backdrop-blur-sm animate-fade-in-up">
                 <Sparkles className="w-4 h-4 text-primary-400" />
-                <span className="text-gray-300">Powered by DeepSeek AI</span>
+                <span className="text-gray-300">IA de última geração</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               </div>
 
@@ -182,8 +1074,8 @@ export default function Home() {
               </h1>
 
               <p className="mt-6 text-lg sm:text-xl text-gray-400 leading-relaxed max-w-xl animate-fade-in-up animation-delay-200">
-                Crie currículos profissionais, otimize seu LinkedIn e planeje sua
-                carreira com IA de última geração.
+                Crie currículos profissionais, encontre vagas, analise empresas
+                e planeje sua carreira com IA de última geração.
               </p>
 
               <div className="mt-10 flex flex-col sm:flex-row items-start gap-4 animate-fade-in-up animation-delay-300">
@@ -203,132 +1095,24 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right: Dashboard Preview Mockup */}
+            {/* Right: Hero mockup com tilt */}
             <div className="hidden lg:block animate-fade-in-up animation-delay-400">
-              <div className="dashboard-preview">
-                <div className="glass-card p-0 overflow-hidden">
-                  {/* Window chrome */}
-                  <div className="flex items-center gap-2 px-5 py-3.5 border-b border-white/5">
-                    <div className="flex gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-red-500/70" />
-                      <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
-                      <div className="w-3 h-3 rounded-full bg-green-500/70" />
-                    </div>
-                    <div className="flex-1 flex justify-center">
-                      <div className="px-4 py-1 rounded-lg bg-white/5 text-xs text-gray-500">
-                        nextcv.app/dashboard
-                      </div>
-                    </div>
+              <div className="relative animate-float-slow">
+                <TiltCard intensity={8}>
+                  <AnalysisMockup />
+                </TiltCard>
+                {/* Floating badges */}
+                <div className="absolute -top-4 -right-4 float-badge z-10">
+                  <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/30">
+                    Score A+
                   </div>
-
-                  {/* Fake dashboard content */}
-                  <div className="p-6 space-y-5">
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm text-gray-500">
-                          Análise de Currículo
-                        </div>
-                        <div className="text-lg font-heading font-semibold text-white mt-0.5">
-                          Resultado da análise
-                        </div>
-                      </div>
-                      {/* Score Circle */}
-                      <div className="relative w-20 h-20">
-                        <svg
-                          className="w-20 h-20 -rotate-90"
-                          viewBox="0 0 80 80"
-                        >
-                          <circle
-                            cx="40"
-                            cy="40"
-                            r="34"
-                            fill="none"
-                            stroke="rgba(255,255,255,0.06)"
-                            strokeWidth="6"
-                          />
-                          <circle
-                            cx="40"
-                            cy="40"
-                            r="34"
-                            fill="none"
-                            stroke="url(#scoreGradient)"
-                            strokeWidth="6"
-                            strokeLinecap="round"
-                            strokeDasharray={`${(92 / 100) * 213.6} 213.6`}
-                          />
-                          <defs>
-                            <linearGradient
-                              id="scoreGradient"
-                              x1="0%"
-                              y1="0%"
-                              x2="100%"
-                              y2="0%"
-                            >
-                              <stop offset="0%" stopColor="#3b82f6" />
-                              <stop offset="100%" stopColor="#8b5cf6" />
-                            </linearGradient>
-                          </defs>
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-xl font-heading font-bold text-white">
-                            92
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Analysis bars */}
-                    <div className="space-y-3">
-                      {[
-                        {
-                          label: "Estrutura",
-                          value: 95,
-                          color: "from-primary-500 to-accent-cyan",
-                        },
-                        {
-                          label: "Conteúdo",
-                          value: 88,
-                          color: "from-accent-violet to-accent-pink",
-                        },
-                        {
-                          label: "Linguagem",
-                          value: 90,
-                          color: "from-accent-cyan to-primary-500",
-                        },
-                      ].map((bar) => (
-                        <div key={bar.label}>
-                          <div className="flex justify-between text-xs mb-1.5">
-                            <span className="text-gray-400">{bar.label}</span>
-                            <span className="text-gray-300 font-medium">
-                              {bar.value}%
-                            </span>
-                          </div>
-                          <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full bg-gradient-to-r ${bar.color}`}
-                              style={{ width: `${bar.value}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        "ATS Otimizado",
-                        "5 melhorias",
-                        "Score A+",
-                      ].map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-3 py-1 rounded-lg bg-primary-500/10 border border-primary-500/20 text-xs text-primary-300 font-medium"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
+                </div>
+                <div
+                  className="absolute -bottom-4 -left-4 float-badge z-10"
+                  style={{ animationDelay: "2.5s" }}
+                >
+                  <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-primary-500 to-accent-violet text-white text-xs font-bold shadow-lg shadow-primary-500/30 inline-flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3" /> IA Analisou
                   </div>
                 </div>
               </div>
@@ -341,10 +1125,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/5">
               {stats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="py-5 px-4 text-center"
-                >
+                <div key={stat.label} className="py-5 px-4 text-center">
                   <div className="text-2xl font-heading font-bold text-white glow-text">
                     {stat.value}
                   </div>
@@ -356,55 +1137,162 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ========== FEATURES SECTION ========== */}
-      <section
-        id="features"
-        className="relative py-28 bg-dark-800 noise-overlay"
-      >
-        <div className="absolute inset-0 bg-radial-blue" />
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="inline-block px-4 py-1.5 rounded-full text-xs font-medium bg-primary-500/10 border border-primary-500/20 text-primary-400 mb-6">
-              Funcionalidades
-            </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold">
-              Tudo que você precisa para{" "}
-              <span className="gradient-text">sua carreira</span>
-            </h2>
-            <p className="mt-5 text-lg text-gray-400">
-              Ferramentas poderosas alimentadas por IA para cada etapa da sua
-              jornada profissional.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((feature, i) => (
-              <div
-                key={feature.title}
-                className={`glass-card p-7 group cursor-default animate-fade-in-up animation-delay-${(i + 1) * 100}`}
+      {/* ========== MARQUEE (transição) ========== */}
+      <section className="relative py-10 bg-dark-900 border-y border-white/5">
+        <div className="marquee">
+          <div className="marquee-track">
+            {[...marqueeTags, ...marqueeTags].map((tag, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-2 text-sm text-gray-400 whitespace-nowrap"
               >
-                <div
-                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-5 icon-glow`}
-                >
-                  <feature.icon className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-lg font-heading font-semibold text-white mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-gray-400 leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
+                <Sparkles className="w-4 h-4 text-primary-400" />
+                {tag}
+                <span className="text-gray-700">•</span>
+              </span>
+            ))}
+          </div>
+          <div className="marquee-track" aria-hidden>
+            {[...marqueeTags, ...marqueeTags].map((tag, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-2 text-sm text-gray-400 whitespace-nowrap"
+              >
+                <Sparkles className="w-4 h-4 text-primary-400" />
+                {tag}
+                <span className="text-gray-700">•</span>
+              </span>
             ))}
           </div>
         </div>
       </section>
 
+      {/* ========== FEATURES INTRO ========== */}
+      <section id="features" className="relative py-20 bg-dark-900 noise-overlay scroll-mt-20">
+        <div className="absolute inset-0 bg-radial-blue opacity-50" />
+        <ScrollReveal direction="up" className="relative z-10 max-w-3xl mx-auto px-4 text-center">
+          <span className="inline-block px-4 py-1.5 rounded-full text-xs font-medium bg-primary-500/10 border border-primary-500/20 text-primary-400 mb-6">
+            Funcionalidades
+          </span>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold leading-tight">
+            Tudo que sua carreira precisa,{" "}
+            <span className="gradient-text">em um só lugar</span>
+          </h2>
+          <p className="mt-5 text-lg text-gray-400">
+            Sete ferramentas alimentadas por IA para cada etapa da sua jornada profissional.
+          </p>
+        </ScrollReveal>
+      </section>
+
+      {/* ========== SPOTLIGHTS — 7 funcionalidades ========== */}
+      {spotlights.map((s, idx) => {
+        const reversed = idx % 2 === 1;
+        const isDark = idx % 2 === 0;
+        return (
+          <section
+            key={s.id}
+            id={s.id}
+            className={`relative py-24 lg:py-32 overflow-hidden ${
+              isDark ? "bg-dark-900" : "bg-dark-800"
+            } spotlight-bg`}
+          >
+            {/* Background decorations */}
+            <div
+              className="orb w-[500px] h-[500px] opacity-50"
+              style={{
+                background: s.glowColor,
+                top: reversed ? "-100px" : "auto",
+                bottom: reversed ? "auto" : "-100px",
+                left: reversed ? "auto" : "-100px",
+                right: reversed ? "-100px" : "auto",
+              }}
+            />
+            <Particles count={5} />
+
+            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div
+                className={`grid lg:grid-cols-2 gap-12 lg:gap-20 items-center ${
+                  reversed ? "lg:[&>*:first-child]:order-2" : ""
+                }`}
+              >
+                {/* Mockup */}
+                <ScrollReveal
+                  direction={reversed ? "right" : "left"}
+                  className="relative"
+                  duration={900}
+                >
+                  <div className="relative animate-float-slower">
+                    <TiltCard intensity={6}>{renderMockup(s.mockup)}</TiltCard>
+                    {/* Decorative icon badge */}
+                    <div
+                      className={`absolute -top-6 ${
+                        reversed ? "-left-6" : "-right-6"
+                      } w-16 h-16 rounded-2xl bg-gradient-to-br ${s.gradient} flex items-center justify-center shadow-2xl float-badge`}
+                      style={{ animationDelay: "1s" }}
+                    >
+                      <s.icon className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                </ScrollReveal>
+
+                {/* Texto */}
+                <ScrollReveal
+                  direction={reversed ? "left" : "right"}
+                  delay={150}
+                  duration={900}
+                  className="max-w-xl"
+                >
+                  <span
+                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-5 border ${s.badgeColor}`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                    {s.badge}
+                  </span>
+                  <h3 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold leading-[1.15] tracking-tight">
+                    {s.title}{" "}
+                    <span
+                      className={`bg-gradient-to-r ${s.gradient} bg-clip-text text-transparent`}
+                    >
+                      {s.highlight}
+                    </span>
+                  </h3>
+                  <p className="mt-5 text-lg text-gray-400 leading-relaxed">
+                    {s.description}
+                  </p>
+                  <ul className="mt-7 space-y-3">
+                    {s.bullets.map((b, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <div
+                          className={`w-6 h-6 rounded-lg bg-gradient-to-br ${s.gradient} flex items-center justify-center flex-shrink-0 mt-0.5`}
+                        >
+                          <b.icon className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                        </div>
+                        <span className="text-gray-300">{b.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href={s.ctaHref}
+                    className={`group mt-8 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${s.gradient} text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl`}
+                    style={{ boxShadow: `0 10px 40px -10px ${s.glowColor}` }}
+                  >
+                    {s.ctaLabel}
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </ScrollReveal>
+              </div>
+            </div>
+          </section>
+        );
+      })}
+
       {/* ========== HOW IT WORKS ========== */}
-      <section id="how-it-works" className="relative py-28 bg-dark-900">
+      <section id="how-it-works" className="relative py-28 bg-dark-900 overflow-hidden scroll-mt-20">
         <div className="orb w-[400px] h-[400px] bg-accent-violet top-0 right-0 animate-pulse-glow" />
+        <div className="orb w-[400px] h-[400px] bg-primary-500 bottom-0 left-0 animate-pulse-glow animation-delay-500" />
+        <Particles count={6} />
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <ScrollReveal direction="up" className="text-center max-w-3xl mx-auto mb-20">
             <span className="inline-block px-4 py-1.5 rounded-full text-xs font-medium bg-accent-violet/10 border border-accent-violet/20 text-accent-violet mb-6">
               Simples e rápido
             </span>
@@ -414,174 +1302,228 @@ export default function Home() {
             <p className="mt-5 text-lg text-gray-400">
               Três passos simples para transformar sua carreira.
             </p>
-          </div>
+          </ScrollReveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            {/* Connecting line */}
-            <div className="hidden md:block absolute top-[60px] left-[16.66%] right-[16.66%] h-[2px]">
-              <div className="w-full h-full bg-gradient-to-r from-primary-500/50 via-accent-violet/50 to-accent-cyan/50" />
+          <div className="relative">
+            {/* Animated connector line — fora do grid pra nunca virar grid item */}
+            <div className="hidden md:block absolute top-[60px] left-[16.66%] right-[16.66%] h-[2px] connector-line opacity-80 pointer-events-none" />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+              {steps.map((step, i) => (
+                <ScrollReveal
+                  key={step.step}
+                  direction="up"
+                  delay={i * 150}
+                  duration={800}
+                  className="relative text-center"
+                >
+                  <div className="relative inline-flex mb-6 animate-float-slow" style={{ animationDelay: `${i * 0.7}s` }}>
+                    <div className="w-[120px] h-[120px] rounded-3xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 flex items-center justify-center backdrop-blur-sm">
+                      <step.icon className="w-12 h-12 text-primary-400" />
+                    </div>
+                    <div className="absolute -top-3 -right-3 w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-violet flex items-center justify-center text-sm font-heading font-bold text-white glow-blue">
+                      {step.step}
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-heading font-semibold text-white mb-2">
+                    {step.title}
+                  </h3>
+                  <p className="text-gray-400 max-w-xs mx-auto">{step.description}</p>
+                </ScrollReveal>
+              ))}
             </div>
+          </div>
+        </div>
+      </section>
 
-            {steps.map((step) => (
-              <div key={step.step} className="relative text-center">
-                {/* Step number */}
-                <div className="relative inline-flex mb-6">
-                  <div className="w-[120px] h-[120px] rounded-3xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 flex items-center justify-center backdrop-blur-sm">
-                    <step.icon className="w-12 h-12 text-primary-400" />
+      {/* ========== POR QUE ESCOLHER ========== */}
+      <section id="diferenciais" className="relative py-28 bg-dark-800 overflow-hidden scroll-mt-20">
+        <div className="absolute inset-0 bg-radial-violet opacity-50" />
+        <Particles count={6} />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal direction="up" className="text-center max-w-3xl mx-auto mb-16">
+            <span className="inline-block px-4 py-1.5 rounded-full text-xs font-medium bg-accent-violet/10 border border-accent-violet/20 text-accent-violet mb-6">
+              Diferenciais
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold leading-tight">
+              Por que escolher o{" "}
+              <span className="gradient-text">NextCV?</span>
+            </h2>
+            <p className="mt-5 text-lg text-gray-400">
+              Quatro pilares que fazem a diferença quando o que está em jogo
+              é a sua próxima oportunidade.
+            </p>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
+            {whyChooseUs.map((item, i) => (
+              <ScrollReveal
+                key={item.id}
+                direction={i % 2 === 0 ? "left" : "right"}
+                delay={i * 120}
+                duration={800}
+              >
+                <TiltCard intensity={6} glare>
+                  <div
+                    className="benefit-card glass-card p-7 lg:p-8 h-full border border-white/[0.06]"
+                    style={{ boxShadow: `0 20px 60px -30px ${item.glowColor}` }}
+                  >
+                    <div className="scan-line" aria-hidden />
+                    <div className="benefit-content space-y-6">
+                      {/* Illustration + header */}
+                      <div className="flex items-start gap-5">
+                        <div
+                          className="relative w-32 h-32 flex-shrink-0 rounded-2xl bg-white/[0.02] border border-white/[0.06] overflow-hidden"
+                          style={{ background: `radial-gradient(circle at center, ${item.glowColor.replace("0.4", "0.08")}, transparent)` }}
+                        >
+                          {renderIllustration(item.illustration)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium ${item.iconBg} mb-2`}>
+                            <item.icon className="w-3.5 h-3.5" />
+                            {item.statLabel}
+                          </div>
+                          <div className={`text-4xl lg:text-5xl font-heading font-bold leading-none bg-gradient-to-br ${item.gradient} bg-clip-text text-transparent`}>
+                            {item.stat}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Title + description */}
+                      <div>
+                        <h3 className="text-xl lg:text-2xl font-heading font-bold text-white mb-2">
+                          {item.title}
+                        </h3>
+                        <p className="text-sm lg:text-base text-gray-400 leading-relaxed">
+                          {item.description}
+                        </p>
+                      </div>
+
+                      {/* Bullets */}
+                      <ul className="space-y-2.5 pt-1 border-t border-white/5">
+                        {item.bullets.map((b, bi) => (
+                          <li
+                            key={bi}
+                            className="flex items-center gap-3 text-sm text-gray-300 group/bullet transition-colors hover:text-white"
+                          >
+                            <div
+                              className={`w-7 h-7 rounded-lg ${item.iconBg} flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover/bullet:scale-110`}
+                            >
+                              <b.icon className="w-3.5 h-3.5" strokeWidth={2.5} />
+                            </div>
+                            <span>{b.text}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                  <div className="absolute -top-3 -right-3 w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-violet flex items-center justify-center text-sm font-heading font-bold text-white glow-blue">
-                    {step.step}
-                  </div>
-                </div>
-                <h3 className="text-xl font-heading font-semibold text-white mb-2">
-                  {step.title}
-                </h3>
-                <p className="text-gray-400 max-w-xs mx-auto">
-                  {step.description}
-                </p>
-              </div>
+                </TiltCard>
+              </ScrollReveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ========== AI SHOWCASE SECTION ========== */}
-      <section className="relative py-24 bg-dark-800 overflow-hidden">
-        <div className="absolute inset-0 bg-radial-violet" />
+      {/* ========== AI SHOWCASE ========== */}
+      <section id="tecnologia" className="relative py-24 bg-dark-900 overflow-hidden scroll-mt-20">
+        <div className="absolute inset-0 bg-radial-blue opacity-50" />
+        <Particles count={8} />
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left: SVG Neural Network Illustration */}
-            <div className="relative">
-              <svg
-                viewBox="0 0 500 400"
-                className="w-full h-auto"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <defs>
-                  <linearGradient
-                    id="grad1"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="100%"
-                  >
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.8" />
-                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.8" />
-                  </linearGradient>
-                  <linearGradient
-                    id="grad2"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="100%"
-                  >
-                    <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.6" />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.6" />
-                  </linearGradient>
-                  <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
-                    <stop offset="50%" stopColor="#8b5cf6" stopOpacity="0.5" />
-                    <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.3" />
-                  </linearGradient>
-                  <filter id="glow1">
-                    <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-                    <feMerge>
-                      <feMergeNode in="coloredBlur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                  <filter id="glow2">
-                    <feGaussianBlur stdDeviation="8" result="coloredBlur" />
-                    <feMerge>
-                      <feMergeNode in="coloredBlur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
+            <ScrollReveal direction="left" className="relative">
+              <div className="animate-float-slower">
+                <svg
+                  viewBox="0 0 500 400"
+                  className="w-full h-auto"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <defs>
+                    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.8" />
+                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.8" />
+                    </linearGradient>
+                    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.6" />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.6" />
+                    </linearGradient>
+                    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
+                      <stop offset="50%" stopColor="#8b5cf6" stopOpacity="0.5" />
+                      <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.3" />
+                    </linearGradient>
+                    <filter id="glow1">
+                      <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                      <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                    <filter id="glow2">
+                      <feGaussianBlur stdDeviation="8" result="coloredBlur" />
+                      <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  <g opacity="0.4">
+                    <line x1="80" y1="100" x2="200" y2="80" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="80" y1="100" x2="200" y2="160" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="80" y1="100" x2="200" y2="240" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="80" y1="200" x2="200" y2="80" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="80" y1="200" x2="200" y2="160" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="80" y1="200" x2="200" y2="240" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="80" y1="300" x2="200" y2="160" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="80" y1="300" x2="200" y2="240" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="80" y1="300" x2="200" y2="320" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="200" y1="80" x2="320" y2="120" stroke="url(#lineGrad)" strokeWidth="1.5" />
+                    <line x1="200" y1="80" x2="320" y2="200" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="200" y1="160" x2="320" y2="120" stroke="url(#lineGrad)" strokeWidth="1.5" />
+                    <line x1="200" y1="160" x2="320" y2="200" stroke="url(#lineGrad)" strokeWidth="1.5" />
+                    <line x1="200" y1="160" x2="320" y2="280" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="200" y1="240" x2="320" y2="200" stroke="url(#lineGrad)" strokeWidth="1.5" />
+                    <line x1="200" y1="240" x2="320" y2="280" stroke="url(#lineGrad)" strokeWidth="1.5" />
+                    <line x1="200" y1="320" x2="320" y2="280" stroke="url(#lineGrad)" strokeWidth="1" />
+                    <line x1="320" y1="120" x2="430" y2="200" stroke="url(#lineGrad)" strokeWidth="2" />
+                    <line x1="320" y1="200" x2="430" y2="200" stroke="url(#lineGrad)" strokeWidth="2" />
+                    <line x1="320" y1="280" x2="430" y2="200" stroke="url(#lineGrad)" strokeWidth="2" />
+                  </g>
+                  <g filter="url(#glow1)">
+                    <circle cx="80" cy="100" r="12" fill="url(#grad2)" />
+                    <circle cx="80" cy="200" r="12" fill="url(#grad2)" />
+                    <circle cx="80" cy="300" r="12" fill="url(#grad2)" />
+                  </g>
+                  <g filter="url(#glow1)">
+                    <circle cx="200" cy="80" r="10" fill="url(#grad1)" />
+                    <circle cx="200" cy="160" r="14" fill="url(#grad1)" />
+                    <circle cx="200" cy="240" r="10" fill="url(#grad1)" />
+                    <circle cx="200" cy="320" r="8" fill="url(#grad1)" />
+                  </g>
+                  <g filter="url(#glow1)">
+                    <circle cx="320" cy="120" r="11" fill="url(#grad1)" />
+                    <circle cx="320" cy="200" r="16" fill="url(#grad1)" />
+                    <circle cx="320" cy="280" r="11" fill="url(#grad1)" />
+                  </g>
+                  <g filter="url(#glow2)">
+                    <circle cx="430" cy="200" r="22" fill="url(#grad1)" />
+                    <text x="430" y="205" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold" fontFamily="system-ui">
+                      AI
+                    </text>
+                  </g>
+                  <circle cx="140" cy="140" r="3" fill="#3b82f6" opacity="0.4">
+                    <animate attributeName="cy" values="140;120;140" dur="3s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx="260" cy="260" r="2" fill="#8b5cf6" opacity="0.5">
+                    <animate attributeName="cy" values="260;240;260" dur="4s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx="370" cy="160" r="2.5" fill="#06b6d4" opacity="0.4">
+                    <animate attributeName="cy" values="160;145;160" dur="3.5s" repeatCount="indefinite" />
+                  </circle>
+                </svg>
+              </div>
+            </ScrollReveal>
 
-                {/* Connection lines */}
-                <g opacity="0.4">
-                  <line x1="80" y1="100" x2="200" y2="80" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="80" y1="100" x2="200" y2="160" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="80" y1="100" x2="200" y2="240" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="80" y1="200" x2="200" y2="80" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="80" y1="200" x2="200" y2="160" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="80" y1="200" x2="200" y2="240" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="80" y1="300" x2="200" y2="160" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="80" y1="300" x2="200" y2="240" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="80" y1="300" x2="200" y2="320" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="200" y1="80" x2="320" y2="120" stroke="url(#lineGrad)" strokeWidth="1.5" />
-                  <line x1="200" y1="80" x2="320" y2="200" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="200" y1="160" x2="320" y2="120" stroke="url(#lineGrad)" strokeWidth="1.5" />
-                  <line x1="200" y1="160" x2="320" y2="200" stroke="url(#lineGrad)" strokeWidth="1.5" />
-                  <line x1="200" y1="160" x2="320" y2="280" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="200" y1="240" x2="320" y2="200" stroke="url(#lineGrad)" strokeWidth="1.5" />
-                  <line x1="200" y1="240" x2="320" y2="280" stroke="url(#lineGrad)" strokeWidth="1.5" />
-                  <line x1="200" y1="320" x2="320" y2="280" stroke="url(#lineGrad)" strokeWidth="1" />
-                  <line x1="320" y1="120" x2="430" y2="200" stroke="url(#lineGrad)" strokeWidth="2" />
-                  <line x1="320" y1="200" x2="430" y2="200" stroke="url(#lineGrad)" strokeWidth="2" />
-                  <line x1="320" y1="280" x2="430" y2="200" stroke="url(#lineGrad)" strokeWidth="2" />
-                </g>
-
-                {/* Input layer nodes */}
-                <g filter="url(#glow1)">
-                  <circle cx="80" cy="100" r="12" fill="url(#grad2)" />
-                  <circle cx="80" cy="200" r="12" fill="url(#grad2)" />
-                  <circle cx="80" cy="300" r="12" fill="url(#grad2)" />
-                </g>
-
-                {/* Hidden layer 1 */}
-                <g filter="url(#glow1)">
-                  <circle cx="200" cy="80" r="10" fill="url(#grad1)" />
-                  <circle cx="200" cy="160" r="14" fill="url(#grad1)" />
-                  <circle cx="200" cy="240" r="10" fill="url(#grad1)" />
-                  <circle cx="200" cy="320" r="8" fill="url(#grad1)" />
-                </g>
-
-                {/* Hidden layer 2 */}
-                <g filter="url(#glow1)">
-                  <circle cx="320" cy="120" r="11" fill="url(#grad1)" />
-                  <circle cx="320" cy="200" r="16" fill="url(#grad1)" />
-                  <circle cx="320" cy="280" r="11" fill="url(#grad1)" />
-                </g>
-
-                {/* Output node */}
-                <g filter="url(#glow2)">
-                  <circle cx="430" cy="200" r="22" fill="url(#grad1)" />
-                  <text
-                    x="430"
-                    y="205"
-                    textAnchor="middle"
-                    fill="white"
-                    fontSize="14"
-                    fontWeight="bold"
-                    fontFamily="system-ui"
-                  >
-                    AI
-                  </text>
-                </g>
-
-                {/* Decorative labels */}
-                <text x="80" y="65" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="system-ui">Dados</text>
-                <text x="200" y="45" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="system-ui">Análise</text>
-                <text x="320" y="85" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="system-ui">Padrões</text>
-                <text x="430" y="165" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="system-ui">Resultado</text>
-
-                {/* Floating particles */}
-                <circle cx="140" cy="140" r="3" fill="#3b82f6" opacity="0.4">
-                  <animate attributeName="cy" values="140;120;140" dur="3s" repeatCount="indefinite" />
-                </circle>
-                <circle cx="260" cy="260" r="2" fill="#8b5cf6" opacity="0.5">
-                  <animate attributeName="cy" values="260;240;260" dur="4s" repeatCount="indefinite" />
-                </circle>
-                <circle cx="370" cy="160" r="2.5" fill="#06b6d4" opacity="0.4">
-                  <animate attributeName="cy" values="160;145;160" dur="3.5s" repeatCount="indefinite" />
-                </circle>
-              </svg>
-            </div>
-
-            {/* Right: Content */}
-            <div>
+            <ScrollReveal direction="right" delay={150}>
               <span className="inline-block px-4 py-1.5 rounded-full text-xs font-medium bg-primary-500/10 border border-primary-500/20 text-primary-400 mb-6">
                 Tecnologia de ponta
               </span>
@@ -594,172 +1536,44 @@ export default function Home() {
                 critérios do seu currículo para garantir a melhor performance
                 em processos seletivos e otimização para ATS.
               </p>
-
-              {/* Feature cards */}
               <div className="space-y-4">
                 {[
-                  {
-                    icon: Check,
-                    color: "bg-green-500/20 text-green-400",
-                    title: "ATS Compatível",
-                    desc: "Otimização para sistemas de triagem automática",
-                  },
-                  {
-                    icon: TrendingUp,
-                    color: "bg-primary-500/20 text-primary-400",
-                    title: "+45% Mais Entrevistas",
-                    desc: "Usuários reportam aumento significativo em callbacks",
-                  },
-                  {
-                    icon: Star,
-                    color: "bg-accent-violet/20 text-accent-violet",
-                    title: "Score Inteligente",
-                    desc: "Pontuação detalhada com análise de 50+ critérios",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.title}
-                    className="flex items-center gap-4 glass-card p-4"
-                  >
-                    <div
-                      className={`w-10 h-10 rounded-xl ${item.color} flex items-center justify-center flex-shrink-0`}
-                    >
-                      <item.icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-white">
-                        {item.title}
+                  { icon: Award, color: "bg-green-500/20 text-green-400", title: "ATS Compatível", desc: "Otimização para sistemas de triagem automática" },
+                  { icon: TrendingUp, color: "bg-primary-500/20 text-primary-400", title: "+45% Mais Entrevistas", desc: "Usuários reportam aumento significativo em callbacks" },
+                  { icon: Lightbulb, color: "bg-accent-violet/20 text-accent-violet", title: "Score Inteligente", desc: "Pontuação detalhada com análise de 50+ critérios" },
+                ].map((item, i) => (
+                  <ScrollReveal key={item.title} direction="right" delay={250 + i * 100}>
+                    <div className="flex items-center gap-4 glass-card p-4">
+                      <div className={`w-10 h-10 rounded-xl ${item.color} flex items-center justify-center flex-shrink-0`}>
+                        <item.icon className="w-5 h-5" />
                       </div>
-                      <div className="text-xs text-gray-500">{item.desc}</div>
+                      <div>
+                        <div className="text-sm font-semibold text-white">{item.title}</div>
+                        <div className="text-xs text-gray-500">{item.desc}</div>
+                      </div>
                     </div>
-                  </div>
+                  </ScrollReveal>
                 ))}
               </div>
-            </div>
+            </ScrollReveal>
           </div>
         </div>
       </section>
 
-      {/* ========== BENEFITS SECTION ========== */}
-      <section className="relative py-28 bg-dark-900">
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold">
-              Por que escolher o{" "}
-              <span className="gradient-text">NextCV?</span>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {benefits.map((benefit) => (
-              <div
-                key={benefit.title}
-                className="gradient-border glass-card text-center p-7 group"
-              >
-                <div
-                  className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${benefit.gradient} flex items-center justify-center mx-auto mb-5`}
-                >
-                  <benefit.icon className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="text-lg font-heading font-semibold text-white mb-2">
-                  {benefit.title}
-                </h3>
-                <p className="text-sm text-gray-400">{benefit.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ========== PRICING SECTION ========== */}
-      <section id="pricing" className="relative py-28 bg-dark-800 noise-overlay">
-        <div className="absolute inset-0 bg-radial-blue" />
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="inline-block px-4 py-1.5 rounded-full text-xs font-medium bg-accent-cyan/10 border border-accent-cyan/20 text-accent-cyan mb-6">
-              Pacotes de Moedas
-            </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold">
-              Invista na sua <span className="gradient-text">carreira</span>
-            </h2>
-            <p className="mt-5 text-lg text-gray-400">
-              Compra única, sem assinatura. Escolha o pacote ideal para suas necessidades.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
-            {packs.map((pack) => (
-              <div
-                key={pack.name}
-                className={`relative rounded-2xl p-8 transition-all duration-300 flex flex-col ${
-                  pack.popular
-                    ? "gradient-border pricing-popular glass-card md:scale-105"
-                    : "glass-card"
-                }`}
-              >
-                {pack.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                    <span className="px-5 py-1.5 bg-gradient-to-r from-primary-500 to-accent-violet text-white text-xs font-bold rounded-full glow-blue">
-                      MAIS POPULAR
-                    </span>
-                  </div>
-                )}
-
-                <h3 className="text-lg font-heading font-semibold text-white">
-                  {pack.name}
-                </h3>
-
-                <div className="mt-5 flex items-baseline gap-1">
-                  <span className="text-5xl font-heading font-bold gradient-text">
-                    {pack.price}
-                  </span>
-                  <span className="text-sm text-gray-500">único</span>
-                </div>
-
-                <p className="mt-2 text-sm text-gray-500">
-                  {pack.totalCredits} moedas{pack.bonusCredits > 0 ? ` (inclui +${pack.bonusCredits} bônus)` : ""}
-                </p>
-
-                <ul className="mt-8 space-y-3.5 flex-1">
-                  {pack.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className="flex items-center gap-3 text-sm"
-                    >
-                      <div className="w-5 h-5 rounded-full bg-primary-500/10 flex items-center justify-center flex-shrink-0">
-                        <Check className="w-3 h-3 text-primary-400" />
-                      </div>
-                      <span className="text-gray-300">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  href="/auth/register"
-                  className={`mt-8 block text-center py-3.5 px-6 rounded-xl font-semibold transition-all duration-300 ${
-                    pack.popular
-                      ? "bg-gradient-to-r from-primary-600 to-accent-violet text-white btn-glow"
-                      : "bg-white/5 text-white border border-white/10 hover:bg-white/10 hover:border-white/20"
-                  }`}
-                >
-                  Começar agora
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ========== CTA SECTION ========== */}
-      <section className="relative py-28 overflow-hidden">
-        {/* Gradient background */}
+      {/* ========== CTA ========== */}
+      <section className="relative py-32 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-900/50 via-dark-900 to-accent-violet/20" />
         <div className="absolute inset-0 bg-grid-pattern opacity-40" />
         <div className="orb w-[500px] h-[500px] bg-primary-600 top-[-100px] left-[20%] animate-pulse-glow" />
         <div className="orb w-[400px] h-[400px] bg-accent-violet bottom-[-100px] right-[20%] animate-pulse-glow animation-delay-500" />
+        <Particles count={10} />
 
-        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold">
+        <ScrollReveal direction="scale" className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-8 bg-white/5 border border-white/10 backdrop-blur-sm">
+            <Clock className="w-4 h-4 text-primary-400" />
+            <span className="text-gray-300">Comece em menos de 2 minutos</span>
+          </div>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-bold leading-[1.1]">
             Pronto para transformar
             <br />
             <span className="gradient-text">sua carreira?</span>
@@ -771,16 +1585,13 @@ export default function Home() {
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/auth/register"
-              className="inline-flex items-center gap-2 px-10 py-4 bg-gradient-to-r from-primary-600 to-accent-violet text-white font-bold rounded-xl transition-all duration-300 btn-glow text-lg"
+              className="group inline-flex items-center gap-2 px-10 py-4 bg-gradient-to-r from-primary-600 to-accent-violet text-white font-bold rounded-xl transition-all duration-300 btn-glow text-lg"
             >
               Criar conta gratuita
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
-          <p className="mt-5 text-sm text-gray-500">
-            5 créditos grátis para começar. Sem cartão de crédito.
-          </p>
-        </div>
+        </ScrollReveal>
       </section>
 
       <Footer />
