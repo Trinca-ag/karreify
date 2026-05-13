@@ -14,55 +14,61 @@ import {
   TrendingUp,
   MessageSquareHeart,
   FolderOpen,
+  Briefcase,
 } from "lucide-react";
 
 const menuItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   {
     label: "Análise de Currículo",
-    href: "/dashboard/resume-analysis",
+    href: "/resume-analysis",
     icon: FileSearch,
   },
   {
     label: "Criar Currículo",
-    href: "/dashboard/create-resume",
+    href: "/create-resume",
     icon: FilePlus,
   },
   {
     label: "Adaptar para Vaga",
-    href: "/dashboard/adapt-resume",
+    href: "/adapt-resume",
     icon: Target,
   },
   {
     label: "Carta de Apresentação",
-    href: "/dashboard/cover-letter",
+    href: "/cover-letter",
     icon: FileText,
   },
   {
+    label: "Vagas",
+    href: "/jobs",
+    icon: Briefcase,
+  },
+  {
     label: "Análise de Empresa",
-    href: "/dashboard/company-analysis",
+    href: "/company-analysis",
     icon: Building2,
   },
   {
     label: "Mercado",
-    href: "/dashboard/market",
+    href: "/market",
     icon: TrendingUp,
   },
   {
     label: "Meus Arquivos",
-    href: "/dashboard/my-files",
+    href: "/my-files",
     icon: FolderOpen,
   },
   {
     label: "Nos ajude a melhorar",
-    href: "/dashboard/feedback",
+    href: "/feedback",
     icon: MessageSquareHeart,
   },
 ];
 
 const bottomItems = [
-  { label: "Pacotes", href: "/dashboard/plans", icon: CreditCard },
-  { label: "Configurações", href: "/dashboard/profile", icon: Settings },
+  { label: "Pacotes", href: "/plans", icon: CreditCard },
+  { label: "Configurações", href: "/profile", icon: Settings },
 ];
 
 export default function Sidebar() {

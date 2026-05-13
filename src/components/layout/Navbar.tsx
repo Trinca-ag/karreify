@@ -23,7 +23,7 @@ export default function Navbar() {
   const pathname = usePathname();
 
   const isLanding = pathname === "/";
-  const isDashboard = pathname.startsWith("/dashboard");
+  const isDashboard = !isLanding && !pathname.startsWith("/auth") && !pathname.startsWith("/admin");
 
   return (
     <nav
@@ -108,7 +108,7 @@ export default function Navbar() {
                         <FileText className="w-4 h-4" /> Dashboard
                       </Link>
                       <Link
-                        href="/dashboard/profile"
+                        href="/profile"
                         className="flex items-center gap-2 px-4 py-2.5 text-sm transition-colors text-gray-300 hover:bg-white/5"
                         onClick={() => setUserMenuOpen(false)}
                       >
@@ -198,7 +198,7 @@ export default function Navbar() {
                   Dashboard
                 </Link>
                 <Link
-                  href="/dashboard/profile"
+                  href="/profile"
                   className={`block text-sm py-2 ${
                     isLanding ? "text-gray-300" : "text-gray-700"
                   }`}

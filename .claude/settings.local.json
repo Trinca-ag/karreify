@@ -56,7 +56,17 @@
       "Bash(ls /c/NextCV/*.config.*)",
       "Bash(echo \"exit=$?\")",
       "Bash(grep -r \"R\\\\$\\\\|reais\\\\|BRL\" /c/NextCV/src --include=\"*.ts\" --include=\"*.tsx\")",
-      "Bash(grep -r \"30.*reais\\\\|50.*reais\\\\|100.*reais\\\\|R\\\\$ 30\\\\|R\\\\$ 50\\\\|R\\\\$ 100\" /c/NextCV/src --include=\"*.ts\" --include=\"*.tsx\")"
+      "Bash(grep -r \"30.*reais\\\\|50.*reais\\\\|100.*reais\\\\|R\\\\$ 30\\\\|R\\\\$ 50\\\\|R\\\\$ 100\" /c/NextCV/src --include=\"*.ts\" --include=\"*.tsx\")",
+      "WebFetch(domain:help.jooble.org)",
+      "WebFetch(domain:www.freeapisforyou.in)",
+      "WebFetch(domain:www.adzuna.com.br)",
+      "Bash(curl *)",
+      "Bash(node *)",
+      "WebFetch(domain:developer.adzuna.com)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(try { [System.IO.Directory]::Move\\(\"C:\\\\NextCV\\\\src\\\\app\\\\dashboard\", \"C:\\\\NextCV\\\\src\\\\app\\\\\\(dashboard\\)\"\\); \"moved via .NET\" } catch { \"still locked: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(Rename-Item *)"
     ]
   }
 }
