@@ -9,7 +9,7 @@ import FileUpload from "@/components/ui/FileUpload";
 import { extractTextFromFile } from "@/utils/file-parser";
 import { deductCredits, checkCredits } from "@/services/credits";
 import { generateResumePDFBlob, downloadResumePDF, type PdfAdjustments } from "@/utils/resume-pdf";
-import { Upload, PenLine, Plus, Trash2, Download, RefreshCw, FileText, AlertTriangle, XCircle, Type, AlignJustify, Eye, EyeOff, RotateCcw, Sparkles } from "lucide-react";
+import { Upload, PenLine, Plus, Trash2, Download, RefreshCw, FileText, AlertTriangle, XCircle, Type, AlignJustify, Eye, EyeOff, RotateCcw, Sparkles, User, Target, Briefcase, GraduationCap, FolderKanban, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import type { ResumeSchema, GenerationNotes, QualityReport } from "@/lib/resume-schema";
 import type { TemplateName, SectionName } from "@/lib/resume-templates";
@@ -151,6 +151,19 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   const [experiences, setExperiences] = useState<FormExperience[]>([{ company: "", position: "", startDate: "", endDate: "", current: false, description: "" }]);
   const [educations, setEducations] = useState<FormEducation[]>([{ institution: "", degree: "", field: "", startDate: "", endDate: "" }]);
   const [projects, setProjects] = useState<FormProject[]>([]);
+
+  // Multi-step form state (scratch mode only)
+  const [step, setStep] = useState<number>(1);
+  const [stepDirection, setStepDirection] = useState<"forward" | "backward">("forward");
+  const SCRATCH_STEPS = [
+    { num: 1, label: "Dados Pessoais", icon: User },
+    { num: 2, label: "Objetivo", icon: Target },
+    { num: 3, label: "Experiências", icon: Briefcase },
+    { num: 4, label: "Formação", icon: GraduationCap },
+    { num: 5, label: "Projetos", icon: FolderKanban },
+    { num: 6, label: "Habilidades", icon: Sparkles },
+  ];
+  const TOTAL_STEPS = SCRATCH_STEPS.length;
 
   useEffect(() => {
     return () => {
@@ -558,17 +571,21 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   };
 
   const handleScratchCreate = () => {
-    const mappedExperiences = experiences.map((exp) => ({
-      company: exp.company,
-      position: exp.position,
-      startDate: exp.startDate,
-      endDate: exp.current ? "atual" : exp.endDate,
-      current: exp.current,
-      description: exp.description,
-    }));
+    const mappedExperiences = experiences
+      .filter(isExperienceTouched)
+      .map((exp) => ({
+        company: exp.company,
+        position: exp.position,
+        startDate: exp.startDate,
+        endDate: exp.current ? "atual" : exp.endDate,
+        current: exp.current,
+        description: exp.description,
+      }));
+
+    const mappedEducations = educations.filter(isEducationTouched);
 
     const mappedProjects = projects
-      .filter((p) => p.name.trim())
+      .filter(isProjectTouched)
       .map((p) => ({
         type: p.type === "Outro" ? p.customType.trim() || "Outro" : p.type,
         name: p.name,
@@ -583,7 +600,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       personalInfo: { name, email, phone, location, linkedin, github, website },
       objective,
       experience: mappedExperiences,
-      education: educations,
+      education: mappedEducations,
       projects: mappedProjects,
       skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
       languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
@@ -610,6 +627,8 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     setMode(null);
     setEditingItemId(null);
     setFile(null);
+    setStep(1);
+    setStepDirection("forward");
     setProgress(0);
     setProgressMsg("");
     setValidationBlock(null);
@@ -632,6 +651,15 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       setPdfUrl(null);
     }
   };
+
+  // Helpers: a row is "touched" if the user has filled at least one substantive field.
+  // Only touched rows are validated (required) and sent to the AI.
+  const isExperienceTouched = (e: FormExperience) =>
+    !!(e.company.trim() || e.position.trim() || e.startDate || e.endDate || e.description.trim());
+  const isEducationTouched = (e: FormEducation) =>
+    !!(e.degree || e.institution.trim() || e.field.trim() || e.startDate || e.endDate);
+  const isProjectTouched = (p: FormProject) =>
+    !!(p.type || p.customType.trim() || p.name.trim() || p.startDate || p.endDate || p.description.trim() || p.link.trim());
 
   // Form helpers
   const addExperience = () => setExperiences([...experiences, { company: "", position: "", startDate: "", endDate: "", current: false, description: "" }]);
@@ -949,7 +977,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           </div>
           <div
             className="group bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl cursor-pointer hover:border-emerald-500/30 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
-            onClick={() => setMode("scratch")}
+            onClick={() => { setStep(1); setStepDirection("forward"); setMode("scratch"); }}
           >
             <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-[0.08] transition-opacity duration-500 rounded-full blur-3xl pointer-events-none" />
             <div className="flex flex-col items-center py-12 text-center px-4 relative">
@@ -988,44 +1016,102 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
         </div>
       ) : (
         <form
-          onSubmit={(e) => { e.preventDefault(); handleScratchCreate(); }}
-          className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl animate-fade-in-up animation-delay-200"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (step < TOTAL_STEPS) {
+              setStepDirection("forward");
+              setStep(step + 1);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            } else {
+              handleScratchCreate();
+            }
+          }}
+          className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl animate-fade-in-up animation-delay-200 overflow-hidden"
         >
-          <div className="px-6 py-4 border-b border-white/[0.06]">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold font-heading text-white">Preencha seus dados</h2>
+          {/* Stepper header */}
+          <div className="relative px-6 py-5 border-b border-white/[0.06] bg-gradient-to-r from-primary-500/[0.04] via-transparent to-accent-violet/[0.04]">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.15em] text-primary-400/70 font-semibold">Etapa {step} de {TOTAL_STEPS}</p>
+                <h2 className="font-semibold font-heading text-white text-lg mt-1">{SCRATCH_STEPS[step - 1].label}</h2>
+              </div>
               <button
                 type="button"
-                onClick={() => setMode(null)}
+                onClick={() => { setStep(1); setStepDirection("forward"); setMode(null); }}
                 disabled={loading}
-                className="text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-400"
+                className="text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-400 flex-shrink-0"
               >
-                Voltar
+                Sair
               </button>
             </div>
+            <div className="flex items-center">
+              {SCRATCH_STEPS.map((s, idx) => {
+                const isActive = step === s.num;
+                const isCompleted = step > s.num;
+                const Icon = s.icon;
+                return (
+                  <div key={s.num} className="flex items-center flex-1 last:flex-initial min-w-0">
+                    <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                      <div
+                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 border ${
+                          isActive
+                            ? "bg-gradient-to-br from-primary-500 to-accent-violet border-primary-400/60 shadow-lg shadow-primary-500/30 scale-110"
+                            : isCompleted
+                            ? "bg-primary-500/15 border-primary-500/40"
+                            : "bg-white/[0.04] border-white/10"
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <Check className="w-4 h-4 text-primary-300" />
+                        ) : (
+                          <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-500"}`} />
+                        )}
+                      </div>
+                      <span className={`text-[10px] md:text-[11px] font-medium hidden sm:block transition-colors text-center max-w-[80px] leading-tight ${
+                        isActive ? "text-white" : isCompleted ? "text-primary-300/80" : "text-gray-500"
+                      }`}>
+                        {s.label}
+                      </span>
+                    </div>
+                    {idx < SCRATCH_STEPS.length - 1 && (
+                      <div className="flex-1 mx-1.5 md:mx-2 -mt-5 h-[2px] rounded-full overflow-hidden bg-white/[0.06]">
+                        <div className={`h-full bg-gradient-to-r from-primary-500/80 to-accent-violet/80 transition-all duration-500 ease-out ${isCompleted ? "w-full" : "w-0"}`} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <fieldset disabled={loading} className="p-6 space-y-6 border-0 m-0 min-w-0 disabled:opacity-60 disabled:cursor-not-allowed">
-            {/* Personal info */}
+          <fieldset disabled={loading} className="p-6 border-0 m-0 min-w-0 disabled:opacity-60 disabled:cursor-not-allowed">
+            <div key={step} className={stepDirection === "forward" ? "animate-slide-in-right" : "animate-slide-in-left"}>
+            {/* Step 1: Personal info */}
+            {step === 1 && (
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
               <h3 className="font-medium text-white mb-3">Dados Pessoais</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label="Nome completo" value={name} onChange={(e) => setName(e.target.value)} />
-                <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                <Input label="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                <Input label="Localização" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Cidade - Estado" />
-                <Input label="LinkedIn" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="linkedin.com/in/seu-perfil" />
+                <Input label="Nome completo" value={name} onChange={(e) => setName(e.target.value)} required />
+                <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <Input label="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                <Input label="Localização" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Cidade - Estado" required />
+                <Input label="LinkedIn" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="linkedin.com/in/seu-perfil (opcional)" />
                 <Input label="Link opcional" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="github.com, behance.net, etc." />
                 <Input label="Portfolio / Site" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="meusite.com.br (opcional)" />
               </div>
             </div>
+            )}
 
-            {/* Objective */}
+            {/* Step 2: Objective */}
+            {step === 2 && (
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
-              <label className="block text-sm font-medium text-gray-300 mb-1">Objetivo profissional</label>
-              <textarea value={objective} onChange={(e) => setObjective(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[80px]" />
+              <label className="block text-sm font-medium text-gray-300 mb-2">Objetivo profissional</label>
+              <p className="text-xs text-gray-500 mb-3">Descreva em poucas linhas o cargo que busca, suas principais habilidades e o que você quer alcançar.</p>
+              <textarea value={objective} onChange={(e) => setObjective(e.target.value)} required className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[160px]" placeholder="Ex: Desenvolvedor Full-Stack com foco em React e Node.js, buscando atuar em..." />
             </div>
+            )}
 
-            {/* Experiences */}
+            {/* Step 3: Experiences */}
+            {step === 3 && (
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-white">Experiências</h3>
@@ -1033,7 +1119,9 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                   <Plus className="w-4 h-4" /> Adicionar
                 </button>
               </div>
-              {experiences.map((exp, i) => (
+              {experiences.map((exp, i) => {
+                const touched = isExperienceTouched(exp);
+                return (
                 <div key={i} className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-400">Experiência {i + 1}</span>
@@ -1044,12 +1132,12 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                     )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <Input label="Empresa" value={exp.company} onChange={(e) => updateExperience(i, "company", e.target.value)} />
-                    <Input label="Cargo" value={exp.position} onChange={(e) => updateExperience(i, "position", e.target.value)} />
-                    <Input label="Início" type="month" value={exp.startDate} onChange={(e) => updateExperience(i, "startDate", e.target.value)} placeholder="Ex: Janeiro 2024" required />
+                    <Input label="Empresa" value={exp.company} onChange={(e) => updateExperience(i, "company", e.target.value)} required={touched} />
+                    <Input label="Cargo" value={exp.position} onChange={(e) => updateExperience(i, "position", e.target.value)} required={touched} />
+                    <Input label="Início" type="month" value={exp.startDate} onChange={(e) => updateExperience(i, "startDate", e.target.value)} placeholder="Ex: Janeiro 2024" required={touched} />
                     <div className={exp.current ? "" : "space-y-2"}>
                       {!exp.current ? (
-                        <Input label="Fim" type="month" value={exp.endDate} onChange={(e) => updateExperience(i, "endDate", e.target.value)} placeholder="Ex: Dezembro 2024" required />
+                        <Input label="Fim" type="month" value={exp.endDate} onChange={(e) => updateExperience(i, "endDate", e.target.value)} placeholder="Ex: Dezembro 2024" required={touched} />
                       ) : (
                         <div className="block text-sm font-medium text-gray-300 mb-1.5 invisible select-none" aria-hidden="true">Fim</div>
                       )}
@@ -1075,12 +1163,15 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                       </label>
                     </div>
                   </div>
-                  <textarea value={exp.description} onChange={(e) => updateExperience(i, "description", e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50" placeholder="Descreva suas atividades e conquistas" />
+                  <textarea value={exp.description} onChange={(e) => updateExperience(i, "description", e.target.value)} required={touched} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50" placeholder="Descreva suas atividades e conquistas" />
                 </div>
-              ))}
+                );
+              })}
             </div>
+            )}
 
-            {/* Education */}
+            {/* Step 4: Education */}
+            {step === 4 && (
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-white">Formação</h3>
@@ -1088,7 +1179,9 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                   <Plus className="w-4 h-4" /> Adicionar
                 </button>
               </div>
-              {educations.map((edu, i) => (
+              {educations.map((edu, i) => {
+                const touched = isEducationTouched(edu);
+                return (
                 <div key={i} className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-400">Formação {i + 1}</span>
@@ -1104,6 +1197,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                       <select
                         value={edu.degree}
                         onChange={(e) => updateEducation(i, "degree", e.target.value)}
+                        required={touched}
                         className="w-full px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200 cursor-pointer"
                       >
                         <option value="" className="bg-[#1a1a2e] text-gray-400">Selecione o grau</option>
@@ -1119,18 +1213,21 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                         <option value="Bootcamp" className="bg-[#1a1a2e]">Bootcamp</option>
                       </select>
                     </div>
-                    <Input label="Instituição" value={edu.institution} onChange={(e) => updateEducation(i, "institution", e.target.value)} />
+                    <Input label="Instituição" value={edu.institution} onChange={(e) => updateEducation(i, "institution", e.target.value)} required={touched} />
                     {edu.degree !== "Ensino Médio" && (
-                      <Input label="Área" value={edu.field} onChange={(e) => updateEducation(i, "field", e.target.value)} />
+                      <Input label="Área" value={edu.field} onChange={(e) => updateEducation(i, "field", e.target.value)} required={touched} />
                     )}
-                    <Input label="Início" type="month" value={edu.startDate} onChange={(e) => updateEducation(i, "startDate", e.target.value)} placeholder="Ex: Fevereiro 2020" required />
-                    <Input label="Fim ou previsão" type="month" value={edu.endDate} onChange={(e) => updateEducation(i, "endDate", e.target.value)} placeholder="Ex: Dezembro 2024" required />
+                    <Input label="Início" type="month" value={edu.startDate} onChange={(e) => updateEducation(i, "startDate", e.target.value)} placeholder="Ex: Fevereiro 2020" required={touched} />
+                    <Input label="Fim ou previsão" type="month" value={edu.endDate} onChange={(e) => updateEducation(i, "endDate", e.target.value)} placeholder="Ex: Dezembro 2024" required={touched} />
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
+            )}
 
-            {/* Projects */}
+            {/* Step 5: Projects */}
+            {step === 5 && (
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-white">Projetos e atividades extracurriculares <span className="text-gray-500 font-normal text-sm">(opcional)</span></h3>
@@ -1141,7 +1238,9 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
               {projects.length === 0 && (
                 <p className="text-sm text-gray-500">Nenhum projeto adicionado. Clique em &quot;Adicionar&quot; para incluir projetos pessoais, trabalhos voluntarios, freelances, etc.</p>
               )}
-              {projects.map((proj, i) => (
+              {projects.map((proj, i) => {
+                const touched = isProjectTouched(proj);
+                return (
                 <div key={i} className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-400">Projeto {i + 1}</span>
@@ -1166,6 +1265,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                             return updated;
                           });
                         }}
+                        required={touched}
                         className="w-full px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200 cursor-pointer"
                       >
                         <option value="" className="bg-[#1a1a2e] text-gray-400">Selecione o tipo</option>
@@ -1178,7 +1278,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                         <option value="Outro" className="bg-[#1a1a2e]">Outro</option>
                       </select>
                     </div>
-                    <Input label="Nome" value={proj.name} onChange={(e) => updateProject(i, "name", e.target.value)} placeholder="Nome do projeto" />
+                    <Input label="Nome" value={proj.name} onChange={(e) => updateProject(i, "name", e.target.value)} placeholder="Nome do projeto" required={touched} />
                     {proj.type === "Outro" && (
                       <div className="md:col-span-2">
                         <Input
@@ -1186,41 +1286,66 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                           value={proj.customType}
                           onChange={(e) => updateProject(i, "customType", e.target.value)}
                           placeholder="Ex: Mentoria, Pesquisa científica, Iniciação cientifica..."
-                          required
+                          required={touched}
                         />
                       </div>
                     )}
-                    <Input label="Início" type="month" value={proj.startDate} onChange={(e) => updateProject(i, "startDate", e.target.value)} placeholder="Ex: Março 2024" required />
-                    <Input label="Fim" type="month" value={proj.endDate} onChange={(e) => updateProject(i, "endDate", e.target.value)} placeholder="Ex: Junho 2024" required />
+                    <Input label="Início" type="month" value={proj.startDate} onChange={(e) => updateProject(i, "startDate", e.target.value)} placeholder="Ex: Março 2024" required={touched} />
+                    <Input label="Fim" type="month" value={proj.endDate} onChange={(e) => updateProject(i, "endDate", e.target.value)} placeholder="Ex: Junho 2024" required={touched} />
                   </div>
                   <textarea
                     value={proj.description}
                     onChange={(e) => updateProject(i, "description", e.target.value)}
+                    required={touched}
                     className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
                     placeholder="Descreva o projeto, tecnologias usadas e seu papel"
                   />
                   <Input label="Link (opcional)" value={proj.link} onChange={(e) => updateProject(i, "link", e.target.value)} placeholder="https://github.com/... ou URL do projeto" />
                 </div>
-              ))}
+                );
+              })}
             </div>
+            )}
 
-            {/* Skills & Languages */}
+            {/* Step 6: Skills & Languages */}
+            {step === TOTAL_STEPS && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
                 <label className="block text-sm font-medium text-gray-300 mb-1">Habilidades (separadas por virgula)</label>
-                <textarea value={skills} onChange={(e) => setSkills(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[80px]" placeholder="React, TypeScript, Node.js..." />
+                <textarea value={skills} onChange={(e) => setSkills(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[120px]" placeholder="React, TypeScript, Node.js..." />
               </div>
               <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
                 <label className="block text-sm font-medium text-gray-300 mb-1">Idiomas (separados por vírgula)</label>
-                <textarea value={languages} onChange={(e) => setLanguages(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[80px]" placeholder="Português (nativo), Inglês (avançado)..." />
+                <textarea value={languages} onChange={(e) => setLanguages(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[120px]" placeholder="Português (nativo), Inglês (avançado)..." />
               </div>
             </div>
+            )}
+            </div>
 
-            <div className="flex justify-between items-center pt-4">
-              <span className="text-sm text-gray-500">Custo: 1 crédito</span>
-              <Button type="submit" loading={loading} disabled={!name || loading} className="glow-blue">
-                Criar currículo
-              </Button>
+            {/* Step navigation */}
+            <div className="flex items-center justify-between gap-3 pt-6 mt-6 border-t border-white/[0.06]">
+              <button
+                type="button"
+                onClick={() => {
+                  setStepDirection("backward");
+                  setStep((s) => Math.max(1, s - 1));
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                disabled={step === 1 || loading}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-300"
+              >
+                <ChevronLeft className="w-4 h-4" /> Voltar
+              </button>
+              <div className="flex items-center gap-3">
+                {step === TOTAL_STEPS && <span className="text-sm text-gray-500 hidden sm:inline">Custo: 1 crédito</span>}
+                <Button type="submit" loading={loading} disabled={loading || (step === TOTAL_STEPS && !name)} className="glow-blue">
+                  {step < TOTAL_STEPS ? (
+                    <span className="inline-flex items-center">Avançar <ChevronRight className="w-4 h-4 ml-1" /></span>
+                  ) : (
+                    <span>Criar currículo</span>
+                  )}
+                </Button>
+              </div>
             </div>
 
             {loading && <ProgressBar progress={progress} message={progressMsg} />}

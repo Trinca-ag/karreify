@@ -51,7 +51,8 @@ const config: Config = {
         "gradient-shift": "gradientShift 8s ease infinite",
         "fade-in-up": "fadeInUp 0.6s ease-out forwards",
         "fade-in": "fadeIn 0.6s ease-out forwards",
-        "slide-in-right": "slideInRight 0.6s ease-out forwards",
+        "slide-in-right": "slideInRight 0.4s ease-out forwards",
+        "slide-in-left": "slideInLeft 0.4s ease-out forwards",
         glow: "glow 2s ease-in-out infinite alternate",
         shimmer: "shimmer 2s linear infinite",
         "spin-slow": "spin 8s linear infinite",
@@ -78,7 +79,11 @@ const config: Config = {
           to: { opacity: "1" },
         },
         slideInRight: {
-          from: { opacity: "0", transform: "translateX(30px)" },
+          from: { opacity: "0", transform: "translateX(40px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        slideInLeft: {
+          from: { opacity: "0", transform: "translateX(-40px)" },
           to: { opacity: "1", transform: "translateX(0)" },
         },
         glow: {
