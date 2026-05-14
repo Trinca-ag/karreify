@@ -28,6 +28,7 @@ interface FormExperience {
   position: string;
   startDate: string;
   endDate: string;
+  current: boolean;
   description: string;
 }
 
@@ -41,6 +42,7 @@ interface FormEducation {
 
 interface FormProject {
   type: string;
+  customType: string;
   name: string;
   description: string;
   startDate: string;
@@ -146,7 +148,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   const [objective, setObjective] = useState("");
   const [skills, setSkills] = useState("");
   const [languages, setLanguages] = useState("");
-  const [experiences, setExperiences] = useState<FormExperience[]>([{ company: "", position: "", startDate: "", endDate: "", description: "" }]);
+  const [experiences, setExperiences] = useState<FormExperience[]>([{ company: "", position: "", startDate: "", endDate: "", current: false, description: "" }]);
   const [educations, setEducations] = useState<FormEducation[]>([{ institution: "", degree: "", field: "", startDate: "", endDate: "" }]);
   const [projects, setProjects] = useState<FormProject[]>([]);
 
@@ -220,6 +222,8 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
         projects: ((raw.projects as Record<string, unknown>[]) || []).map((p) => ({
           name: (p.name as string) || "",
           description: (p.description as string) || "",
+          startDate: (p.startDate as string) || "",
+          endDate: (p.endDate as string) || "",
           highlights: (p.highlights as string[]) || [],
           technologies: (p.technologies as string[]) || [],
           url: (p.url as string) || "",
@@ -554,13 +558,33 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   };
 
   const handleScratchCreate = () => {
+    const mappedExperiences = experiences.map((exp) => ({
+      company: exp.company,
+      position: exp.position,
+      startDate: exp.startDate,
+      endDate: exp.current ? "atual" : exp.endDate,
+      current: exp.current,
+      description: exp.description,
+    }));
+
+    const mappedProjects = projects
+      .filter((p) => p.name.trim())
+      .map((p) => ({
+        type: p.type === "Outro" ? p.customType.trim() || "Outro" : p.type,
+        name: p.name,
+        description: p.description,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        link: p.link,
+      }));
+
     pendingFormData.current = {
       mode: "scratch",
       personalInfo: { name, email, phone, location, linkedin, github, website },
       objective,
-      experience: experiences,
+      experience: mappedExperiences,
       education: educations,
-      projects: projects.filter((p) => p.name.trim()),
+      projects: mappedProjects,
       skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
       languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
     };
@@ -610,9 +634,9 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   };
 
   // Form helpers
-  const addExperience = () => setExperiences([...experiences, { company: "", position: "", startDate: "", endDate: "", description: "" }]);
+  const addExperience = () => setExperiences([...experiences, { company: "", position: "", startDate: "", endDate: "", current: false, description: "" }]);
   const removeExperience = (i: number) => setExperiences(experiences.filter((_, idx) => idx !== i));
-  const updateExperience = (i: number, field: keyof FormExperience, value: string) => {
+  const updateExperience = <K extends keyof FormExperience>(i: number, field: K, value: FormExperience[K]) => {
     const updated = [...experiences];
     updated[i] = { ...updated[i], [field]: value };
     setExperiences(updated);
@@ -624,7 +648,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     updated[i] = { ...updated[i], [field]: value };
     setEducations(updated);
   };
-  const addProject = () => setProjects([...projects, { type: "", name: "", description: "", startDate: "", endDate: "", link: "" }]);
+  const addProject = () => setProjects([...projects, { type: "", customType: "", name: "", description: "", startDate: "", endDate: "", link: "" }]);
   const removeProject = (i: number) => setProjects(projects.filter((_, idx) => idx !== i));
   const updateProject = (i: number, field: keyof FormProject, value: string) => {
     const updated = [...projects];
@@ -963,11 +987,15 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           </fieldset>
         </div>
       ) : (
-        <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl animate-fade-in-up animation-delay-200">
+        <form
+          onSubmit={(e) => { e.preventDefault(); handleScratchCreate(); }}
+          className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl animate-fade-in-up animation-delay-200"
+        >
           <div className="px-6 py-4 border-b border-white/[0.06]">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold font-heading text-white">Preencha seus dados</h2>
               <button
+                type="button"
                 onClick={() => setMode(null)}
                 disabled={loading}
                 className="text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-400"
@@ -1001,7 +1029,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-white">Experiências</h3>
-                <button onClick={addExperience} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-white/5 text-gray-400 hover:bg-white/10 rounded-xl transition-colors">
+                <button type="button" onClick={addExperience} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-white/5 text-gray-400 hover:bg-white/10 rounded-xl transition-colors">
                   <Plus className="w-4 h-4" /> Adicionar
                 </button>
               </div>
@@ -1010,7 +1038,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-400">Experiência {i + 1}</span>
                     {experiences.length > 1 && (
-                      <button onClick={() => removeExperience(i)} className="text-red-400 hover:text-red-300 transition-colors">
+                      <button type="button" onClick={() => removeExperience(i)} className="text-red-400 hover:text-red-300 transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
@@ -1018,8 +1046,34 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Input label="Empresa" value={exp.company} onChange={(e) => updateExperience(i, "company", e.target.value)} />
                     <Input label="Cargo" value={exp.position} onChange={(e) => updateExperience(i, "position", e.target.value)} />
-                    <Input label="Início" type="month" value={exp.startDate} onChange={(e) => updateExperience(i, "startDate", e.target.value)} placeholder="Ex: Janeiro 2024" />
-                    <Input label="Fim" type="month" value={exp.endDate} onChange={(e) => updateExperience(i, "endDate", e.target.value)} placeholder="Ex: Dezembro 2024 (vazio = atual)" />
+                    <Input label="Início" type="month" value={exp.startDate} onChange={(e) => updateExperience(i, "startDate", e.target.value)} placeholder="Ex: Janeiro 2024" required />
+                    <div className={exp.current ? "" : "space-y-2"}>
+                      {!exp.current ? (
+                        <Input label="Fim" type="month" value={exp.endDate} onChange={(e) => updateExperience(i, "endDate", e.target.value)} placeholder="Ex: Dezembro 2024" required />
+                      ) : (
+                        <div className="block text-sm font-medium text-gray-300 mb-1.5 invisible select-none" aria-hidden="true">Fim</div>
+                      )}
+                      <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
+                        <input
+                          type="checkbox"
+                          checked={exp.current}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setExperiences((prev) => {
+                              const updated = [...prev];
+                              updated[i] = {
+                                ...updated[i],
+                                current: checked,
+                                ...(checked ? { endDate: "" } : {}),
+                              };
+                              return updated;
+                            });
+                          }}
+                          className="w-4 h-4 rounded border-white/20 bg-white/5 text-primary-500 focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-0 cursor-pointer accent-primary-500"
+                        />
+                        <span className="text-sm text-gray-300">Trabalho atualmente aqui</span>
+                      </label>
+                    </div>
                   </div>
                   <textarea value={exp.description} onChange={(e) => updateExperience(i, "description", e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50" placeholder="Descreva suas atividades e conquistas" />
                 </div>
@@ -1030,7 +1084,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-white">Formação</h3>
-                <button onClick={addEducation} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-white/5 text-gray-400 hover:bg-white/10 rounded-xl transition-colors">
+                <button type="button" onClick={addEducation} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-white/5 text-gray-400 hover:bg-white/10 rounded-xl transition-colors">
                   <Plus className="w-4 h-4" /> Adicionar
                 </button>
               </div>
@@ -1039,7 +1093,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-400">Formação {i + 1}</span>
                     {educations.length > 1 && (
-                      <button onClick={() => removeEducation(i)} className="text-red-400 hover:text-red-300 transition-colors">
+                      <button type="button" onClick={() => removeEducation(i)} className="text-red-400 hover:text-red-300 transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
@@ -1069,8 +1123,8 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                     {edu.degree !== "Ensino Médio" && (
                       <Input label="Área" value={edu.field} onChange={(e) => updateEducation(i, "field", e.target.value)} />
                     )}
-                    <Input label="Início" type="month" value={edu.startDate} onChange={(e) => updateEducation(i, "startDate", e.target.value)} placeholder="Ex: Fevereiro 2020" />
-                    <Input label="Fim" type="month" value={edu.endDate} onChange={(e) => updateEducation(i, "endDate", e.target.value)} placeholder="Ex: Dezembro 2024 (vazio = cursando)" />
+                    <Input label="Início" type="month" value={edu.startDate} onChange={(e) => updateEducation(i, "startDate", e.target.value)} placeholder="Ex: Fevereiro 2020" required />
+                    <Input label="Fim ou previsão" type="month" value={edu.endDate} onChange={(e) => updateEducation(i, "endDate", e.target.value)} placeholder="Ex: Dezembro 2024" required />
                   </div>
                 </div>
               ))}
@@ -1080,7 +1134,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-white">Projetos e atividades extracurriculares <span className="text-gray-500 font-normal text-sm">(opcional)</span></h3>
-                <button onClick={addProject} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-white/5 text-gray-400 hover:bg-white/10 rounded-xl transition-colors">
+                <button type="button" onClick={addProject} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-white/5 text-gray-400 hover:bg-white/10 rounded-xl transition-colors">
                   <Plus className="w-4 h-4" /> Adicionar
                 </button>
               </div>
@@ -1091,7 +1145,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                 <div key={i} className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-400">Projeto {i + 1}</span>
-                    <button onClick={() => removeProject(i)} className="text-red-400 hover:text-red-300 transition-colors">
+                    <button type="button" onClick={() => removeProject(i)} className="text-red-400 hover:text-red-300 transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -1100,7 +1154,18 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                       <label className="block text-sm font-medium text-gray-300 mb-1.5">Tipo</label>
                       <select
                         value={proj.type}
-                        onChange={(e) => updateProject(i, "type", e.target.value)}
+                        onChange={(e) => {
+                          const newType = e.target.value;
+                          setProjects((prev) => {
+                            const updated = [...prev];
+                            updated[i] = {
+                              ...updated[i],
+                              type: newType,
+                              ...(newType !== "Outro" ? { customType: "" } : {}),
+                            };
+                            return updated;
+                          });
+                        }}
                         className="w-full px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200 cursor-pointer"
                       >
                         <option value="" className="bg-[#1a1a2e] text-gray-400">Selecione o tipo</option>
@@ -1114,8 +1179,19 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                       </select>
                     </div>
                     <Input label="Nome" value={proj.name} onChange={(e) => updateProject(i, "name", e.target.value)} placeholder="Nome do projeto" />
-                    <Input label="Início" type="month" value={proj.startDate} onChange={(e) => updateProject(i, "startDate", e.target.value)} placeholder="Ex: Março 2024" />
-                    <Input label="Fim" type="month" value={proj.endDate} onChange={(e) => updateProject(i, "endDate", e.target.value)} placeholder="Ex: Junho 2024 (opcional)" />
+                    {proj.type === "Outro" && (
+                      <div className="md:col-span-2">
+                        <Input
+                          label="Especifique o tipo"
+                          value={proj.customType}
+                          onChange={(e) => updateProject(i, "customType", e.target.value)}
+                          placeholder="Ex: Mentoria, Pesquisa científica, Iniciação cientifica..."
+                          required
+                        />
+                      </div>
+                    )}
+                    <Input label="Início" type="month" value={proj.startDate} onChange={(e) => updateProject(i, "startDate", e.target.value)} placeholder="Ex: Março 2024" required />
+                    <Input label="Fim" type="month" value={proj.endDate} onChange={(e) => updateProject(i, "endDate", e.target.value)} placeholder="Ex: Junho 2024" required />
                   </div>
                   <textarea
                     value={proj.description}
@@ -1142,14 +1218,14 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
 
             <div className="flex justify-between items-center pt-4">
               <span className="text-sm text-gray-500">Custo: 1 crédito</span>
-              <Button onClick={handleScratchCreate} loading={loading} disabled={!name || loading} className="glow-blue">
+              <Button type="submit" loading={loading} disabled={!name || loading} className="glow-blue">
                 Criar currículo
               </Button>
             </div>
 
             {loading && <ProgressBar progress={progress} message={progressMsg} />}
           </fieldset>
-        </div>
+        </form>
       )}
 
       {/* Confirm generate modal */}

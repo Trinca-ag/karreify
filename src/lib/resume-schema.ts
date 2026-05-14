@@ -39,6 +39,8 @@ export interface ResumeSchema {
   projects: {
     name: string;
     description: string;
+    startDate: string;
+    endDate: string;
     highlights: string[];
     technologies: string[];
     url: string;
@@ -144,6 +146,8 @@ export function validateResumeSchema(data: unknown): ValidationResult {
     for (const p of d.projects as Record<string, unknown>[]) {
       if (typeof p.name !== "string") p.name = "";
       if (typeof p.description !== "string") p.description = "";
+      if (typeof p.startDate !== "string") p.startDate = p.startDate != null ? String(p.startDate) : "";
+      if (typeof p.endDate !== "string") p.endDate = p.endDate != null ? String(p.endDate) : "";
       if (!Array.isArray(p.highlights)) p.highlights = [];
       if (!Array.isArray(p.technologies)) p.technologies = [];
       if (typeof p.url !== "string") p.url = p.url != null ? String(p.url) : "";
@@ -614,6 +618,8 @@ export const RESUME_SCHEMA_JSON = `{
       {
         "name": "string — nome do projeto",
         "description": "string — 1-2 linhas: o que é + qual problema resolve",
+        "startDate": "string — formato: YYYY-MM (ex: 2024-03) ou vazio",
+        "endDate": "string — formato: YYYY-MM, 'atual' ou vazio",
         "highlights": [
           "string — diferencial técnico, decisão relevante ou resultado (opcional)"
         ],

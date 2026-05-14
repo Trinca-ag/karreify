@@ -121,7 +121,7 @@ export async function analyzeResume(resumeText: string): Promise<CompletionWithC
 // RESUME CREATION — v5 system (condensed + few-shot + self-check)
 // ══════════════════════════════════════════════════════════
 
-const PROMPT_VERSION = "v6";
+const PROMPT_VERSION = "v8";
 
 /**
  * System prompt v5.0 — condensed, focused, with few-shot examples and self-check.
@@ -305,8 +305,9 @@ PLENO (2-5 anos):
   Resumo → Habilidades → Experiência → Projetos (se relevantes) → Formação → Idiomas
 
 SÊNIOR / ESPECIALISTA (mais de 5 anos):
-  Resumo → Experiência → Habilidades → Formação → Certificações → Idiomas
-  (Projetos incorporados nas experiências)
+  Resumo → Experiência → Habilidades → (Projetos, se fornecidos) → Formação → Certificações → Idiomas
+  Projetos inferidos podem ser incorporados às experiências, MAS projetos explicitamente
+  listados no input pelo candidato DEVEM ser mantidos no array 'projects'.
 
 ════════════════════════════════════════
 REGRA 8 — EDUCAÇÃO, IDIOMAS E PROJETOS
@@ -322,8 +323,24 @@ IDIOMAS:
 - NUNCA omita idiomas
 
 PROJETOS:
-- Seção separada se < 3 anos de experiência OU projeto diferenciado
-- Cada projeto: nome + descrição (1-2 linhas) + tecnologias + link (se houver)
+- PRESERVAÇÃO INVIOLÁVEL: se o input contém um array 'projects' ou 'projetos' com itens preenchidos
+  (com 'name'/'nome'), CADA item DEVE aparecer no array 'projects' do output — independente do nível
+  do candidato (estagiário, júnior, pleno, sênior ou especialista). NUNCA omita projetos fornecidos
+  explicitamente pelo usuário. NUNCA mova para 'volunteer' mesmo se 'type' for "Trabalho Voluntário"
+  ou similar — o template renderiza apenas 'projects'.
+- Mapeamento de campos do input para o schema:
+  · 'name'/'nome' → 'name'
+  · 'description'/'descricao' → 'description' (preserve o conteúdo; pode polir verbos de ação)
+  · 'link'/'url' → 'url' (sanitize URL; se for repositório git, pode também ir em 'repository')
+  · 'type'/'tipo' (ex: "Projeto Pessoal", "Trabalho Voluntário", "Freelance", "Open Source"):
+    se relevante, mencione na descrição (ex: "Trabalho voluntário | ..."). NÃO descarte.
+  · 'startDate' do input → 'startDate' do schema (formato YYYY-MM, preserve exatamente).
+  · 'endDate' do input → 'endDate' do schema (formato YYYY-MM, ou "atual" se vazio/sem fim).
+    NUNCA descarte as datas — elas DEVEM aparecer nos campos 'startDate'/'endDate' do projeto.
+    NÃO anexe as datas dentro da descrição — use os campos dedicados.
+  · 'technologies': pode ficar [] se não inferíveis com segurança do contexto.
+  · 'highlights': pode ficar [] — NUNCA invente bullets sem base no input.
+- Cada projeto: nome + descrição (1-2 linhas) + tecnologias (se inferíveis) + link (se houver).
 - LIDERANÇA EM PROJETOS (INVIOLÁVEL): se o input menciona liderança, coordenação ou
   protagonismo em um projeto, essa informação DEVE aparecer em TRÊS lugares:
   1. No resumo profissional (menção breve)

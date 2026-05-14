@@ -152,6 +152,7 @@ export default function AdaptResumePage() {
         ),
         projects: ((raw.projects as Record<string, unknown>[]) || []).map((p) => ({
           name: (p.name as string) || "", description: (p.description as string) || "",
+          startDate: (p.startDate as string) || "", endDate: (p.endDate as string) || "",
           highlights: (p.highlights as string[]) || [], technologies: (p.technologies as string[]) || [],
           url: (p.url as string) || "", repository: (p.repository as string) || "",
         })),

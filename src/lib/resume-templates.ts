@@ -207,13 +207,13 @@ function buildProjectLinks(p: ResumeSchema["projects"][0], color: string): strin
 function getSectionOrder(level?: string): SectionName[] {
   const l = (level || "").toLowerCase();
   if (["estagiário", "júnior", "junior"].includes(l)) {
-    return ["summary", "skills", "projects", "work", "education", "languages"];
+    return ["summary", "skills", "projects", "work", "education", "certifications", "languages"];
   }
   if (["sênior", "senior", "especialista"].includes(l)) {
-    return ["summary", "work", "skills", "education", "certifications", "languages"];
+    return ["summary", "work", "skills", "projects", "education", "certifications", "languages"];
   }
   // Default: pleno or unknown
-  return ["summary", "skills", "work", "projects", "education", "languages"];
+  return ["summary", "skills", "work", "projects", "education", "certifications", "languages"];
 }
 
 
@@ -345,13 +345,19 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
     : "";
 
   const projectsHtml = data.projects
-    .map(p => `
+    .map(p => {
+      const dates = [fmt(p.startDate), fmt(p.endDate)].filter(Boolean).join(" - ");
+      return `
       <div class="entry">
-        <div class="entry-role">${esc(p.name)}</div>
+        <div class="entry-row">
+          <span class="entry-role">${esc(p.name)}</span>
+          ${dates ? `<span class="entry-date">${dates}</span>` : ""}
+        </div>
         ${p.description ? `<div class="entry-desc">${esc(p.description)}</div>` : ""}
         ${p.technologies.length > 0 ? `<div class="entry-tech">${p.technologies.map(esc).join(" &bull; ")}</div>` : ""}
         ${buildProjectLinks(p, ATS_LINK_COLOR)}
-      </div>`).join("");
+      </div>`;
+    }).join("");
 
   const certsHtml = data.certifications
     .map(c => {
@@ -676,13 +682,19 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
     : "";
 
   const projectsHtml = data.projects
-    .map(p => `
+    .map(p => {
+      const dates = [fmtLong(p.startDate), fmtLong(p.endDate)].filter(Boolean).join(" – ");
+      return `
       <div class="entry">
-        <div class="entry-role">${esc(p.name)}</div>
+        <div class="entry-row">
+          <span class="entry-role">${esc(p.name)}</span>
+          ${dates ? `<span class="entry-date">${dates}</span>` : ""}
+        </div>
         ${p.description ? `<div class="entry-desc">${esc(p.description)}</div>` : ""}
         ${p.technologies.length > 0 ? `<div class="entry-tech">${p.technologies.map(esc).join(" &bull; ")}</div>` : ""}
         ${buildProjectLinks(p, MODERNO_ACCENT)}
-      </div>`).join("");
+      </div>`;
+    }).join("");
 
   const certsHtml = data.certifications
     .map(c => {
