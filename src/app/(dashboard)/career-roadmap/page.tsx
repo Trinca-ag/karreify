@@ -103,7 +103,7 @@ export default function CareerRoadmapPage() {
       {!result ? (
         <div className="relative group bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] hover:border-primary-500/30 transition-all duration-300 animate-fade-in-up animation-delay-200">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500/10 group-hover:bg-primary-500/20 rounded-full blur-3xl transition-all duration-500 pointer-events-none" />
-          <div className="relative p-6 md:p-8 space-y-4">
+          <fieldset disabled={loading} className="relative p-6 md:p-8 space-y-4 border-0 m-0 min-w-0 disabled:opacity-60 disabled:cursor-not-allowed">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Cargo atual" value={currentRole} onChange={(e) => setCurrentRole(e.target.value)} placeholder="Ex: Desenvolvedor Junior" required />
               <Input label="Area" value={currentArea} onChange={(e) => setCurrentArea(e.target.value)} placeholder="Ex: Tecnologia" />
@@ -118,7 +118,7 @@ export default function CareerRoadmapPage() {
               </Button>
             </div>
             {loading && <div className="py-8"><LoadingSpinner size="lg" text="Gerando seu roadmap de carreira..." /></div>}
-          </div>
+          </fieldset>
         </div>
       ) : (
         <div className="space-y-6">

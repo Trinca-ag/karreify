@@ -569,8 +569,8 @@ export default function AdaptResumePage() {
         <div className="px-6 py-4 border-b border-white/[0.06]">
           <h2 className="font-semibold font-heading text-white">Envie seu currículo e a vaga</h2>
         </div>
-        <div className="p-6 space-y-4">
-          <FileUpload onFileSelect={setFile} selectedFile={file} onClear={() => setFile(null)} />
+        <fieldset disabled={loading} className="p-6 space-y-4 border-0 m-0 min-w-0 disabled:opacity-60 disabled:cursor-not-allowed">
+          <FileUpload onFileSelect={setFile} selectedFile={file} onClear={() => setFile(null)} disabled={loading} />
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center gap-1.5">
@@ -594,7 +594,8 @@ export default function AdaptResumePage() {
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value.slice(0, 4000))}
               maxLength={4000}
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[160px]"
+              disabled={loading}
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[160px] disabled:opacity-50"
               placeholder="Cole aqui a descrição completa da vaga..."
             />
             {jobDescription.length > 0 && (
@@ -610,7 +611,7 @@ export default function AdaptResumePage() {
           </div>
 
           {loading && <ProgressBar progress={progress} message={progressMsg} />}
-        </div>
+        </fieldset>
       </div>
 
       {/* Confirm generate modal */}

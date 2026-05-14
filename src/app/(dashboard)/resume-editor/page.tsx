@@ -110,13 +110,15 @@ export default function ResumeEditorPage() {
           <div className="mt-5 flex items-center gap-3">
             <button
               onClick={addSection}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-white/[0.05] text-gray-300 border border-white/[0.10] rounded-xl hover:bg-white/[0.10] hover:text-white transition-all"
+              disabled={!!improvingSection}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-white/[0.05] text-gray-300 border border-white/[0.10] rounded-xl hover:bg-white/[0.10] hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/[0.05] disabled:hover:text-gray-300"
             >
               <Plus className="w-4 h-4" /> Nova Seção
             </button>
             <button
               onClick={exportAsText}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-gradient-to-r from-primary-600 to-primary-500 text-white rounded-xl hover:from-primary-500 hover:to-primary-400 transition-all glow-blue"
+              disabled={!!improvingSection}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-gradient-to-r from-primary-600 to-primary-500 text-white rounded-xl hover:from-primary-500 hover:to-primary-400 transition-all glow-blue disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" /> Exportar
             </button>
@@ -125,7 +127,7 @@ export default function ResumeEditorPage() {
       </section>
 
       {/* Sections */}
-      <div className="space-y-4 animate-fade-in-up animation-delay-200">
+      <fieldset disabled={!!improvingSection} className="space-y-4 animate-fade-in-up animation-delay-200 border-0 m-0 min-w-0 p-0 disabled:opacity-60 disabled:cursor-not-allowed">
         {sections.map((section, index) => (
           <div
             key={section.id}
@@ -174,7 +176,7 @@ export default function ResumeEditorPage() {
             </div>
           </div>
         ))}
-      </div>
+      </fieldset>
 
       <p className="text-center text-sm text-gray-500 animate-fade-in-up animation-delay-400">
         1 crédito por melhoria com IA

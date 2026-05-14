@@ -262,11 +262,12 @@ export default function ResumeAnalysisPage() {
       {!result ? (
         <div className="relative group bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] hover:border-primary-500/30 transition-all duration-300 animate-fade-in-up animation-delay-200">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500/10 group-hover:bg-primary-500/20 rounded-full blur-3xl transition-all duration-500 pointer-events-none" />
-          <div className="relative p-6 md:p-8 space-y-6">
+          <fieldset disabled={loading} className="relative p-6 md:p-8 space-y-6 border-0 m-0 min-w-0 disabled:opacity-60 disabled:cursor-not-allowed">
             <FileUpload
               onFileSelect={setFile}
               selectedFile={file}
               onClear={() => setFile(null)}
+              disabled={loading}
             />
             <div className="flex items-center justify-between">
               <span className={`inline-flex items-center px-3 py-1 text-xs rounded-lg ${
@@ -297,7 +298,7 @@ export default function ResumeAnalysisPage() {
                 </div>
               </div>
             )}
-          </div>
+          </fieldset>
         </div>
       ) : (
         <div className="space-y-6">

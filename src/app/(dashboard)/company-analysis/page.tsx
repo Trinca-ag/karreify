@@ -526,7 +526,7 @@ export default function CompanyAnalysisPage() {
       </section>
 
       {!result ? (
-        <div className="space-y-4 animate-fade-in-up animation-delay-200">
+        <fieldset disabled={loading} className="space-y-4 animate-fade-in-up animation-delay-200 border-0 m-0 min-w-0 p-0 disabled:opacity-60 disabled:cursor-not-allowed">
           <div className="grid grid-cols-1 gap-4">
             {/* Company name */}
             <div className="relative group bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] p-6 overflow-hidden transition-all duration-300 hover:border-primary-500/30">
@@ -600,7 +600,7 @@ export default function CompanyAnalysisPage() {
               {loading ? "Analisando..." : "Analisar empresa"}
             </Button>
           </div>
-        </div>
+        </fieldset>
       ) : (
         <div className="space-y-4 animate-fade-in-up animation-delay-200">
           <ResultView result={result} />

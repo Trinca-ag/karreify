@@ -942,11 +942,17 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           <div className="px-6 py-4 border-b border-white/[0.06]">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold font-heading text-white">Envie seu currículo</h2>
-              <button onClick={() => setMode(null)} className="text-sm text-gray-400 hover:text-white transition-colors">Voltar</button>
+              <button
+                onClick={() => setMode(null)}
+                disabled={loading || validating}
+                className="text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-400"
+              >
+                Voltar
+              </button>
             </div>
           </div>
-          <div className="p-6 space-y-4">
-            <FileUpload onFileSelect={setFile} selectedFile={file} onClear={() => setFile(null)} />
+          <fieldset disabled={loading || validating} className="p-6 space-y-4 border-0 m-0 min-w-0 disabled:opacity-60 disabled:cursor-not-allowed">
+            <FileUpload onFileSelect={setFile} selectedFile={file} onClear={() => setFile(null)} disabled={loading || validating} />
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500">Custo: 1 crédito</span>
               <Button onClick={handleUploadCreate} disabled={!file || loading || validating} loading={loading || validating} className="glow-blue">
@@ -954,17 +960,23 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
               </Button>
             </div>
             {loading && <ProgressBar progress={progress} message={progressMsg} />}
-          </div>
+          </fieldset>
         </div>
       ) : (
         <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl animate-fade-in-up animation-delay-200">
           <div className="px-6 py-4 border-b border-white/[0.06]">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold font-heading text-white">Preencha seus dados</h2>
-              <button onClick={() => setMode(null)} className="text-sm text-gray-400 hover:text-white transition-colors">Voltar</button>
+              <button
+                onClick={() => setMode(null)}
+                disabled={loading}
+                className="text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-400"
+              >
+                Voltar
+              </button>
             </div>
           </div>
-          <div className="p-6 space-y-6">
+          <fieldset disabled={loading} className="p-6 space-y-6 border-0 m-0 min-w-0 disabled:opacity-60 disabled:cursor-not-allowed">
             {/* Personal info */}
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
               <h3 className="font-medium text-white mb-3">Dados Pessoais</h3>
@@ -1136,7 +1148,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
             </div>
 
             {loading && <ProgressBar progress={progress} message={progressMsg} />}
-          </div>
+          </fieldset>
         </div>
       )}
 

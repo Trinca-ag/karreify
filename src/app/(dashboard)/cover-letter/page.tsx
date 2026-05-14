@@ -225,7 +225,7 @@ export default function CoverLetterPage() {
       </section>
 
       {!result ? (
-        <div className="space-y-4 animate-fade-in-up animation-delay-200">
+        <fieldset disabled={loading} className="space-y-4 animate-fade-in-up animation-delay-200 border-0 m-0 min-w-0 p-0 disabled:opacity-60 disabled:cursor-not-allowed">
           {/* Resume upload */}
           <div className="relative group bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] p-6 overflow-hidden transition-all duration-300 hover:border-primary-500/30">
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500/10 group-hover:bg-primary-500/20 rounded-full blur-3xl transition-all duration-500 pointer-events-none" />
@@ -236,7 +236,7 @@ export default function CoverLetterPage() {
                 </div>
                 Seu currículo
               </h2>
-              <FileUpload onFileSelect={setResumeFile} selectedFile={resumeFile} onClear={() => setResumeFile(null)} />
+              <FileUpload onFileSelect={setResumeFile} selectedFile={resumeFile} onClear={() => setResumeFile(null)} disabled={loading} />
             </div>
           </div>
 
@@ -334,7 +334,7 @@ export default function CoverLetterPage() {
               {loading ? "Gerando..." : "Gerar carta"}
             </Button>
           </div>
-        </div>
+        </fieldset>
       ) : (
         <div className="space-y-4 animate-fade-in-up animation-delay-200">
           {/* Info row */}

@@ -50,7 +50,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop navigation */}
-          {isLanding && !isAuthenticated && (
+          {isLanding && (
             <div className="hidden md:flex items-center gap-7 lg:gap-8">
               {[
                 { href: "#features", label: "Funcionalidades" },
@@ -169,7 +169,7 @@ export default function Navbar() {
           className="md:hidden border-t border-white/5 bg-dark-900/95 backdrop-blur-xl"
         >
           <div className="px-4 py-4 space-y-3">
-            {isLanding && !isAuthenticated && (
+            {isLanding && (
               <>
                 {[
                   { href: "#features", label: "Funcionalidades" },

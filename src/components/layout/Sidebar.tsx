@@ -40,14 +40,14 @@ const menuItems = [
     icon: FileText,
   },
   {
-    label: "Vagas",
-    href: "/jobs",
-    icon: Briefcase,
-  },
-  {
     label: "Análise de Empresa",
     href: "/company-analysis",
     icon: Building2,
+  },
+  {
+    label: "Vagas",
+    href: "/jobs",
+    icon: Briefcase,
   },
   {
     label: "Mercado",

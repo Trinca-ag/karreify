@@ -10,6 +10,7 @@ interface FileUploadProps {
   onClear: () => void;
   accept?: Record<string, string[]>;
   maxSize?: number;
+  disabled?: boolean;
 }
 
 export default function FileUpload({
@@ -24,6 +25,7 @@ export default function FileUpload({
     ],
   },
   maxSize = 10 * 1024 * 1024,
+  disabled = false,
 }: FileUploadProps) {
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -39,11 +41,12 @@ export default function FileUpload({
     accept,
     maxSize,
     multiple: false,
+    disabled,
   });
 
   if (selectedFile) {
     return (
-      <div className="flex items-center gap-3 p-4 bg-primary-500/10 border border-primary-500/20 rounded-xl">
+      <div className={`flex items-center gap-3 p-4 bg-primary-500/10 border border-primary-500/20 rounded-xl ${disabled ? "opacity-70" : ""}`}>
         <div className="w-10 h-10 rounded-lg bg-primary-500/20 flex items-center justify-center flex-shrink-0">
           <FileText className="w-5 h-5 text-primary-400" />
         </div>
@@ -57,7 +60,9 @@ export default function FileUpload({
         </div>
         <button
           onClick={onClear}
-          className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+          disabled={disabled}
+          className="p-1.5 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          aria-label="Remover arquivo"
         >
           <X className="w-4 h-4 text-gray-400" />
         </button>
@@ -68,14 +73,15 @@ export default function FileUpload({
   return (
     <div
       {...getRootProps()}
-      className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200
+      className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl transition-all duration-200
+        ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
         ${
           isDragActive
             ? "border-primary-500/50 bg-primary-500/5"
             : "border-white/10 hover:border-primary-500/30 hover:bg-white/[0.02]"
         }`}
     >
-      <input {...getInputProps()} />
+      <input {...getInputProps()} disabled={disabled} />
       <div
         className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${
           isDragActive ? "bg-primary-500/20" : "bg-white/5"
