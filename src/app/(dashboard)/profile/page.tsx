@@ -27,6 +27,7 @@ import {
   Camera,
   Check,
   AlertTriangle,
+  Save,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import type { Device } from "@/types";
@@ -59,9 +60,17 @@ export default function ProfilePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [autoSaveDocuments, setAutoSaveDocuments] = useState(
+    userData?.autoSaveDocuments ?? false
+  );
+  const [savingAutoSave, setSavingAutoSave] = useState(false);
 
   const currentDeviceId = typeof window !== "undefined" ? getDeviceId() : "";
   const currentPhoto = userData?.photoURL || user?.photoURL || null;
+
+  useEffect(() => {
+    setAutoSaveDocuments(userData?.autoSaveDocuments ?? false);
+  }, [userData?.autoSaveDocuments]);
 
   useEffect(() => {
     if (!user) return;
@@ -114,6 +123,30 @@ export default function ProfilePage() {
       toast.error("Erro ao atualizar perfil.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleAutoSave = async (next: boolean) => {
+    if (!user || savingAutoSave) return;
+    setAutoSaveDocuments(next);
+    setSavingAutoSave(true);
+    try {
+      await updateDoc(doc(db, "users", user.uid), {
+        autoSaveDocuments: next,
+      });
+      invalidateUser(user.uid);
+      await refreshUserData();
+      toast.success(
+        next
+          ? "Salvamento automático ativado."
+          : "Salvamento automático desativado."
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao atualizar preferência.");
+      setAutoSaveDocuments(!next);
+    } finally {
+      setSavingAutoSave(false);
     }
   };
 
@@ -416,6 +449,49 @@ export default function ProfilePage() {
           <p className="text-xs text-gray-600 mt-4">
             Dispositivos verificados permanecem confiáveis por 15 dias. Remover um dispositivo exigirá nova verificação no próximo login.
           </p>
+        </div>
+      </div>
+
+      {/* Preferences */}
+      <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] hover:border-primary-500/30 transition-all duration-300 animate-fade-in-up animation-delay-350">
+        <div className="px-6 py-4 border-b border-white/[0.06]">
+          <h2 className="font-semibold text-white font-heading flex items-center gap-2">
+            <Save className="w-5 h-5 text-primary-400" />
+            Preferências
+          </h2>
+        </div>
+        <div className="p-6">
+          <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white">
+                Salvar documentos automaticamente
+              </p>
+              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                Quando ativado, os documentos gerados são salvos automaticamente em
+                &quot;Meus Arquivos&quot; (respeitando o limite de cada categoria).
+                Quando desativado, você precisa clicar em &quot;Salvar&quot; para
+                guardar o documento.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoSaveDocuments}
+              onClick={() => handleToggleAutoSave(!autoSaveDocuments)}
+              disabled={savingAutoSave}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-900 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+                autoSaveDocuments
+                  ? "bg-primary-500/80 border-primary-400/50"
+                  : "bg-white/10 border-white/10"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow ${
+                  autoSaveDocuments ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 

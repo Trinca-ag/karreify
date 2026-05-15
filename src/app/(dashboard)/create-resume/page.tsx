@@ -18,6 +18,8 @@ import ResumeFeedback from "@/components/ui/ResumeFeedback";
 import Modal from "@/components/ui/Modal";
 import AIProgressModal from "@/components/ui/AIProgressModal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
+import SaveSuccessModal from "@/components/ui/SaveSuccessModal";
+import SaveButton from "@/components/ui/SaveButton";
 import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
@@ -98,10 +100,11 @@ const CAMPO_LABELS: Record<string, string> = {
 };
 
 export default function CreateResumePage() {
-  const { user } = useAuthContext();
+  const { user, userData } = useAuthContext();
   const searchParams = useSearchParams();
   const editItemId = searchParams?.get("itemId") ?? null;
   const saver = useSavedItemSaver();
+  const autoSaveEnabled = userData?.autoSaveDocuments ?? false;
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const editDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mode, setMode] = useState<Mode>(null);
@@ -386,29 +389,42 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     return s;
   }
 
-  // Save newly created resume (auto) and prompt-to-replace if at 5-item limit
-  const saveNewResumeItem = useCallback(
+  const buildResumePayload = useCallback(
+    (schema: ResumeSchema, template: TemplateName, level?: string) => {
+      const personalName = schema.basics?.name?.trim() || "Sem nome";
+      const subtitle = schema.basics?.label?.trim() || undefined;
+      const adj = currentAdjustments();
+      const cleanAdj: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(adj)) {
+        if (v !== undefined) cleanAdj[k] = v;
+      }
+      return {
+        kind: "resume" as const,
+        data: {
+          resumeData: schema,
+          template,
+          candidateLevel: level,
+          title: personalName,
+          subtitle,
+          adjustments: Object.keys(cleanAdj).length > 0 ? cleanAdj : undefined,
+        },
+      };
+    },
+    [currentAdjustments]
+  );
+
+  // Prepare save flow for newly created resume — respects autoSave preference.
+  const prepareNewResumeItem = useCallback(
     async (schema: ResumeSchema, template: TemplateName, level?: string) => {
       if (!user) return;
-      const name = schema.basics?.name?.trim() || "Sem nome";
-      const title = name;
-      const subtitle = schema.basics?.label?.trim() || undefined;
-      await saver.saveWithPrompt({
+      await saver.prepare({
         uid: user.uid,
         type: "resume",
-        payload: {
-          kind: "resume",
-          data: {
-            resumeData: schema,
-            template,
-            candidateLevel: level,
-            title,
-            subtitle,
-          },
-        },
+        payload: buildResumePayload(schema, template, level),
+        autoSave: autoSaveEnabled,
       });
     },
-    [user, saver]
+    [user, saver, buildResumePayload, autoSaveEnabled]
   );
 
   // Load a saved resume for editing when ?itemId= is present
@@ -519,7 +535,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       await generatePdf(schema, selectedTemplate, level);
 
       toast.success("Curriculo criado!");
-      void saveNewResumeItem(schema, selectedTemplate, level);
+      void prepareNewResumeItem(schema, selectedTemplate, level);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error("Resume creation error:", msg);
@@ -628,11 +644,31 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     setHiddenSections([]);
     setEditingSection(null);
     setAvailableSections([]);
+    saver.reset();
     if (pdfUrl) {
       URL.revokeObjectURL(pdfUrl);
       setPdfUrl(null);
     }
   };
+
+  const handleManualSave = () => {
+    if (!user) return;
+    saver.saveManually(user.uid);
+  };
+
+  // Keep saver payload synced with edits to a freshly generated (not edit-mode) resume.
+  useEffect(() => {
+    if (editingItemId || !resumeData || saver.status === "idle") return;
+    saver.updatePayload(
+      buildResumePayload(resumeData, selectedTemplate, candidateLevel)
+    );
+    saver.markDirty();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeData, selectedTemplate, sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx, hiddenSections]);
+
+  // For edit-mode (loaded from /my-files), the item is already saved; reflect that in the button.
+  // The existing debounced updateResumeItem effect keeps the doc in sync as the user edits.
+  const saveStatus = editingItemId ? "saved" : saver.status;
 
   // Helpers: a row is "touched" if the user has filled at least one substantive field.
   // Only touched rows are validated (required) and sent to the AI.
@@ -874,13 +910,34 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           </div>
         </div>
 
-        {/* Download */}
-        <div className="flex justify-center">
+        {/* Actions */}
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="px-8 glow-blue">
             <Download className="w-4 h-4 mr-2" />
             Baixar PDF
           </Button>
+          {!editingItemId && (
+            <SaveButton
+              status={saveStatus}
+              saving={saver.saving}
+              disabled={pdfLoading}
+              onClick={handleManualSave}
+              className="px-6"
+            />
+          )}
         </div>
+
+        <SaveLimitModal
+          isOpen={!!saver.confirmState}
+          oldest={saver.confirmState?.oldest ?? null}
+          loading={saver.saving}
+          onConfirm={() => user && saver.confirmReplace(user.uid)}
+          onCancel={saver.cancelReplace}
+        />
+        <SaveSuccessModal
+          isOpen={saver.successOpen}
+          onClose={saver.closeSuccess}
+        />
 
       </div>
     );
@@ -1353,14 +1410,6 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           </div>
         </div>
       </Modal>
-
-      <SaveLimitModal
-        isOpen={!!saver.confirmState}
-        oldest={saver.confirmState?.oldest ?? null}
-        loading={saver.saving}
-        onConfirm={() => user && saver.confirmReplace(user.uid)}
-        onCancel={saver.cancelReplace}
-      />
     </div>
   );
 }

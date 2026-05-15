@@ -16,6 +16,8 @@ import ResumeFeedback from "@/components/ui/ResumeFeedback";
 import Modal from "@/components/ui/Modal";
 import AIProgressModal from "@/components/ui/AIProgressModal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
+import SaveSuccessModal from "@/components/ui/SaveSuccessModal";
+import SaveButton from "@/components/ui/SaveButton";
 import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
@@ -48,8 +50,9 @@ const SECTION_LABELS: Record<SectionName, string> = {
 };
 
 export default function AdaptResumePage() {
-  const { user } = useAuthContext();
+  const { user, userData } = useAuthContext();
   const saver = useSavedItemSaver();
+  const autoSaveEnabled = userData?.autoSaveDocuments ?? false;
   const [file, setFile] = useState<File | null>(null);
   const [jobTitle, setJobTitle] = useState("");
   const [jobDescription, setJobDescription] = useState("");
@@ -302,32 +305,56 @@ export default function AdaptResumePage() {
     } catch { toast.error("Erro ao baixar PDF."); }
   };
 
-  const saveAdaptedResumeItem = useCallback(
-    async (schema: ResumeSchema, template: TemplateName, level?: string) => {
-      if (!user) return;
+  const buildResumePayload = useCallback(
+    (schema: ResumeSchema, template: TemplateName, level?: string) => {
       const name = schema.basics?.name?.trim() || "Sem nome";
       const role = schema.basics?.label?.trim();
       const targetTitle = jobTitle.trim();
       const title = targetTitle
         ? `${name} — ${targetTitle}`
         : `${name} (adaptado)`;
-      await saver.saveWithPrompt({
+      const adj = currentAdjustments();
+      const cleanAdj: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(adj)) {
+        if (v !== undefined) cleanAdj[k] = v;
+      }
+      return {
+        kind: "resume" as const,
+        data: {
+          resumeData: schema,
+          template,
+          candidateLevel: level,
+          title,
+          subtitle: role || (targetTitle ? "Adaptado" : undefined),
+          adjustments: Object.keys(cleanAdj).length > 0 ? cleanAdj : undefined,
+        },
+      };
+    },
+    [jobTitle, currentAdjustments]
+  );
+
+  const saveAdaptedResumeItem = useCallback(
+    async (schema: ResumeSchema, template: TemplateName, level?: string) => {
+      if (!user) return;
+      await saver.prepare({
         uid: user.uid,
         type: "resume",
-        payload: {
-          kind: "resume",
-          data: {
-            resumeData: schema,
-            template,
-            candidateLevel: level,
-            title,
-            subtitle: role || (targetTitle ? "Adaptado" : undefined),
-          },
-        },
+        payload: buildResumePayload(schema, template, level),
+        autoSave: autoSaveEnabled,
       });
     },
-    [user, saver, jobTitle]
+    [user, saver, buildResumePayload, autoSaveEnabled]
   );
+
+  // Keep the saver payload in sync with edits so manual save uses latest content.
+  useEffect(() => {
+    if (!resumeData || saver.status === "idle") return;
+    saver.updatePayload(
+      buildResumePayload(resumeData, selectedTemplate, candidateLevel)
+    );
+    saver.markDirty();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeData, selectedTemplate, sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx, hiddenSections]);
 
   const handleReset = () => {
     setResumeData(null);
@@ -348,7 +375,13 @@ export default function AdaptResumePage() {
     setHiddenSections([]);
     setEditingSection(null);
     setAvailableSections([]);
+    saver.reset();
     if (pdfUrl) { URL.revokeObjectURL(pdfUrl); setPdfUrl(null); }
+  };
+
+  const handleManualSave = () => {
+    if (!user) return;
+    saver.saveManually(user.uid);
   };
 
   // ════════════════════════════════════════════════════
@@ -510,12 +543,31 @@ export default function AdaptResumePage() {
           </div>
         </div>
 
-        {/* Download */}
-        <div className="flex justify-center animate-fade-in-up animation-delay-400">
+        {/* Actions */}
+        <div className="flex flex-wrap items-center justify-center gap-3 animate-fade-in-up animation-delay-400">
           <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="px-8 glow-blue">
             <Download className="w-4 h-4 mr-2" /> Baixar PDF
           </Button>
+          <SaveButton
+            status={saver.status}
+            saving={saver.saving}
+            disabled={pdfLoading}
+            onClick={handleManualSave}
+            className="px-6"
+          />
         </div>
+
+        <SaveLimitModal
+          isOpen={!!saver.confirmState}
+          oldest={saver.confirmState?.oldest ?? null}
+          loading={saver.saving}
+          onConfirm={() => user && saver.confirmReplace(user.uid)}
+          onCancel={saver.cancelReplace}
+        />
+        <SaveSuccessModal
+          isOpen={saver.successOpen}
+          onClose={saver.closeSuccess}
+        />
 
       </div>
     );
@@ -619,14 +671,6 @@ export default function AdaptResumePage() {
           </div>
         </div>
       </Modal>
-
-      <SaveLimitModal
-        isOpen={!!saver.confirmState}
-        oldest={saver.confirmState?.oldest ?? null}
-        loading={saver.saving}
-        onConfirm={() => user && saver.confirmReplace(user.uid)}
-        onCancel={saver.cancelReplace}
-      />
     </div>
   );
 }

@@ -6,6 +6,8 @@ import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import AIProgressModal from "@/components/ui/AIProgressModal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
+import SaveSuccessModal from "@/components/ui/SaveSuccessModal";
+import SaveButton from "@/components/ui/SaveButton";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
 import { deductCredits, checkCredits } from "@/services/credits";
@@ -35,8 +37,9 @@ const PROGRESS_MESSAGES = [
 ];
 
 export default function CoverLetterPage() {
-  const { user } = useAuthContext();
+  const { user, userData } = useAuthContext();
   const saver = useSavedItemSaver();
+  const autoSaveEnabled = userData?.autoSaveDocuments ?? false;
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [companyName, setCompanyName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -90,7 +93,7 @@ export default function CoverLetterPage() {
       stopProgress();
       setResult(data.data);
       toast.success("Carta gerada com sucesso!");
-      void saveCoverLetterInBackground(data.data, companyName, jobTitle);
+      void prepareCoverLetterSave(data.data, companyName, jobTitle);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao gerar carta.";
       toast.error(msg);
@@ -99,7 +102,7 @@ export default function CoverLetterPage() {
     }
   };
 
-  const saveCoverLetterInBackground = useCallback(
+  const prepareCoverLetterSave = useCallback(
     async (data: CoverLetterResult, company: string, role: string) => {
       if (!user) return;
       try {
@@ -111,7 +114,7 @@ export default function CoverLetterPage() {
         if (!res.ok) return;
         const blob = await res.blob();
         const ts = Date.now();
-        await saver.saveWithPrompt({
+        await saver.prepare({
           uid: user.uid,
           type: "cover-letter",
           payload: {
@@ -124,12 +127,13 @@ export default function CoverLetterPage() {
               pdf: blob,
             },
           },
+          autoSave: autoSaveEnabled,
         });
       } catch {
         /* silent */
       }
     },
-    [user, saver]
+    [user, saver, autoSaveEnabled]
   );
 
   const handleDownloadPDF = async () => {
@@ -169,6 +173,12 @@ export default function CoverLetterPage() {
     setResumeFile(null);
     setJobTitle("");
     resetProgress();
+    saver.reset();
+  };
+
+  const handleManualSave = () => {
+    if (!user) return;
+    saver.saveManually(user.uid);
   };
 
   const canGenerate = !!resumeFile && companyName.trim().length > 0 && jobDescription.trim().length > 20;
@@ -383,11 +393,17 @@ export default function CoverLetterPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex justify-center">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Button onClick={handleDownloadPDF} disabled={pdfLoading} loading={pdfLoading} className="px-8 glow-blue">
               <Download className="w-4 h-4 mr-2" />
               Baixar PDF
             </Button>
+            <SaveButton
+              status={saver.status}
+              saving={saver.saving}
+              onClick={handleManualSave}
+              className="px-6"
+            />
           </div>
         </div>
       )}
@@ -408,6 +424,10 @@ export default function CoverLetterPage() {
         loading={saver.saving}
         onConfirm={() => user && saver.confirmReplace(user.uid)}
         onCancel={saver.cancelReplace}
+      />
+      <SaveSuccessModal
+        isOpen={saver.successOpen}
+        onClose={saver.closeSuccess}
       />
 
       {/* Confirm modal */}

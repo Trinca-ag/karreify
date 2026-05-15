@@ -8,6 +8,7 @@ export interface User {
   photoURL: string | null;
   credits: number;
   role: UserRole;
+  autoSaveDocuments?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

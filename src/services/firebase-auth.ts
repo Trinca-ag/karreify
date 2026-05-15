@@ -44,6 +44,7 @@ export async function registerUser(
     photoURL,
     credits: 0,
     role: "user" as const,
+    autoSaveDocuments: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -89,6 +90,7 @@ export async function loginWithGoogle(): Promise<FirebaseUser> {
       photoURL,
       credits: 0,
       role: "user" as const,
+      autoSaveDocuments: true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };

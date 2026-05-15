@@ -13,6 +13,8 @@ import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
 import AIProgressModal from "@/components/ui/AIProgressModal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
+import SaveSuccessModal from "@/components/ui/SaveSuccessModal";
+import SaveButton from "@/components/ui/SaveButton";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
 
@@ -52,9 +54,10 @@ interface AnalysisResult {
 }
 
 export default function ResumeAnalysisPage() {
-  const { user } = useAuthContext();
+  const { user, userData } = useAuthContext();
   const router = useRouter();
   const saver = useSavedItemSaver();
+  const autoSaveEnabled = userData?.autoSaveDocuments ?? false;
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -101,7 +104,7 @@ export default function ResumeAnalysisPage() {
     }
   }, [result]);
 
-  const saveAnalysisInBackground = useCallback(
+  const prepareAnalysisSave = useCallback(
     async (analysis: AnalysisResult["analysis"], originalName: string) => {
       if (!user) return;
       try {
@@ -114,7 +117,7 @@ export default function ResumeAnalysisPage() {
         const blob = await response.blob();
         const ts = Date.now();
         const cleanName = originalName.replace(/\.(pdf|docx?|txt)$/i, "");
-        await saver.saveWithPrompt({
+        await saver.prepare({
           uid: user.uid,
           type: "resume-analysis",
           payload: {
@@ -127,12 +130,13 @@ export default function ResumeAnalysisPage() {
               pdf: blob,
             },
           },
+          autoSave: autoSaveEnabled,
         });
       } catch {
         /* silent — user still has the result on screen */
       }
     },
-    [user, saver]
+    [user, saver, autoSaveEnabled]
   );
 
   const handleAnalyze = async () => {
@@ -182,7 +186,7 @@ export default function ResumeAnalysisPage() {
       setResult(data.data);
       if (data.cache) setCacheMetrics(data.cache);
       toast.success(usedBefore ? "Analise concluida!" : "Analise concluida! (primeira analise gratuita)");
-      void saveAnalysisInBackground(data.data.analysis, file.name);
+      void prepareAnalysisSave(data.data.analysis, file.name);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error("Resume analysis error:", msg);
@@ -197,6 +201,12 @@ export default function ResumeAnalysisPage() {
     setResult(null);
     setCacheMetrics(null);
     resetProgress();
+    saver.reset();
+  };
+
+  const handleManualSave = () => {
+    if (!user) return;
+    saver.saveManually(user.uid);
   };
 
   return (
@@ -380,10 +390,17 @@ export default function ResumeAnalysisPage() {
                 </div>
                 <h3 className="text-lg font-heading font-bold text-white">Baixar Analise</h3>
                 <p className="text-gray-400 text-sm">Salve a analise completa em PDF para consultar depois.</p>
-                <Button onClick={handleDownloadPDF} className="mt-2 glow-blue">
-                  <Download className="w-4 h-4 mr-2" />
-                  Baixar PDF
-                </Button>
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                  <Button onClick={handleDownloadPDF} className="glow-blue">
+                    <Download className="w-4 h-4 mr-2" />
+                    Baixar PDF
+                  </Button>
+                  <SaveButton
+                    status={saver.status}
+                    saving={saver.saving}
+                    onClick={handleManualSave}
+                  />
+                </div>
               </div>
             </div>
 
@@ -421,6 +438,10 @@ export default function ResumeAnalysisPage() {
         loading={saver.saving}
         onConfirm={() => user && saver.confirmReplace(user.uid)}
         onCancel={saver.cancelReplace}
+      />
+      <SaveSuccessModal
+        isOpen={saver.successOpen}
+        onClose={saver.closeSuccess}
       />
 
       <Modal isOpen={showAnalyzeConfirm} onClose={() => setShowAnalyzeConfirm(false)} title="Analisar currículo" size="sm">

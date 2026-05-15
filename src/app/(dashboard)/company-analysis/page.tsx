@@ -6,6 +6,8 @@ import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import AIProgressModal from "@/components/ui/AIProgressModal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
+import SaveSuccessModal from "@/components/ui/SaveSuccessModal";
+import SaveButton from "@/components/ui/SaveButton";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
 import { deductCredits, checkCredits } from "@/services/credits";
@@ -348,8 +350,9 @@ function ResultView({ result }: { result: CompanyAnalysisResult }) {
 }
 
 export default function CompanyAnalysisPage() {
-  const { user } = useAuthContext();
+  const { user, userData } = useAuthContext();
   const saver = useSavedItemSaver();
+  const autoSaveEnabled = userData?.autoSaveDocuments ?? false;
   const [companyName, setCompanyName] = useState("");
   const [position, setPosition] = useState("");
   const [loading, setLoading] = useState(false);
@@ -377,7 +380,7 @@ export default function CompanyAnalysisPage() {
     if (title) setPosition(title);
   }, []);
 
-  const saveAnalysisInBackground = useCallback(
+  const prepareCompanyAnalysisSave = useCallback(
     async (data: CompanyAnalysisResult) => {
       if (!user) return;
       try {
@@ -389,7 +392,7 @@ export default function CompanyAnalysisPage() {
         if (!res.ok) return;
         const blob = await res.blob();
         const ts = Date.now();
-        await saver.saveWithPrompt({
+        await saver.prepare({
           uid: user.uid,
           type: "company-analysis",
           payload: {
@@ -402,12 +405,13 @@ export default function CompanyAnalysisPage() {
               pdf: blob,
             },
           },
+          autoSave: autoSaveEnabled,
         });
       } catch {
         /* silent */
       }
     },
-    [user, saver]
+    [user, saver, autoSaveEnabled]
   );
 
   const handleDownloadPDF = useCallback(async () => {
@@ -457,7 +461,7 @@ export default function CompanyAnalysisPage() {
       stopProgress();
       setResult(data.data);
       toast.success("Análise concluída!");
-      void saveAnalysisInBackground(data.data);
+      void prepareCompanyAnalysisSave(data.data);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao analisar empresa.";
       toast.error(msg);
@@ -471,6 +475,12 @@ export default function CompanyAnalysisPage() {
     setCompanyName("");
     setPosition("");
     resetProgress();
+    saver.reset();
+  };
+
+  const handleManualSave = () => {
+    if (!user) return;
+    saver.saveManually(user.uid);
   };
 
   const canAnalyze = companyName.trim().length > 1 && position.trim().length > 1;
@@ -576,11 +586,17 @@ export default function CompanyAnalysisPage() {
       ) : (
         <div className="space-y-4 animate-fade-in-up animation-delay-200">
           <ResultView result={result} />
-          <div className="flex justify-center">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Button onClick={handleDownloadPDF} disabled={pdfLoading} loading={pdfLoading} className="px-8 glow-blue">
               <Download className="w-4 h-4 mr-2" />
               Baixar PDF
             </Button>
+            <SaveButton
+              status={saver.status}
+              saving={saver.saving}
+              onClick={handleManualSave}
+              className="px-6"
+            />
           </div>
         </div>
       )}
@@ -601,6 +617,10 @@ export default function CompanyAnalysisPage() {
         loading={saver.saving}
         onConfirm={() => user && saver.confirmReplace(user.uid)}
         onCancel={saver.cancelReplace}
+      />
+      <SaveSuccessModal
+        isOpen={saver.successOpen}
+        onClose={saver.closeSuccess}
       />
 
       <Modal isOpen={showConfirm} onClose={() => setShowConfirm(false)} title="Analisar empresa" size="sm">
