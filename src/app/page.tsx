@@ -1184,113 +1184,125 @@ export default function Home() {
         </ScrollReveal>
       </section>
 
-      {/* ========== SPOTLIGHTS — 7 funcionalidades ========== */}
-      {spotlights.map((s, idx) => {
-        const reversed = idx % 2 === 1;
-        const isDark = idx % 2 === 0;
-        return (
-          <section
-            key={s.id}
-            id={s.id}
-            className={`relative py-24 lg:py-32 overflow-hidden ${
-              isDark ? "bg-dark-900" : "bg-dark-800"
-            } spotlight-bg`}
-          >
-            {/* Background decorations */}
-            <div
-              className="orb w-[500px] h-[500px] opacity-50"
-              style={{
-                background: s.glowColor,
-                top: reversed ? "-100px" : "auto",
-                bottom: reversed ? "auto" : "-100px",
-                left: reversed ? "auto" : "-100px",
-                right: reversed ? "-100px" : "auto",
-              }}
-            />
-            <Particles count={5} />
+      {/* ========== SPOTLIGHTS + COMO FUNCIONA — container unificado ========== */}
+      <div className="relative bg-dark-900 overflow-hidden">
+        <Particles count={20} />
+        {/* SPOTLIGHTS — sub-container que escopa as orbes só na área das 7 funcionalidades */}
+        <div className="relative">
+          {/* Orbes unificadas — distribuídas verticalmente, fluindo entre as seções sem cortes */}
+          <div aria-hidden className="absolute inset-0 pointer-events-none">
+            {spotlights.map((s, idx) => {
+              const reversed = idx % 2 === 1;
+              const verticalCenter = `${((idx + 0.5) * 100) / spotlights.length}%`;
+              return (
+                <div
+                  key={`orb-${s.id}`}
+                  className="orb w-[500px] h-[500px] opacity-50"
+                  style={{
+                    background: s.glowColor,
+                    top: verticalCenter,
+                    transform: "translate(0, -50%)",
+                    left: reversed ? "auto" : "-150px",
+                    right: reversed ? "-150px" : "auto",
+                  }}
+                />
+              );
+            })}
+          </div>
 
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div
-                className={`grid lg:grid-cols-2 gap-12 lg:gap-20 items-center ${
-                  reversed ? "lg:[&>*:first-child]:order-2" : ""
-                }`}
-              >
-                {/* Mockup */}
-                <ScrollReveal
-                  direction={reversed ? "right" : "left"}
-                  className="relative"
-                  duration={900}
+        {spotlights.map((s, idx) => {
+          const reversed = idx % 2 === 1;
+          return (
+            <section
+              key={s.id}
+              id={s.id}
+              className="relative py-24 lg:py-32 spotlight-bg"
+            >
+              <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div
+                  className={`grid lg:grid-cols-2 gap-12 lg:gap-20 items-center ${
+                    reversed ? "lg:[&>*:first-child]:order-2" : ""
+                  }`}
                 >
-                  <div className="relative animate-float-slower">
-                    <TiltCard intensity={6}>{renderMockup(s.mockup)}</TiltCard>
-                    {/* Decorative icon badge */}
-                    <div
-                      className={`absolute -top-6 ${
-                        reversed ? "-left-6" : "-right-6"
-                      } w-16 h-16 rounded-2xl bg-gradient-to-br ${s.gradient} flex items-center justify-center shadow-2xl float-badge`}
-                      style={{ animationDelay: "1s" }}
-                    >
-                      <s.icon className="w-8 h-8 text-white" />
+                  {/* Mockup */}
+                  <ScrollReveal
+                    direction={reversed ? "right" : "left"}
+                    className="relative"
+                    duration={900}
+                  >
+                    <div className="relative animate-float-slower">
+                      <TiltCard intensity={6}>{renderMockup(s.mockup)}</TiltCard>
+                      {/* Decorative icon badge */}
+                      <div
+                        className={`absolute -top-6 ${
+                          reversed ? "-left-6" : "-right-6"
+                        } w-16 h-16 rounded-2xl bg-gradient-to-br ${s.gradient} flex items-center justify-center shadow-2xl float-badge`}
+                        style={{ animationDelay: "1s" }}
+                      >
+                        <s.icon className="w-8 h-8 text-white" />
+                      </div>
                     </div>
-                  </div>
-                </ScrollReveal>
+                  </ScrollReveal>
 
-                {/* Texto */}
-                <ScrollReveal
-                  direction={reversed ? "left" : "right"}
-                  delay={150}
-                  duration={900}
-                  className="max-w-xl"
-                >
-                  <span
-                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-5 border ${s.badgeColor}`}
+                  {/* Texto */}
+                  <ScrollReveal
+                    direction={reversed ? "left" : "right"}
+                    delay={150}
+                    duration={900}
+                    className="max-w-xl"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                    {s.badge}
-                  </span>
-                  <h3 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold leading-[1.15] tracking-tight">
-                    {s.title}{" "}
                     <span
-                      className={`bg-gradient-to-r ${s.gradient} bg-clip-text text-transparent`}
+                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-5 border ${s.badgeColor}`}
                     >
-                      {s.highlight}
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      {s.badge}
                     </span>
-                  </h3>
-                  <p className="mt-5 text-lg text-gray-400 leading-relaxed">
-                    {s.description}
-                  </p>
-                  <ul className="mt-7 space-y-3">
-                    {s.bullets.map((b, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <div
-                          className={`w-6 h-6 rounded-lg bg-gradient-to-br ${s.gradient} flex items-center justify-center flex-shrink-0 mt-0.5`}
-                        >
-                          <b.icon className="w-3.5 h-3.5 text-white" strokeWidth={3} />
-                        </div>
-                        <span className="text-gray-300">{b.text}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href={s.ctaHref}
-                    className={`group mt-8 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${s.gradient} text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl`}
-                    style={{ boxShadow: `0 10px 40px -10px ${s.glowColor}` }}
-                  >
-                    {s.ctaLabel}
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                </ScrollReveal>
+                    <h3 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold leading-[1.15] tracking-tight">
+                      {s.title}{" "}
+                      <span
+                        className={`bg-gradient-to-r ${s.gradient} bg-clip-text text-transparent`}
+                      >
+                        {s.highlight}
+                      </span>
+                    </h3>
+                    <p className="mt-5 text-lg text-gray-400 leading-relaxed">
+                      {s.description}
+                    </p>
+                    <ul className="mt-7 space-y-3">
+                      {s.bullets.map((b, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <div
+                            className={`w-6 h-6 rounded-lg bg-gradient-to-br ${s.gradient} flex items-center justify-center flex-shrink-0 mt-0.5`}
+                          >
+                            <b.icon className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                          </div>
+                          <span className="text-gray-300">{b.text}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link
+                      href={s.ctaHref}
+                      className={`group mt-8 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${s.gradient} text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl`}
+                      style={{ boxShadow: `0 10px 40px -10px ${s.glowColor}` }}
+                    >
+                      {s.ctaLabel}
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    </Link>
+                  </ScrollReveal>
+                </div>
               </div>
-            </div>
-          </section>
-        );
-      })}
+            </section>
+          );
+        })}
+      </div>
 
-      {/* ========== HOW IT WORKS ========== */}
-      <section id="how-it-works" className="relative py-28 bg-dark-900 overflow-hidden scroll-mt-20">
-        <div className="orb w-[400px] h-[400px] bg-accent-violet top-0 right-0 animate-pulse-glow" />
+      {/* ========== COMO FUNCIONA — agora dentro do container unificado, sem cortar a continuidade visual ========== */}
+      <section id="how-it-works" className="relative py-28 scroll-mt-20">
+        <div
+          className="orb w-[400px] h-[400px] bg-accent-violet animate-pulse-glow"
+          style={{ top: "-100px", right: 0 }}
+        />
         <div className="orb w-[400px] h-[400px] bg-primary-500 bottom-0 left-0 animate-pulse-glow animation-delay-500" />
-        <Particles count={6} />
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal direction="up" className="text-center max-w-3xl mx-auto mb-20">
             <span className="inline-block px-4 py-1.5 rounded-full text-xs font-medium bg-accent-violet/10 border border-accent-violet/20 text-accent-violet mb-6">
@@ -1335,6 +1347,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </div>
 
       {/* ========== POR QUE ESCOLHER ========== */}
       <section id="diferenciais" className="relative py-28 bg-dark-800 overflow-hidden scroll-mt-20">

@@ -14,9 +14,11 @@ import type { TemplateName, SectionName } from "@/lib/resume-templates";
 import { getDefaultSizesPx } from "@/lib/resume-templates";
 import ResumeFeedback from "@/components/ui/ResumeFeedback";
 import Modal from "@/components/ui/Modal";
+import AIProgressModal from "@/components/ui/AIProgressModal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
 import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
+import { useAIProgress } from "@/hooks/useAIProgress";
 
 const PROGRESS_MESSAGES = [
   "Enviando seus dados...",
@@ -57,8 +59,17 @@ export default function AdaptResumePage() {
   const [resumeData, setResumeData] = useState<ResumeSchema | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateName>("profissional");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [progressMsg, setProgressMsg] = useState("");
+  const {
+    progress,
+    message: progressMsg,
+    start: startProgress,
+    stop: stopProgress,
+    reset: resetProgress,
+  } = useAIProgress({
+    messages: PROGRESS_MESSAGES,
+    finalMessage: "Currículo adaptado!",
+    expectedDuration: 16,
+  });
   const [candidateLevel, setCandidateLevel] = useState<string | undefined>();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(null);
@@ -66,7 +77,6 @@ export default function AdaptResumePage() {
   const [_qualityReport, setQualityReport] = useState<QualityReport | null>(null);
   const [postCorrections, setPostCorrections] = useState<string[]>([]);
   const [qualityFlags, setQualityFlags] = useState<string[]>([]);
-  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Editor state — granular px overrides per category. `null` means "use template default".
   const [sectionTitleFontPx, setSectionTitleFontPx] = useState<number | null>(null);
@@ -97,32 +107,9 @@ export default function AdaptResumePage() {
 
   useEffect(() => {
     return () => {
-      if (progressInterval.current) clearInterval(progressInterval.current);
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const startProgress = useCallback(() => {
-    setProgress(0);
-    setProgressMsg(PROGRESS_MESSAGES[0]);
-    let current = 0;
-    progressInterval.current = setInterval(() => {
-      current += 1;
-      const target = Math.min(current, 90);
-      setProgress(target);
-      const msgIndex = Math.min(Math.floor(target / 12), PROGRESS_MESSAGES.length - 1);
-      setProgressMsg(PROGRESS_MESSAGES[msgIndex]);
-    }, 500);
-  }, []);
-
-  const stopProgress = useCallback(() => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
-    }
-    setProgress(100);
-    setProgressMsg("Currículo adaptado!");
   }, []);
 
   // Extract ResumeSchema from API response
@@ -305,7 +292,6 @@ export default function AdaptResumePage() {
       toast.error(msg || "Erro ao adaptar currículo.");
     } finally {
       setLoading(false);
-      if (progressInterval.current) { clearInterval(progressInterval.current); progressInterval.current = null; }
     }
   };
 
@@ -348,8 +334,7 @@ export default function AdaptResumePage() {
     setFile(null);
     setJobTitle("");
     setJobDescription("");
-    setProgress(0);
-    setProgressMsg("");
+    resetProgress();
     setCandidateLevel(undefined);
     setGenerationNotes(null);
     setQualityReport(null);
@@ -430,7 +415,7 @@ export default function AdaptResumePage() {
                   </div>
                 </div>
               ) : pdfUrl ? (
-                <iframe src={pdfUrl} className="w-full rounded-xl" style={{ height: "75vh", minHeight: "500px" }} title="Preview do currículo" />
+                <iframe src={`${pdfUrl}#pagemode=none&navpanes=0&toolbar=1`} className="w-full rounded-xl" style={{ height: "75vh", minHeight: "500px" }} title="Preview do currículo" />
               ) : (
                 <div className="flex items-center justify-center py-32">
                   <p className="text-sm text-gray-500">Erro ao carregar preview.</p>
@@ -611,9 +596,18 @@ export default function AdaptResumePage() {
             </Button>
           </div>
 
-          {loading && <ProgressBar progress={progress} message={progressMsg} />}
         </fieldset>
       </div>
+
+      <AIProgressModal
+        isOpen={loading}
+        title="Adaptando seu currículo"
+        message={progressMsg}
+        progress={progress}
+        steps={PROGRESS_MESSAGES}
+        icon={Target}
+        accent="amber"
+      />
 
       {/* Confirm generate modal */}
       <Modal isOpen={showGenerateConfirm} onClose={() => setShowGenerateConfirm(false)} title="Adaptar currículo" size="sm">
@@ -742,17 +736,3 @@ function SectionEditor({ section, data, onUpdate, pdfLoading }: {
   }
 }
 
-function ProgressBar({ progress, message }: { progress: number; message: string }) {
-  return (
-    <div className="space-y-4 py-4">
-      <div className="relative w-full h-3 bg-white/5 rounded-full overflow-hidden">
-        <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary-500 to-primary-400 rounded-full transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse rounded-full" />
-      </div>
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-400 animate-pulse">{message}</p>
-        <span className="text-xs text-gray-500 font-mono">{progress}%</span>
-      </div>
-    </div>
-  );
-}

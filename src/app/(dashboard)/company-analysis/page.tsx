@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
+import AIProgressModal from "@/components/ui/AIProgressModal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
+import { useAIProgress } from "@/hooks/useAIProgress";
 import { deductCredits, checkCredits } from "@/services/credits";
 import type { CompanyAnalysisResult } from "@/services/ai-company-analysis";
 import {
@@ -354,9 +356,17 @@ export default function CompanyAnalysisPage() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [result, setResult] = useState<CompanyAnalysisResult | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [progressMsg, setProgressMsg] = useState("");
-  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const {
+    progress,
+    message: progressMsg,
+    start: startProgress,
+    stop: stopProgress,
+    reset: resetProgress,
+  } = useAIProgress({
+    messages: PROGRESS_MESSAGES,
+    finalMessage: "Análise concluída!",
+    expectedDuration: 12,
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -426,24 +436,6 @@ export default function CompanyAnalysisPage() {
     }
   }, [result]);
 
-  const startProgress = () => {
-    setProgress(0);
-    setProgressMsg(PROGRESS_MESSAGES[0]);
-    let i = 0;
-    progressInterval.current = setInterval(() => {
-      i += 1;
-      const pct = Math.min(i * 14, 90);
-      setProgress(pct);
-      setProgressMsg(PROGRESS_MESSAGES[Math.min(Math.floor(pct / 15), PROGRESS_MESSAGES.length - 1)]);
-    }, 900);
-  };
-
-  const stopProgress = () => {
-    if (progressInterval.current) { clearInterval(progressInterval.current); progressInterval.current = null; }
-    setProgress(100);
-    setProgressMsg("Análise concluída!");
-  };
-
   const handleAnalyze = async () => {
     if (!user) return;
 
@@ -471,7 +463,6 @@ export default function CompanyAnalysisPage() {
       toast.error(msg);
     } finally {
       setLoading(false);
-      if (progressInterval.current) { clearInterval(progressInterval.current); progressInterval.current = null; }
     }
   };
 
@@ -479,8 +470,7 @@ export default function CompanyAnalysisPage() {
     setResult(null);
     setCompanyName("");
     setPosition("");
-    setProgress(0);
-    setProgressMsg("");
+    resetProgress();
   };
 
   const canAnalyze = companyName.trim().length > 1 && position.trim().length > 1;
@@ -571,24 +561,6 @@ export default function CompanyAnalysisPage() {
             </div>
           </div>
 
-          {/* Progress */}
-          {loading && (
-            <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] p-6">
-              <div className="space-y-3">
-                <div className="relative w-full h-2.5 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary-600 to-primary-400 rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <div className="flex justify-between">
-                  <p className="text-sm text-gray-400 animate-pulse">{progressMsg}</p>
-                  <span className="text-xs text-gray-500 font-mono">{progress}%</span>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="flex justify-end">
             <Button
               onClick={() => setShowConfirm(true)}
@@ -612,6 +584,16 @@ export default function CompanyAnalysisPage() {
           </div>
         </div>
       )}
+
+      <AIProgressModal
+        isOpen={loading}
+        title="Analisando a empresa"
+        message={progressMsg}
+        progress={progress}
+        steps={PROGRESS_MESSAGES}
+        icon={Building2}
+        accent="sky"
+      />
 
       <SaveLimitModal
         isOpen={!!saver.confirmState}

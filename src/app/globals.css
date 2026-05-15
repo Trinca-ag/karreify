@@ -658,6 +658,64 @@ body {
   left: 150%;
 }
 
+/* ========== AI Progress Modal ========== */
+.animate-modal-pop {
+  animation: modalPop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes modalPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-step-check {
+  animation: stepCheck 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes stepCheck {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ai-progress-shimmer {
+  animation: aiProgressShimmer 1.8s linear infinite;
+}
+
+@keyframes aiProgressShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.ai-progress-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.ai-progress-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ai-progress-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}
+.ai-progress-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
 /* ========== Reduced Motion ========== */
 @media (prefers-reduced-motion: reduce) {
   .particle,
@@ -681,7 +739,14 @@ body {
   .swing-hand,
   .dash-flow,
   .benefit-card::before,
-  .progress-fill {
+  .progress-fill,
+  .ai-progress-shimmer {
     animation: none !important;
+  }
+  .animate-modal-pop,
+  .animate-step-check {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

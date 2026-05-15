@@ -16,9 +16,11 @@ import type { TemplateName, SectionName } from "@/lib/resume-templates";
 import { getDefaultSizesPx } from "@/lib/resume-templates";
 import ResumeFeedback from "@/components/ui/ResumeFeedback";
 import Modal from "@/components/ui/Modal";
+import AIProgressModal from "@/components/ui/AIProgressModal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
 import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
+import { useAIProgress } from "@/hooks/useAIProgress";
 import { listSavedItems, updateResumeItem } from "@/services/saved-items";
 
 type Mode = "upload" | "scratch" | null;
@@ -112,8 +114,17 @@ export default function CreateResumePage() {
   const [resumeData, setResumeData] = useState<ResumeSchema | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateName>("profissional");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [progressMsg, setProgressMsg] = useState("");
+  const {
+    progress,
+    message: progressMsg,
+    start: startProgress,
+    stop: stopProgress,
+    reset: resetProgress,
+  } = useAIProgress({
+    messages: PROGRESS_MESSAGES,
+    finalMessage: "Currículo pronto!",
+    expectedDuration: 18,
+  });
   const [validationBlock, setValidationBlock] = useState<string[] | null>(null);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [candidateLevel, setCandidateLevel] = useState<string | undefined>();
@@ -123,7 +134,6 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   const [_qualityReport, setQualityReport] = useState<QualityReport | null>(null);
   const [postCorrections, setPostCorrections] = useState<string[]>([]);
   const [qualityFlags, setQualityFlags] = useState<string[]>([]);
-  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Editor state — granular px overrides per category. `null` means "use template default".
   const [sectionTitleFontPx, setSectionTitleFontPx] = useState<number | null>(null);
@@ -167,32 +177,9 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
 
   useEffect(() => {
     return () => {
-      if (progressInterval.current) clearInterval(progressInterval.current);
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const startProgress = useCallback(() => {
-    setProgress(0);
-    setProgressMsg(PROGRESS_MESSAGES[0]);
-    let current = 0;
-    progressInterval.current = setInterval(() => {
-      current += 1;
-      const target = Math.min(current, 90);
-      setProgress(target);
-      const msgIndex = Math.min(Math.floor(target / 12), PROGRESS_MESSAGES.length - 1);
-      setProgressMsg(PROGRESS_MESSAGES[msgIndex]);
-    }, 500);
-  }, []);
-
-  const stopProgress = useCallback(() => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
-    }
-    setProgress(100);
-    setProgressMsg("Curriculo pronto!");
   }, []);
 
   // Extract ResumeSchema from API response (handles both new and legacy formats)
@@ -539,10 +526,6 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       toast.error(msg || "Erro ao criar curriculo.");
     } finally {
       setLoading(false);
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-        progressInterval.current = null;
-      }
     }
   }
 
@@ -629,8 +612,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     setFile(null);
     setStep(1);
     setStepDirection("forward");
-    setProgress(0);
-    setProgressMsg("");
+    resetProgress();
     setValidationBlock(null);
     setValidationWarnings([]);
     setCandidateLevel(undefined);
@@ -777,7 +759,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                 </div>
               ) : pdfUrl ? (
                 <iframe
-                  src={pdfUrl}
+                  src={`${pdfUrl}#pagemode=none&navpanes=0&toolbar=1`}
                   className="w-full rounded-xl"
                   style={{ height: "75vh", minHeight: "500px" }}
                   title="Preview do currículo"
@@ -1011,7 +993,6 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                 {validating ? "Validando..." : "Criar currículo"}
               </Button>
             </div>
-            {loading && <ProgressBar progress={progress} message={progressMsg} />}
           </fieldset>
         </div>
       ) : (
@@ -1348,10 +1329,19 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
               </div>
             </div>
 
-            {loading && <ProgressBar progress={progress} message={progressMsg} />}
           </fieldset>
         </form>
       )}
+
+      <AIProgressModal
+        isOpen={loading}
+        title="Criando seu currículo"
+        message={progressMsg}
+        progress={progress}
+        steps={PROGRESS_MESSAGES}
+        icon={Sparkles}
+        accent="emerald"
+      />
 
       {/* Confirm generate modal */}
       <Modal isOpen={showGenerateConfirm} onClose={() => setShowGenerateConfirm(false)} title="Criar currículo" size="sm">
@@ -1871,20 +1861,3 @@ function SectionEditor({
   }
 }
 
-function ProgressBar({ progress, message }: { progress: number; message: string }) {
-  return (
-    <div className="space-y-4 py-4">
-      <div className="relative w-full h-3 bg-white/5 rounded-full overflow-hidden">
-        <div
-          className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary-500 to-primary-400 rounded-full transition-all duration-500 ease-out"
-          style={{ width: `${progress}%` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse rounded-full" />
-      </div>
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-400 animate-pulse">{message}</p>
-        <span className="text-xs text-gray-500 font-mono">{progress}%</span>
-      </div>
-    </div>
-  );
-}

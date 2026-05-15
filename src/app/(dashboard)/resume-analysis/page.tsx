@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
 import FileUpload from "@/components/ui/FileUpload";
@@ -11,8 +11,10 @@ import { FileSearch, AlertTriangle, CheckCircle, Lightbulb, RefreshCw, Zap, Spar
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
+import AIProgressModal from "@/components/ui/AIProgressModal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
+import { useAIProgress } from "@/hooks/useAIProgress";
 
 const PROGRESS_MESSAGES = [
   "Enviando seu currículo...",
@@ -58,43 +60,23 @@ export default function ResumeAnalysisPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [cacheMetrics, setCacheMetrics] = useState<CacheMetrics | null>(null);
   const [isFirstUse, setIsFirstUse] = useState<boolean | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [progressMsg, setProgressMsg] = useState("");
   const [showAnalyzeConfirm, setShowAnalyzeConfirm] = useState(false);
-  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const {
+    progress,
+    message: progressMsg,
+    start: startProgress,
+    stop: stopProgress,
+    reset: resetProgress,
+  } = useAIProgress({
+    messages: PROGRESS_MESSAGES,
+    finalMessage: "Análise concluída!",
+    expectedDuration: 14,
+  });
 
   useEffect(() => {
     if (!user) return;
     hasUsedFeature(user.uid, "resume-analysis").then((used) => setIsFirstUse(!used));
   }, [user]);
-
-  const startProgress = useCallback(() => {
-    setProgress(0);
-    setProgressMsg(PROGRESS_MESSAGES[0]);
-    let current = 0;
-    progressInterval.current = setInterval(() => {
-      current += 1;
-      const target = Math.min(current, 90);
-      setProgress(target);
-      const msgIndex = Math.min(Math.floor(target / 10), PROGRESS_MESSAGES.length - 1);
-      setProgressMsg(PROGRESS_MESSAGES[msgIndex]);
-    }, 600);
-  }, []);
-
-  const stopProgress = useCallback(() => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
-    }
-    setProgress(100);
-    setProgressMsg("Analise concluida!");
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (progressInterval.current) clearInterval(progressInterval.current);
-    };
-  }, []);
 
   const handleDownloadPDF = useCallback(async () => {
     if (!result) return;
@@ -207,10 +189,6 @@ export default function ResumeAnalysisPage() {
       toast.error(msg);
     } finally {
       setLoading(false);
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-        progressInterval.current = null;
-      }
     }
   };
 
@@ -218,8 +196,7 @@ export default function ResumeAnalysisPage() {
     setFile(null);
     setResult(null);
     setCacheMetrics(null);
-    setProgress(0);
-    setProgressMsg("");
+    resetProgress();
   };
 
   return (
@@ -282,22 +259,6 @@ export default function ResumeAnalysisPage() {
               </Button>
             </div>
 
-            {/* Progress bar */}
-            {loading && (
-              <div className="space-y-4 py-4">
-                <div className="relative w-full h-3 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary-500 to-primary-400 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${progress}%` }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse rounded-full" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-400 animate-pulse">{progressMsg}</p>
-                  <span className="text-xs text-gray-500 font-mono">{progress}%</span>
-                </div>
-              </div>
-            )}
           </fieldset>
         </div>
       ) : (
@@ -443,6 +404,16 @@ export default function ResumeAnalysisPage() {
           </div>
         </div>
       )}
+
+      <AIProgressModal
+        isOpen={loading}
+        title="Analisando seu currículo"
+        message={progressMsg}
+        progress={progress}
+        steps={PROGRESS_MESSAGES}
+        icon={FileSearch}
+        accent="primary"
+      />
 
       <SaveLimitModal
         isOpen={!!saver.confirmState}
