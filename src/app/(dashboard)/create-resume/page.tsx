@@ -644,6 +644,22 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     setHiddenSections([]);
     setEditingSection(null);
     setAvailableSections([]);
+    setSelectedTemplate("profissional");
+    // Reset scratch-mode form fields
+    setName("");
+    setEmail("");
+    setPhone("");
+    setLocation("");
+    setLinkedin("");
+    setGithub("");
+    setWebsite("");
+    setObjective("");
+    setSkills("");
+    setLanguages("");
+    setExperiences([{ company: "", position: "", startDate: "", endDate: "", current: false, description: "" }]);
+    setEducations([{ institution: "", degree: "", field: "", startDate: "", endDate: "" }]);
+    setProjects([]);
+    pendingFormData.current = null;
     saver.reset();
     if (pdfUrl) {
       URL.revokeObjectURL(pdfUrl);
@@ -717,22 +733,14 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
             style={{ animationDelay: "1.5s" }}
           />
           <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
-          <div className="relative p-8 md:p-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-300 mb-3">
-                <Sparkles className="w-3 h-3" />
-                Currículo gerado com sucesso
-              </div>
-              <h1 className="text-2xl md:text-4xl font-bold text-white font-heading leading-[1.1] tracking-tight">
-                Seu currículo está <span className="gradient-text">pronto!</span>
-              </h1>
+          <div className="relative p-8 md:p-10">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-300 mb-3">
+              <Sparkles className="w-3 h-3" />
+              Currículo gerado com sucesso
             </div>
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] border border-white/[0.10] text-gray-300 rounded-xl hover:bg-white/[0.10] hover:border-white/20 transition-all duration-200 text-sm flex-shrink-0"
-            >
-              <RefreshCw className="w-4 h-4" /> Novo currículo
-            </button>
+            <h1 className="text-2xl md:text-4xl font-bold text-white font-heading leading-[1.1] tracking-tight">
+              Seu currículo está <span className="gradient-text">pronto!</span>
+            </h1>
           </div>
         </section>
 
@@ -781,13 +789,36 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           </div>
         </div>
 
+        {/* Actions — above the PDF */}
+        <div className="flex flex-wrap items-center justify-start gap-3 animate-fade-in-up animation-delay-200">
+          <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="px-6 glow-blue">
+            <Download className="w-4 h-4 mr-2" />
+            Baixar PDF
+          </Button>
+          {!editingItemId && (
+            <SaveButton
+              status={saveStatus}
+              saving={saver.saving}
+              disabled={pdfLoading}
+              onClick={handleManualSave}
+              className="px-6"
+            />
+          )}
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] border border-white/[0.10] text-gray-300 rounded-xl hover:bg-white/[0.10] hover:border-white/20 transition-all duration-200 text-sm flex-shrink-0"
+          >
+            <RefreshCw className="w-4 h-4" /> Novo currículo
+          </button>
+        </div>
+
         {/* PDF Preview + Feedback sidebar */}
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
           {/* PDF Preview */}
           <div className="flex-1 min-w-0">
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden lg:h-full">
               {pdfLoading ? (
-                <div className="flex items-center justify-center py-32">
+                <div className="flex items-center justify-center h-[75vh] lg:h-full">
                   <div className="text-center">
                     <div className="w-8 h-8 border-2 border-primary-400 border-t-transparent rounded-full animate-spin mx-auto" />
                     <p className="text-sm text-gray-400 mt-3">Gerando PDF...</p>
@@ -796,12 +827,12 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
               ) : pdfUrl ? (
                 <iframe
                   src={`${pdfUrl}#pagemode=none&navpanes=0&toolbar=1`}
-                  className="w-full rounded-xl"
-                  style={{ height: "75vh", minHeight: "500px" }}
+                  className="w-full rounded-xl h-[75vh] lg:h-full"
+                  style={{ minHeight: "500px" }}
                   title="Preview do currículo"
                 />
               ) : (
-                <div className="flex items-center justify-center py-32">
+                <div className="flex items-center justify-center h-[75vh] lg:h-full">
                   <p className="text-sm text-gray-500">Erro ao carregar preview.</p>
                 </div>
               )}
@@ -908,23 +939,6 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
               qualityFlags={qualityFlags}
             />
           </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="px-8 glow-blue">
-            <Download className="w-4 h-4 mr-2" />
-            Baixar PDF
-          </Button>
-          {!editingItemId && (
-            <SaveButton
-              status={saveStatus}
-              saving={saver.saving}
-              disabled={pdfLoading}
-              onClick={handleManualSave}
-              className="px-6"
-            />
-          )}
         </div>
 
         <SaveLimitModal

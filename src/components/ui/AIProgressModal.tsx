@@ -102,8 +102,9 @@ export default function AIProgressModal({
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      {/* Backdrop with blur */}
-      <div className="absolute inset-0 bg-dark-900/85 backdrop-blur-md animate-fade-in" />
+      {/* Backdrop with blur — fixed (not absolute) so it covers the full
+          viewport even when the wrapper has padding. */}
+      <div className="fixed inset-0 bg-dark-900/85 backdrop-blur-md animate-fade-in" />
 
       {/* Modal card */}
       <div

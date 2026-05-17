@@ -7,7 +7,7 @@ import FileUpload from "@/components/ui/FileUpload";
 import ScoreCircle from "@/components/ui/ScoreCircle";
 import { extractTextFromFile } from "@/utils/file-parser";
 import { deductCredits, checkCredits, hasUsedFeature } from "@/services/credits";
-import { FileSearch, AlertTriangle, CheckCircle, Lightbulb, RefreshCw, Zap, Sparkles, Download } from "lucide-react";
+import { FileSearch, AlertTriangle, CheckCircle, Lightbulb, RefreshCw, Sparkles, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
@@ -31,14 +31,6 @@ const PROGRESS_MESSAGES = [
   "Finalizando análise...",
 ];
 
-interface CacheMetrics {
-  promptTokens: number;
-  completionTokens: number;
-  cacheHitTokens: number;
-  cacheMissTokens: number;
-  cacheHitRate: number;
-}
-
 interface AnalysisResult {
   extractedData: Record<string, unknown>;
   analysis: {
@@ -61,7 +53,6 @@ export default function ResumeAnalysisPage() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [cacheMetrics, setCacheMetrics] = useState<CacheMetrics | null>(null);
   const [isFirstUse, setIsFirstUse] = useState<boolean | null>(null);
   const [showAnalyzeConfirm, setShowAnalyzeConfirm] = useState(false);
   const {
@@ -184,7 +175,6 @@ export default function ResumeAnalysisPage() {
 
       stopProgress();
       setResult(data.data);
-      if (data.cache) setCacheMetrics(data.cache);
       toast.success(usedBefore ? "Analise concluida!" : "Analise concluida! (primeira analise gratuita)");
       void prepareAnalysisSave(data.data.analysis, file.name);
     } catch (error) {
@@ -199,7 +189,6 @@ export default function ResumeAnalysisPage() {
   const handleReset = () => {
     setFile(null);
     setResult(null);
-    setCacheMetrics(null);
     resetProgress();
     saver.reset();
   };
@@ -273,18 +262,6 @@ export default function ResumeAnalysisPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Cache metrics badge */}
-          {cacheMetrics && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl w-fit animate-fade-in-up">
-              <Zap className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs text-emerald-300 font-medium">
-                {cacheMetrics.cacheHitRate > 0
-                  ? `Cache hit: ${cacheMetrics.cacheHitRate}% — ${cacheMetrics.cacheHitTokens} tokens cacheados de ${cacheMetrics.promptTokens}`
-                  : `Primeiro uso — cache ativado para proximas analises (${cacheMetrics.promptTokens} tokens armazenados)`}
-              </span>
-            </div>
-          )}
-
           {/* Overall Score */}
           <div className="relative group bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] hover:border-primary-500/30 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden animate-fade-in-up animation-delay-200">
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500/10 group-hover:bg-primary-500/20 rounded-full blur-3xl transition-all duration-500 pointer-events-none" />

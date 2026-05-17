@@ -183,6 +183,23 @@ export function passwordResetEmail(code: string): string {
   `);
 }
 
+export function emailChangeEmail(code: string): string {
+  return baseLayout(`
+    <div style="text-align: center;">
+      ${iconCircle("&#9993;", "rgba(59,130,246,0.15)", "rgba(139,92,246,0.1)", "rgba(59,130,246,0.25)")}
+
+      ${heading("Confirma&ccedil;&atilde;o de novo email")}
+      ${subtext("Use o c&oacute;digo abaixo para confirmar a altera&ccedil;&atilde;o do email da sua conta NextCV")}
+
+      ${codeBlock(code, "#60a5fa", "rgba(59,130,246,0.08)", "rgba(139,92,246,0.05)", "rgba(59,130,246,0.15)")}
+
+      ${infoPill("&#9200;", "Expira em", "10 minutos")}
+
+      ${footnote("Se voc&ecirc; n&atilde;o solicitou esta altera&ccedil;&atilde;o, ignore este email e considere alterar sua senha.")}
+    </div>
+  `);
+}
+
 export function adminVerificationEmail(code: string): string {
   return baseLayout(`
     <div style="text-align: center;">

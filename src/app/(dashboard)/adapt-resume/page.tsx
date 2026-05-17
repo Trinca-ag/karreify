@@ -396,19 +396,14 @@ export default function AdaptResumePage() {
           <div className="absolute -top-24 -left-16 w-80 h-80 bg-orange-500/20 rounded-full blur-[120px] animate-pulse-glow pointer-events-none" />
           <div className="absolute -bottom-32 -right-10 w-96 h-96 bg-primary-500/20 rounded-full blur-[140px] animate-pulse-glow pointer-events-none" style={{ animationDelay: "1.5s" }} />
           <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
-          <div className="relative p-8 md:p-10 animate-fade-in-up flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-xs font-medium text-orange-300 mb-4">
-                <Target className="w-3 h-3" />
-                Currículo pronto
-              </div>
-              <h1 className="text-2xl md:text-4xl font-bold text-white font-heading leading-[1.1] tracking-tight">
-                Currículo <span className="gradient-text">Adaptado</span>
-              </h1>
+          <div className="relative p-8 md:p-10 animate-fade-in-up">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-xs font-medium text-orange-300 mb-4">
+              <Target className="w-3 h-3" />
+              Currículo pronto
             </div>
-            <button onClick={handleReset} className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition-colors text-sm flex-shrink-0">
-              <RefreshCw className="w-4 h-4" /> Nova adaptação
-            </button>
+            <h1 className="text-2xl md:text-4xl font-bold text-white font-heading leading-[1.1] tracking-tight">
+              Currículo <span className="gradient-text">Adaptado</span>
+            </h1>
           </div>
         </section>
 
@@ -436,21 +431,41 @@ export default function AdaptResumePage() {
           </div>
         </div>
 
+        {/* Actions — above the PDF */}
+        <div className="flex flex-wrap items-center justify-start gap-3 animate-fade-in-up animation-delay-200">
+          <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="px-6 glow-blue">
+            <Download className="w-4 h-4 mr-2" /> Baixar PDF
+          </Button>
+          <SaveButton
+            status={saver.status}
+            saving={saver.saving}
+            disabled={pdfLoading}
+            onClick={handleManualSave}
+            className="px-6"
+          />
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition-colors text-sm flex-shrink-0"
+          >
+            <RefreshCw className="w-4 h-4" /> Nova adaptação
+          </button>
+        </div>
+
         {/* PDF Preview + Sidebar */}
-        <div className="flex flex-col lg:flex-row gap-6 animate-fade-in-up animation-delay-300">
+        <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch animate-fade-in-up animation-delay-300">
           <div className="flex-1 min-w-0">
-            <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
+            <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden lg:h-full">
               {pdfLoading ? (
-                <div className="flex items-center justify-center py-32">
+                <div className="flex items-center justify-center h-[75vh] lg:h-full">
                   <div className="text-center">
                     <div className="w-8 h-8 border-2 border-primary-400 border-t-transparent rounded-full animate-spin mx-auto" />
                     <p className="text-sm text-gray-400 mt-3">Gerando PDF...</p>
                   </div>
                 </div>
               ) : pdfUrl ? (
-                <iframe src={`${pdfUrl}#pagemode=none&navpanes=0&toolbar=1`} className="w-full rounded-xl" style={{ height: "75vh", minHeight: "500px" }} title="Preview do currículo" />
+                <iframe src={`${pdfUrl}#pagemode=none&navpanes=0&toolbar=1`} className="w-full rounded-xl h-[75vh] lg:h-full" style={{ minHeight: "500px" }} title="Preview do currículo" />
               ) : (
-                <div className="flex items-center justify-center py-32">
+                <div className="flex items-center justify-center h-[75vh] lg:h-full">
                   <p className="text-sm text-gray-500">Erro ao carregar preview.</p>
                 </div>
               )}
@@ -541,20 +556,6 @@ export default function AdaptResumePage() {
 
             <ResumeFeedback postCorrections={postCorrections} qualityFlags={qualityFlags} />
           </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-wrap items-center justify-center gap-3 animate-fade-in-up animation-delay-400">
-          <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="px-8 glow-blue">
-            <Download className="w-4 h-4 mr-2" /> Baixar PDF
-          </Button>
-          <SaveButton
-            status={saver.status}
-            saving={saver.saving}
-            disabled={pdfLoading}
-            onClick={handleManualSave}
-            className="px-6"
-          />
         </div>
 
         <SaveLimitModal

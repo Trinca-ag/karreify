@@ -11,7 +11,40 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function buildHtml(data: CoverLetterResult, date: string): string {
+interface CoverLetterAdjustments {
+  candidateNameFontPx?: number;
+  bodyFontPx?: number;
+  subjectFontPx?: number;
+  metaFontPx?: number;
+  paragraphSpacingPx?: number;
+  signOffSpacingPx?: number;
+  hideSubject?: boolean;
+  hideContactHeader?: boolean;
+}
+
+const COVER_LETTER_DEFAULTS = {
+  candidateNameFontPx: 20,
+  bodyFontPx: 11.5,
+  subjectFontPx: 11.5,
+  metaFontPx: 10.5,
+  paragraphSpacingPx: 13,
+  signOffSpacingPx: 28,
+} as const;
+
+function buildHtml(
+  data: CoverLetterResult,
+  date: string,
+  adj: CoverLetterAdjustments
+): string {
+  const candidateNameFont = adj.candidateNameFontPx ?? COVER_LETTER_DEFAULTS.candidateNameFontPx;
+  const bodyFont = adj.bodyFontPx ?? COVER_LETTER_DEFAULTS.bodyFontPx;
+  const subjectFont = adj.subjectFontPx ?? COVER_LETTER_DEFAULTS.subjectFontPx;
+  const metaFont = adj.metaFontPx ?? COVER_LETTER_DEFAULTS.metaFontPx;
+  const paragraphSpacing = adj.paragraphSpacingPx ?? COVER_LETTER_DEFAULTS.paragraphSpacingPx;
+  const signOffSpacing = adj.signOffSpacingPx ?? COVER_LETTER_DEFAULTS.signOffSpacingPx;
+  const hideSubject = !!adj.hideSubject;
+  const hideContactHeader = !!adj.hideContactHeader;
+
   const paragraphs = data.coverLetter
     .split(/\n{2,}/)
     .map(p => p.trim())
@@ -19,7 +52,7 @@ function buildHtml(data: CoverLetterResult, date: string): string {
     .map(p => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
     .join("\n");
 
-  const hasContact = data.candidateEmail || data.candidatePhone;
+  const hasContact = !hideContactHeader && (data.candidateEmail || data.candidatePhone);
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -31,7 +64,7 @@ function buildHtml(data: CoverLetterResult, date: string): string {
     font-family: 'Georgia', 'Times New Roman', serif;
     background: #fff;
     color: #1a1a1a;
-    font-size: 11.5px;
+    font-size: ${bodyFont}px;
     line-height: 1.7;
   }
 
@@ -52,7 +85,7 @@ function buildHtml(data: CoverLetterResult, date: string): string {
     margin-bottom: 20px;
   }
   .candidate-name {
-    font-size: 20px;
+    font-size: ${candidateNameFont}px;
     font-weight: 700;
     font-family: 'Helvetica Neue', Arial, sans-serif;
     color: #1e1b4b;
@@ -60,7 +93,7 @@ function buildHtml(data: CoverLetterResult, date: string): string {
   }
   .contact-info {
     text-align: right;
-    font-size: 10px;
+    font-size: ${Math.max(metaFont - 0.5, 7)}px;
     color: #475569;
     font-family: 'Helvetica Neue', Arial, sans-serif;
     line-height: 1.6;
@@ -71,17 +104,17 @@ function buildHtml(data: CoverLetterResult, date: string): string {
   .meta {
     margin-bottom: 22px;
     font-family: 'Helvetica Neue', Arial, sans-serif;
-    font-size: 10.5px;
+    font-size: ${metaFont}px;
     color: #475569;
   }
   .meta-date { margin-bottom: 14px; }
   .meta-to { line-height: 1.5; }
-  .meta-to strong { color: #1e293b; font-size: 11px; }
+  .meta-to strong { color: #1e293b; font-size: ${metaFont + 0.5}px; }
 
   /* Subject */
   .subject {
     font-family: 'Helvetica Neue', Arial, sans-serif;
-    font-size: 11.5px;
+    font-size: ${subjectFont}px;
     font-weight: 700;
     color: #1e1b4b;
     margin-bottom: 20px;
@@ -93,14 +126,14 @@ function buildHtml(data: CoverLetterResult, date: string): string {
 
   /* Salutation */
   .salutation {
-    font-size: 11.5px;
+    font-size: ${bodyFont}px;
     margin-bottom: 14px;
     color: #1a1a1a;
   }
 
   /* Body */
   .body p {
-    margin-bottom: 13px;
+    margin-bottom: ${paragraphSpacing}px;
     text-align: justify;
     hyphens: auto;
   }
@@ -108,15 +141,15 @@ function buildHtml(data: CoverLetterResult, date: string): string {
 
   /* Sign-off */
   .signoff {
-    margin-top: 28px;
-    font-size: 11.5px;
+    margin-top: ${signOffSpacing}px;
+    font-size: ${bodyFont}px;
     line-height: 1.8;
   }
   .signoff-phrase { margin-bottom: 32px; }
   .signoff-name {
     font-weight: 700;
     font-family: 'Helvetica Neue', Arial, sans-serif;
-    font-size: 12px;
+    font-size: ${bodyFont + 0.5}px;
     color: #1e1b4b;
   }
 
@@ -142,7 +175,7 @@ function buildHtml(data: CoverLetterResult, date: string): string {
     </div>
   </div>
 
-  ${data.subject ? `<div class="subject">Assunto: ${escapeHtml(data.subject)}</div>` : ""}
+  ${!hideSubject && data.subject ? `<div class="subject">Assunto: ${escapeHtml(data.subject)}</div>` : ""}
 
   <div class="salutation">Prezados(as),</div>
 
@@ -153,7 +186,7 @@ function buildHtml(data: CoverLetterResult, date: string): string {
   <div class="signoff">
     <div class="signoff-phrase">Atenciosamente,</div>
     <div class="signoff-name">${escapeHtml(data.candidateName || "")}</div>
-    ${data.candidateEmail ? `<div style="font-size:10px;color:#475569;font-family:sans-serif">${escapeHtml(data.candidateEmail)}</div>` : ""}
+    ${data.candidateEmail ? `<div style="font-size:${Math.max(metaFont - 0.5, 7)}px;color:#475569;font-family:sans-serif">${escapeHtml(data.candidateEmail)}</div>` : ""}
   </div>
 
 
@@ -212,12 +245,13 @@ export async function POST(request: NextRequest) {
     if (!data?.coverLetter) {
       return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
     }
+    const adjustments: CoverLetterAdjustments = body.adjustments || {};
     const date = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
-    const html = buildHtml(data, date);
+    const html = buildHtml(data, date, adjustments);
     const pdf = await renderPdf(html);
 
     const safeName = (data.candidateName || "carta")
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
       .replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "-");
 
     return new NextResponse(new Uint8Array(pdf), {

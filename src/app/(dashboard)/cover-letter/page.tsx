@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
@@ -8,6 +8,7 @@ import AIProgressModal from "@/components/ui/AIProgressModal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
 import SaveSuccessModal from "@/components/ui/SaveSuccessModal";
 import SaveButton from "@/components/ui/SaveButton";
+import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
 import { deductCredits, checkCredits } from "@/services/credits";
@@ -15,15 +16,26 @@ import type { CoverLetterResult } from "@/services/ai-cover-letter";
 import FileUpload from "@/components/ui/FileUpload";
 import { extractTextFromFile } from "@/utils/file-parser";
 import {
+  generateCoverLetterPDFBlob,
+  downloadCoverLetterPDF,
+  COVER_LETTER_DEFAULTS,
+  type CoverLetterAdjustments,
+} from "@/utils/cover-letter-pdf";
+import {
   FileText,
   Download,
-  Copy,
   RefreshCw,
   Building2,
   Briefcase,
   ClipboardList,
   ScrollText,
   Sparkles,
+  Type,
+  AlignJustify,
+  Eye,
+  EyeOff,
+  RotateCcw,
+  PenLine,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -46,8 +58,26 @@ export default function CoverLetterPage() {
   const [jobDescription, setJobDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [downloadLoading, setDownloadLoading] = useState(false);
   const [result, setResult] = useState<CoverLetterResult | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
+  // Editor state — px overrides per category; `null` means "use default".
+  const [candidateNameFontPx, setCandidateNameFontPx] = useState<number | null>(null);
+  const [bodyFontPx, setBodyFontPx] = useState<number | null>(null);
+  const [subjectFontPx, setSubjectFontPx] = useState<number | null>(null);
+  const [metaFontPx, setMetaFontPx] = useState<number | null>(null);
+  const [paragraphSpacingPx, setParagraphSpacingPx] = useState<number | null>(null);
+  const [signOffSpacingPx, setSignOffSpacingPx] = useState<number | null>(null);
+  const [hideSubject, setHideSubject] = useState(false);
+  const [hideContactHeader, setHideContactHeader] = useState(false);
+  const [editingField, setEditingField] = useState<"identidade" | "destinatario" | "assunto" | "corpo" | null>(null);
+
+  const editorDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTextEdit = useRef(false);
+  const firstResultRef = useRef(true);
+
   const {
     progress,
     message: progressMsg,
@@ -71,6 +101,102 @@ export default function CoverLetterPage() {
     if (description) setJobDescription(description.slice(0, 4000));
   }, []);
 
+  // Cleanup pdfUrl on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const currentAdjustments = useCallback((): CoverLetterAdjustments => ({
+    candidateNameFontPx: candidateNameFontPx ?? undefined,
+    bodyFontPx: bodyFontPx ?? undefined,
+    subjectFontPx: subjectFontPx ?? undefined,
+    metaFontPx: metaFontPx ?? undefined,
+    paragraphSpacingPx: paragraphSpacingPx ?? undefined,
+    signOffSpacingPx: signOffSpacingPx ?? undefined,
+    hideSubject: hideSubject || undefined,
+    hideContactHeader: hideContactHeader || undefined,
+  }), [candidateNameFontPx, bodyFontPx, subjectFontPx, metaFontPx, paragraphSpacingPx, signOffSpacingPx, hideSubject, hideContactHeader]);
+
+  const buildSavePayload = useCallback(
+    (data: CoverLetterResult, blob: Blob, ts: number) => ({
+      kind: "pdf" as const,
+      data: {
+        type: "cover-letter" as const,
+        title: `Carta — ${data.companyName}`,
+        subtitle: data.jobTitle || undefined,
+        fileName: `carta-${ts}.pdf`,
+        pdf: blob,
+      },
+    }),
+    []
+  );
+
+  // Generates the preview PDF AND keeps the saver in sync with the latest
+  // blob — so clicking "Salvar" is instant (no regeneration), exactly like
+  // /create-resume where the resume payload is kept up to date via
+  // updatePayload + markDirty.
+  const generatePdfPreview = useCallback(
+    async (data: CoverLetterResult, adj: CoverLetterAdjustments) => {
+      if (!user) return;
+      setPdfLoading(true);
+      try {
+        const blob = await generateCoverLetterPDFBlob(data, adj);
+        setPdfUrl(prev => {
+          if (prev) URL.revokeObjectURL(prev);
+          return URL.createObjectURL(blob);
+        });
+        const payload = buildSavePayload(data, blob, Date.now());
+        if (saver.status === "idle") {
+          // First preview after a fresh generation → kick off the initial
+          // save prepare (respects the autoSave preference).
+          await saver.prepare({
+            uid: user.uid,
+            type: "cover-letter",
+            payload,
+            autoSave: autoSaveEnabled,
+          });
+        } else {
+          // Subsequent edits → keep the saver payload aligned with what the
+          // user sees so the next manual save uploads the latest blob.
+          saver.updatePayload(payload);
+          saver.markDirty();
+        }
+      } catch (err) {
+        console.error("PDF preview error:", err);
+        toast.error("Erro ao gerar preview do PDF.");
+      } finally {
+        setPdfLoading(false);
+      }
+    },
+    [user, autoSaveEnabled, saver, buildSavePayload]
+  );
+
+  // Regenerate the PDF preview whenever the result or any adjustment changes.
+  // The first time `result` is set we kick off immediately; subsequent edits
+  // are debounced so typing in textareas isn't choppy.
+  useEffect(() => {
+    if (!result) return;
+    if (editorDebounce.current) clearTimeout(editorDebounce.current);
+    const delay = firstResultRef.current ? 0 : (pendingTextEdit.current ? 700 : 400);
+    pendingTextEdit.current = false;
+    firstResultRef.current = false;
+    editorDebounce.current = setTimeout(() => {
+      generatePdfPreview(result, currentAdjustments());
+    }, delay);
+    return () => {
+      if (editorDebounce.current) clearTimeout(editorDebounce.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, candidateNameFontPx, bodyFontPx, subjectFontPx, metaFontPx, paragraphSpacingPx, signOffSpacingPx, hideSubject, hideContactHeader]);
+
+  const updateResult = useCallback(<K extends keyof CoverLetterResult>(field: K, value: CoverLetterResult[K]) => {
+    pendingTextEdit.current = true;
+    setResult(prev => prev ? { ...prev, [field]: value } : prev);
+  }, []);
+
   const handleGenerate = async () => {
     if (!user) return;
 
@@ -91,9 +217,12 @@ export default function CoverLetterPage() {
 
       await deductCredits(user.uid, "cover-letter", `Carta de apresentação — ${companyName}`);
       stopProgress();
+      firstResultRef.current = true;
       setResult(data.data);
       toast.success("Carta gerada com sucesso!");
-      void prepareCoverLetterSave(data.data, companyName, jobTitle);
+      // The save prepare happens inside generatePdfPreview when it sees
+      // saver.status === "idle" — that way the SAME blob feeds both preview
+      // and saver, and we only generate one PDF per state change.
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao gerar carta.";
       toast.error(msg);
@@ -102,84 +231,67 @@ export default function CoverLetterPage() {
     }
   };
 
-  const prepareCoverLetterSave = useCallback(
-    async (data: CoverLetterResult, company: string, role: string) => {
-      if (!user) return;
-      try {
-        const res = await fetch("/api/generate-cover-letter-pdf", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data }),
-        });
-        if (!res.ok) return;
-        const blob = await res.blob();
-        const ts = Date.now();
-        await saver.prepare({
-          uid: user.uid,
-          type: "cover-letter",
-          payload: {
-            kind: "pdf",
-            data: {
-              type: "cover-letter",
-              title: `Carta — ${company}`,
-              subtitle: role || undefined,
-              fileName: `carta-${ts}.pdf`,
-              pdf: blob,
-            },
-          },
-          autoSave: autoSaveEnabled,
-        });
-      } catch {
-        /* silent */
-      }
-    },
-    [user, saver, autoSaveEnabled]
-  );
-
   const handleDownloadPDF = async () => {
     if (!result) return;
-    setPdfLoading(true);
+    setDownloadLoading(true);
     try {
-      const res = await fetch("/api/generate-cover-letter-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: result }),
-      });
-      if (!res.ok) throw new Error("Erro ao gerar PDF.");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `carta-apresentacao-${result.candidateName.replace(/\s+/g, "-")}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadCoverLetterPDF(result, currentAdjustments());
     } catch {
       toast.error("Erro ao baixar PDF.");
     } finally {
-      setPdfLoading(false);
+      setDownloadLoading(false);
     }
-  };
-
-  const copyLetter = () => {
-    if (!result) return;
-    navigator.clipboard.writeText(result.coverLetter);
-    toast.success("Carta copiada!");
   };
 
   const handleReset = () => {
     setResult(null);
     setResumeFile(null);
+    setCompanyName("");
     setJobTitle("");
+    setJobDescription("");
+    setCandidateNameFontPx(null);
+    setBodyFontPx(null);
+    setSubjectFontPx(null);
+    setMetaFontPx(null);
+    setParagraphSpacingPx(null);
+    setSignOffSpacingPx(null);
+    setHideSubject(false);
+    setHideContactHeader(false);
+    setEditingField(null);
+    firstResultRef.current = true;
     resetProgress();
     saver.reset();
+    setPdfUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
   };
 
   const handleManualSave = () => {
     if (!user) return;
     saver.saveManually(user.uid);
   };
+
+  const resetAdjustments = () => {
+    setCandidateNameFontPx(null);
+    setBodyFontPx(null);
+    setSubjectFontPx(null);
+    setMetaFontPx(null);
+    setParagraphSpacingPx(null);
+    setSignOffSpacingPx(null);
+    setHideSubject(false);
+    setHideContactHeader(false);
+  };
+
+  const hasOverrides =
+    candidateNameFontPx != null ||
+    bodyFontPx != null ||
+    subjectFontPx != null ||
+    metaFontPx != null ||
+    paragraphSpacingPx != null ||
+    signOffSpacingPx != null ||
+    hideSubject ||
+    hideContactHeader;
 
   const canGenerate = !!resumeFile && companyName.trim().length > 0 && jobDescription.trim().length > 20;
 
@@ -194,33 +306,21 @@ export default function CoverLetterPage() {
         />
         <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
         <div className="relative p-8 md:p-12 animate-fade-in-up">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-medium text-primary-300 mb-4">
-                <ScrollText className="w-3 h-3" />
-                Carta de Apresentação
-              </div>
-              <h1 className="text-3xl md:text-5xl font-bold text-white font-heading leading-[1.1] tracking-tight">
-                Crie cartas{" "}
-                <span className="gradient-text">personalizadas</span>{" "}
-                com IA
-              </h1>
-              <p className="text-gray-400 mt-4 text-base md:text-lg max-w-xl leading-relaxed">
-                Envie seu currículo e a descrição da vaga — a IA redige uma carta sob medida para impressionar o recrutador.
-              </p>
-              <span className="inline-block mt-4 bg-primary-500/10 text-primary-400 text-xs rounded-lg px-2.5 py-1 border border-primary-500/20">
-                1 crédito por carta
-              </span>
-            </div>
-            {result && (
-              <button
-                onClick={handleReset}
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition-colors text-sm flex-shrink-0"
-              >
-                <RefreshCw className="w-4 h-4" /> Nova carta
-              </button>
-            )}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-medium text-primary-300 mb-4">
+            <ScrollText className="w-3 h-3" />
+            Carta de Apresentação
           </div>
+          <h1 className="text-3xl md:text-5xl font-bold text-white font-heading leading-[1.1] tracking-tight">
+            Crie cartas{" "}
+            <span className="gradient-text">personalizadas</span>{" "}
+            com IA
+          </h1>
+          <p className="text-gray-400 mt-4 text-base md:text-lg max-w-xl leading-relaxed">
+            Envie seu currículo e a descrição da vaga — a IA redige uma carta sob medida para impressionar o recrutador.
+          </p>
+          <span className="inline-block mt-4 bg-primary-500/10 text-primary-400 text-xs rounded-lg px-2.5 py-1 border border-primary-500/20">
+            1 crédito por carta
+          </span>
         </div>
       </section>
 
@@ -319,92 +419,273 @@ export default function CoverLetterPage() {
         </fieldset>
       ) : (
         <div className="space-y-4 animate-fade-in-up animation-delay-200">
-          {/* Info row */}
-          <div className="flex flex-wrap gap-3">
-            {result.candidateName && (
-              <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300">
-                {result.candidateName}
-              </span>
-            )}
-            {result.jobTitle && (
-              <span className="px-3 py-1 bg-primary-500/10 border border-primary-500/20 rounded-lg text-sm text-primary-300">
-                {result.jobTitle}
-              </span>
-            )}
-            <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300">
-              {result.companyName}
-            </span>
-          </div>
-
-          {/* Subject */}
-          {result.subject && (
-            <div className="relative group bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] overflow-hidden transition-all duration-300 hover:border-primary-500/30">
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500/10 group-hover:bg-primary-500/20 rounded-full blur-3xl transition-all duration-500 pointer-events-none" />
-              <div className="relative p-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Assunto sugerido para o e-mail</p>
-                  <p className="text-sm text-white">{result.subject}</p>
-                </div>
-                <button
-                  onClick={() => { navigator.clipboard.writeText(result.subject); toast.success("Copiado!"); }}
-                  className="p-1.5 bg-white/5 hover:bg-white/10 text-gray-400 rounded-lg transition-colors flex-shrink-0"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Letter */}
-          <div className="relative group bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] p-6 overflow-hidden transition-all duration-300 hover:border-primary-500/30">
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-teal-500/10 group-hover:bg-teal-500/20 rounded-full blur-3xl transition-all duration-500 pointer-events-none" />
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold font-heading text-white flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <ScrollText className="w-4 h-4 text-white" />
-                  </div>
-                  Carta de Apresentação
-                </h2>
-                <button
-                  onClick={copyLetter}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg transition-colors text-xs"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  Copiar texto
-                </button>
-              </div>
-              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6 space-y-4">
-                {/* Header */}
-                <div className="border-b border-white/10 pb-4">
-                  <p className="text-base font-bold text-white">{result.candidateName}</p>
-                  {(result.candidateEmail || result.candidatePhone) && (
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {[result.candidateEmail, result.candidatePhone].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
-                </div>
-                {/* Body */}
-                <div className="text-sm text-gray-300 leading-relaxed space-y-3 whitespace-pre-line">
-                  {result.coverLetter}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button onClick={handleDownloadPDF} disabled={pdfLoading} loading={pdfLoading} className="px-8 glow-blue">
+          {/* Actions — above the PDF */}
+          <div className="flex flex-wrap items-center justify-start gap-3">
+            <Button
+              onClick={handleDownloadPDF}
+              disabled={downloadLoading || pdfLoading}
+              loading={downloadLoading}
+              className="px-6 glow-blue"
+            >
               <Download className="w-4 h-4 mr-2" />
               Baixar PDF
             </Button>
             <SaveButton
               status={saver.status}
               saving={saver.saving}
+              disabled={pdfLoading}
               onClick={handleManualSave}
               className="px-6"
             />
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition-colors text-sm flex-shrink-0"
+            >
+              <RefreshCw className="w-4 h-4" /> Nova carta
+            </button>
           </div>
+
+          {/* PDF Preview + Editor sidebar */}
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
+            {/* PDF Preview */}
+            <div className="flex-1 min-w-0">
+              <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden lg:h-full">
+                {pdfLoading && !pdfUrl ? (
+                  <div className="flex items-center justify-center h-[75vh] lg:h-full">
+                    <div className="text-center">
+                      <div className="w-8 h-8 border-2 border-primary-400 border-t-transparent rounded-full animate-spin mx-auto" />
+                      <p className="text-sm text-gray-400 mt-3">Gerando PDF...</p>
+                    </div>
+                  </div>
+                ) : pdfUrl ? (
+                  <div className="relative h-[75vh] lg:h-full">
+                    <iframe
+                      src={`${pdfUrl}#pagemode=none&navpanes=0&toolbar=1`}
+                      className="w-full h-full rounded-xl"
+                      style={{ minHeight: "500px" }}
+                      title="Preview da carta"
+                    />
+                    {pdfLoading && (
+                      <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg px-3 py-1.5 flex items-center gap-2">
+                        <div className="w-3 h-3 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs text-gray-300">Atualizando...</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-[75vh] lg:h-full">
+                    <p className="text-sm text-gray-500">Erro ao carregar preview.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Editor sidebar */}
+            <div className="w-full lg:w-80 lg:flex-shrink-0 space-y-4">
+              <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-white">Ajustes</h3>
+                  {hasOverrides && (
+                    <button
+                      onClick={resetAdjustments}
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors"
+                    >
+                      <RotateCcw className="w-3 h-3" /> Resetar
+                    </button>
+                  )}
+                </div>
+
+                <PxControl
+                  icon={Type}
+                  label="Nome do candidato"
+                  value={candidateNameFontPx}
+                  defaultPx={COVER_LETTER_DEFAULTS.candidateNameFontPx}
+                  onChange={setCandidateNameFontPx}
+                  min={10}
+                  max={36}
+                  disabled={pdfLoading}
+                />
+                <PxControl
+                  icon={Type}
+                  label="Corpo da carta"
+                  value={bodyFontPx}
+                  defaultPx={COVER_LETTER_DEFAULTS.bodyFontPx}
+                  onChange={setBodyFontPx}
+                  min={8}
+                  max={18}
+                  disabled={pdfLoading}
+                />
+                <PxControl
+                  icon={Type}
+                  label="Assunto"
+                  value={subjectFontPx}
+                  defaultPx={COVER_LETTER_DEFAULTS.subjectFontPx}
+                  onChange={setSubjectFontPx}
+                  min={8}
+                  max={18}
+                  disabled={pdfLoading}
+                />
+                <PxControl
+                  icon={Type}
+                  label="Informações de contato"
+                  value={metaFontPx}
+                  defaultPx={COVER_LETTER_DEFAULTS.metaFontPx}
+                  onChange={setMetaFontPx}
+                  min={7}
+                  max={14}
+                  disabled={pdfLoading}
+                />
+                <PxControl
+                  icon={AlignJustify}
+                  label="Espaçamento entre parágrafos"
+                  value={paragraphSpacingPx}
+                  defaultPx={COVER_LETTER_DEFAULTS.paragraphSpacingPx}
+                  onChange={setParagraphSpacingPx}
+                  min={0}
+                  max={40}
+                  disabled={pdfLoading}
+                />
+                <PxControl
+                  icon={AlignJustify}
+                  label="Espaçamento da assinatura"
+                  value={signOffSpacingPx}
+                  defaultPx={COVER_LETTER_DEFAULTS.signOffSpacingPx}
+                  onChange={setSignOffSpacingPx}
+                  min={0}
+                  max={80}
+                  disabled={pdfLoading}
+                />
+
+                {/* Visibility toggles */}
+                <div>
+                  <label className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5" /> Seções
+                  </label>
+                  <div className="space-y-1.5">
+                    <button
+                      onClick={() => setHideSubject(v => !v)}
+                      disabled={pdfLoading}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                        hideSubject
+                          ? "bg-red-500/10 text-red-400/70 border border-red-500/20"
+                          : "bg-white/[0.02] text-gray-300 border border-white/[0.06] hover:bg-white/[0.05]"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {hideSubject ? <EyeOff className="w-3.5 h-3.5 flex-shrink-0" /> : <Eye className="w-3.5 h-3.5 flex-shrink-0" />}
+                      <span className={hideSubject ? "line-through" : ""}>Assunto</span>
+                    </button>
+                    <button
+                      onClick={() => setHideContactHeader(v => !v)}
+                      disabled={pdfLoading}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                        hideContactHeader
+                          ? "bg-red-500/10 text-red-400/70 border border-red-500/20"
+                          : "bg-white/[0.02] text-gray-300 border border-white/[0.06] hover:bg-white/[0.05]"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {hideContactHeader ? <EyeOff className="w-3.5 h-3.5 flex-shrink-0" /> : <Eye className="w-3.5 h-3.5 flex-shrink-0" />}
+                      <span className={hideContactHeader ? "line-through" : ""}>Contato no cabeçalho</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Content editor */}
+                <div>
+                  <label className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
+                    <PenLine className="w-3.5 h-3.5" /> Conteúdo
+                  </label>
+                  <div className="space-y-1.5">
+                    {(["identidade", "destinatario", "assunto", "corpo"] as const).map(field => {
+                      const labels: Record<typeof field, string> = {
+                        identidade: "Identidade & contato",
+                        destinatario: "Destinatário",
+                        assunto: "Assunto",
+                        corpo: "Corpo da carta",
+                      };
+                      const isEditing = editingField === field;
+                      return (
+                        <div key={field}>
+                          <button
+                            onClick={() => setEditingField(prev => prev === field ? null : field)}
+                            disabled={pdfLoading}
+                            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                              isEditing
+                                ? "bg-primary-500/15 border border-primary-500/30 text-primary-300"
+                                : "bg-white/[0.02] text-gray-300 border border-white/[0.06] hover:bg-white/[0.05]"
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            <PenLine className="w-3 h-3 flex-shrink-0" />
+                            <span className="flex-1 text-left">{labels[field]}</span>
+                          </button>
+                          {isEditing && (
+                            <div className="mt-2 p-3 bg-white/[0.02] border border-white/[0.06] rounded-lg space-y-2">
+                              {field === "identidade" && (
+                                <>
+                                  <FieldInput
+                                    label="Nome"
+                                    value={result.candidateName}
+                                    onChange={v => updateResult("candidateName", v)}
+                                    disabled={pdfLoading}
+                                  />
+                                  <FieldInput
+                                    label="Email"
+                                    value={result.candidateEmail}
+                                    onChange={v => updateResult("candidateEmail", v)}
+                                    disabled={pdfLoading}
+                                  />
+                                  <FieldInput
+                                    label="Telefone"
+                                    value={result.candidatePhone}
+                                    onChange={v => updateResult("candidatePhone", v)}
+                                    disabled={pdfLoading}
+                                  />
+                                </>
+                              )}
+                              {field === "destinatario" && (
+                                <>
+                                  <FieldInput
+                                    label="Empresa"
+                                    value={result.companyName}
+                                    onChange={v => updateResult("companyName", v)}
+                                    disabled={pdfLoading}
+                                  />
+                                  <FieldInput
+                                    label="Cargo / referência"
+                                    value={result.jobTitle}
+                                    onChange={v => updateResult("jobTitle", v)}
+                                    disabled={pdfLoading}
+                                  />
+                                </>
+                              )}
+                              {field === "assunto" && (
+                                <FieldInput
+                                  label="Assunto sugerido"
+                                  value={result.subject}
+                                  onChange={v => updateResult("subject", v)}
+                                  disabled={pdfLoading || hideSubject}
+                                />
+                              )}
+                              {field === "corpo" && (
+                                <FieldTextarea
+                                  label="Texto da carta"
+                                  value={result.coverLetter}
+                                  onChange={v => updateResult("coverLetter", v)}
+                                  disabled={pdfLoading}
+                                  rows={14}
+                                  helper="Separe parágrafos com uma linha em branco."
+                                />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -442,6 +723,63 @@ export default function CoverLetterPage() {
           </div>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+// ── Inline field components for the editor sidebar ─────────────────────────
+
+function FieldInput({
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-1">{label}</label>
+      <input
+        type="text"
+        value={value || ""}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+        className="w-full px-2.5 py-1.5 text-xs bg-white/[0.04] border border-white/10 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-primary-400 disabled:opacity-50"
+      />
+    </div>
+  );
+}
+
+function FieldTextarea({
+  label,
+  value,
+  onChange,
+  disabled,
+  rows,
+  helper,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  rows?: number;
+  helper?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-1">{label}</label>
+      <textarea
+        value={value || ""}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+        rows={rows ?? 8}
+        className="w-full px-2.5 py-1.5 text-xs bg-white/[0.04] border border-white/10 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-primary-400 disabled:opacity-50 resize-y leading-relaxed"
+      />
+      {helper && <p className="text-[10px] text-gray-500 mt-1">{helper}</p>}
     </div>
   );
 }
