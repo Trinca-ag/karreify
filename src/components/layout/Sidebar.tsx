@@ -15,6 +15,7 @@ import {
   MessageSquareHeart,
   FolderOpen,
   Briefcase,
+  LifeBuoy,
 } from "lucide-react";
 
 const menuItems = [
@@ -69,6 +70,7 @@ const menuItems = [
 const bottomItems = [
   { label: "Pacotes", href: "/plans", icon: CreditCard },
   { label: "Configurações", href: "/profile", icon: Settings },
+  { label: "Suporte", href: "/support", icon: LifeBuoy },
 ];
 
 export default function Sidebar() {
@@ -78,7 +80,9 @@ export default function Sidebar() {
     <aside className="hidden lg:flex flex-col w-64 bg-dark-800/50 backdrop-blur-xl border-r border-white/[0.06] sticky top-16 self-start h-[calc(100vh-4rem)]">
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = item.href === "/dashboard"
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}
@@ -102,7 +106,9 @@ export default function Sidebar() {
       </nav>
       <div className="px-3 py-4 border-t border-white/[0.06] space-y-1">
         {bottomItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = item.href === "/dashboard"
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}

@@ -89,5 +89,44 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isAdmin();
     }
+
+    // Support tickets — created via /api/support/tickets (privileged server
+    // generates the 5-digit id with collision retry). Once created, the owner
+    // can update only the activity counters when sending a message; the admin
+    // route handles closing. Direct status changes from the client are
+    // forbidden.
+    match /tickets/{ticketId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if false;
+      allow update: if
+        // Admin can update anything (close, etc.) — server route enforces shape.
+        isAdmin()
+        // Owner can only touch activity fields and the post-creation images
+        // upload (immediately after the API created the doc).
+        || (isOwner(resource.data.userId)
+            && resource.data.status == "open"
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['lastMessageAt', 'lastMessageBy', 'messageCount', 'updatedAt', 'images']));
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isOwner(get(/databases/$(database)/documents/tickets/$(ticketId)).data.userId)
+                    || isAdmin();
+        allow create: if
+          get(/databases/$(database)/documents/tickets/$(ticketId)).data.status == "open"
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.content.size() <= 4000
+          && (
+            // Owner replying
+            (isOwner(get(/databases/$(database)/documents/tickets/$(ticketId)).data.userId)
+              && request.resource.data.senderRole == 'user')
+            // Admin replying
+            || (isAdmin() && request.resource.data.senderRole == 'admin')
+          );
+        allow update, delete: if false;
+      }
+    }
   }
 }

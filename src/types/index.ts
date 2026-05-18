@@ -268,6 +268,44 @@ export interface Feedback {
 
 export const FEEDBACK_MAX_COMMENT = 4000;
 
+// ==================== Support Tickets ====================
+export type TicketStatus = "open" | "closed";
+export type TicketSenderRole = "user" | "admin";
+
+export interface Ticket {
+  id: string;           // 5-digit numeric string, also the Firestore doc id
+  userId: string;
+  userName: string;     // cached from user profile at creation time
+  userEmail: string;
+  title: string;
+  description: string;
+  images: string[];     // Firebase Storage download URLs (max 3)
+  status: TicketStatus;
+  messageCount: number; // total replies (not counting the initial description)
+  lastMessageAt: Date;
+  lastMessageBy: TicketSenderRole | null;
+  createdAt: Date;
+  updatedAt: Date;
+  closedAt: Date | null;
+  closedBy: string | null; // admin uid that closed the ticket
+  imagesDeleted: boolean;  // true when the close routine wiped Storage attachments
+}
+
+export interface TicketMessage {
+  id: string;
+  senderId: string;
+  senderRole: TicketSenderRole;
+  senderName: string;
+  content: string;
+  createdAt: Date;
+}
+
+export const TICKET_MAX_TITLE = 120;
+export const TICKET_MAX_DESCRIPTION = 4000;
+export const TICKET_MAX_MESSAGE = 4000;
+export const TICKET_MAX_IMAGES = 3;
+export const TICKET_IMAGE_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+
 // ==================== Credits Types ====================
 export interface CreditTransaction {
   id: string;
