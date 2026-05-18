@@ -11,6 +11,7 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   deviceVerified: boolean;
+  isAdmin: boolean;
   logout: () => Promise<void>;
   refreshUserData: () => Promise<void>;
   markDeviceVerified: () => void;
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isAuthenticated: false,
   deviceVerified: false,
+  isAdmin: false,
   logout: async () => {},
   refreshUserData: async () => {},
   markDeviceVerified: () => {},

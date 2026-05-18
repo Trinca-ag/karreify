@@ -13,21 +13,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   // Login page: always standalone, auth check handled by AdminAuthProvider
   if (isLoginPage) return <>{children}</>;
 
-  // Register page: standalone layout but wait for auth to resolve
-  if (pathname?.startsWith("/admin/register")) {
-    if (loading) {
-      return (
-        <div className="min-h-screen bg-dark-900 flex items-center justify-center">
-          <div className="w-10 h-10 rounded-full border-2 border-primary-500/30 border-t-primary-400 animate-spin" />
-        </div>
-      );
-    }
-    // AdminAuthProvider will redirect to /admin/login if not authenticated
-    if (!isAdminAuthenticated) return null;
-    return <>{children}</>;
-  }
-
-  if (loading) {
+  // Show spinner while auth is resolving OR while we're waiting for the
+  // AdminAuthProvider's redirect to /admin/login to complete. Without the
+  // !isAdminAuthenticated guard, the admin sidebar + page content flashed for
+  // an instant between `loading: false` and the router push landing.
+  if (loading || !isAdminAuthenticated) {
     return (
       <div className="min-h-screen bg-dark-900 flex items-center justify-center">
         <div className="w-10 h-10 rounded-full border-2 border-primary-500/30 border-t-primary-400 animate-spin" />

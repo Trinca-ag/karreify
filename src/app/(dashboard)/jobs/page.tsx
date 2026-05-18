@@ -27,6 +27,7 @@ import {
   type DatePeriod,
 } from "@/services/jobs";
 import { BRAZILIAN_STATES, fetchCitiesByUF } from "@/lib/ibge";
+import { useJobsCache } from "@/components/providers/JobsCacheProvider";
 
 const PERIOD_OPTIONS: { value: DatePeriod; label: string }[] = [
   { value: "today", label: "Hoje" },
@@ -37,30 +38,42 @@ const PERIOD_OPTIONS: { value: DatePeriod; label: string }[] = [
 const PAGE_SIZE = 20;
 
 export default function JobsPage() {
-  const [keyword, setKeyword] = useState("");
-  const [uf, setUf] = useState("");
-  const [city, setCity] = useState("");
-  const [period, setPeriod] = useState<DatePeriod>("month");
-  const [exactMatch, setExactMatch] = useState(false);
-  const [page, setPage] = useState(1);
+  const {
+    keyword,
+    setKeyword,
+    uf,
+    setUf,
+    city,
+    setCity,
+    period,
+    setPeriod,
+    exactMatch,
+    setExactMatch,
+    page,
+    setPage,
+    jobs,
+    setJobs,
+    totalCount,
+    setTotalCount,
+    searched,
+    setSearched,
+    error,
+    setError,
+    reset: resetCache,
+    getCachedPage,
+    cachePage,
+  } = useJobsCache();
 
   const [cities, setCities] = useState<string[]>([]);
   const [citiesLoading, setCitiesLoading] = useState(false);
-
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searched, setSearched] = useState(false);
 
   useEffect(() => {
     if (!uf) {
       setCities([]);
-      setCity("");
       return;
     }
     setCitiesLoading(true);
-    setCity("");
     fetchCitiesByUF(uf)
       .then((c) => setCities(c))
       .finally(() => setCitiesLoading(false));
@@ -71,12 +84,38 @@ export default function JobsPage() {
     [totalCount]
   );
 
+  function makeCacheKey(targetPage: number): string {
+    return JSON.stringify({
+      k: keyword.trim().toLowerCase(),
+      uf,
+      c: city,
+      p: period,
+      e: exactMatch ? 1 : 0,
+      pg: targetPage,
+    });
+  }
+
   async function runSearch(forcedPage?: number) {
     if (!keyword.trim() || keyword.trim().length < 2) {
       toast.error("Digite ao menos 2 caracteres para buscar.");
       return;
     }
     const targetPage = forcedPage ?? 1;
+    const cacheKey = makeCacheKey(targetPage);
+
+    const cached = getCachedPage(cacheKey);
+    if (cached) {
+      setJobs(cached.jobs);
+      setTotalCount(cached.totalCount);
+      setPage(targetPage);
+      setSearched(true);
+      setError(null);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      return;
+    }
+
     setPage(targetPage);
     setLoading(true);
     setError(null);
@@ -92,6 +131,7 @@ export default function JobsPage() {
       setJobs(result.jobs);
       setTotalCount(result.totalCount);
       setSearched(true);
+      cachePage(cacheKey, result.jobs, result.totalCount);
       if (typeof window !== "undefined") {
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -106,16 +146,7 @@ export default function JobsPage() {
   }
 
   function clearFilters() {
-    setKeyword("");
-    setUf("");
-    setCity("");
-    setPeriod("month");
-    setExactMatch(false);
-    setJobs([]);
-    setTotalCount(0);
-    setPage(1);
-    setSearched(false);
-    setError(null);
+    resetCache();
   }
 
   function buildIntegrationLink(
@@ -222,7 +253,10 @@ export default function JobsPage() {
               </label>
               <select
                 value={uf}
-                onChange={(e) => setUf(e.target.value)}
+                onChange={(e) => {
+                  setUf(e.target.value);
+                  setCity("");
+                }}
                 className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 text-sm"
               >
                 <option value="" className="bg-dark-800">
@@ -252,6 +286,11 @@ export default function JobsPage() {
                       : "Todas as cidades"
                     : "Selecione um estado primeiro"}
                 </option>
+                {city && !cities.includes(city) && (
+                  <option value={city} className="bg-dark-800">
+                    {city}
+                  </option>
+                )}
                 {cities.map((c) => (
                   <option key={c} value={c} className="bg-dark-800">
                     {c}

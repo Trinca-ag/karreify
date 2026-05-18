@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminRequest } from "@/utils/admin-verify";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -25,12 +24,6 @@ export async function DELETE(request: NextRequest) {
 
     // Delete Firestore user document
     await adminDb.doc(`users/${uid}`).delete();
-
-    // Decrement stats
-    const statsRef = adminDb.doc("stats/global");
-    try {
-      await statsRef.update({ totalUsers: FieldValue.increment(-1) });
-    } catch { /* stats doc may not exist yet */ }
 
     return NextResponse.json({ success: true });
   } catch (error) {

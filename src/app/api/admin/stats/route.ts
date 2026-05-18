@@ -8,9 +8,13 @@ export async function GET(request: NextRequest) {
   try {
     await verifyAdminRequest(request);
 
-    const [statsSnap, adminsSnap, recentUsersSnap] = await Promise.all([
+    // totalUsers is counted live via a Firestore aggregation — using a manual
+    // `stats.totalUsers` counter caused drift whenever a user was deleted
+    // outside the admin panel (e.g. via Firebase Console).
+    const [statsSnap, adminsSnap, usersCountSnap, recentUsersSnap] = await Promise.all([
       adminDb.doc("stats/global").get(),
       adminDb.collection("admins").get(),
+      adminDb.collection("users").count().get(),
       adminDb.collection("users").orderBy("createdAt", "desc").limit(5).get(),
     ]);
 
@@ -32,7 +36,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        totalUsers: stats.totalUsers ?? 0,
+        totalUsers: usersCountSnap.data().count,
         totalAdmins: adminsSnap.size,
         totalCreditsUsed: stats.totalCreditsUsed ?? 0,
         featureUsage: stats.featureUsage ?? {},

@@ -55,6 +55,8 @@ export default function RegisterPage() {
       toast.success("Conta criada com sucesso!");
       router.push("/dashboard");
     } catch {
+      // Any failure — including admin-account-not-allowed — surfaces as a
+      // generic Google error to avoid leaking admin-account existence.
       toast.error("Erro ao criar conta com Google.");
     } finally {
       setLoading(false);

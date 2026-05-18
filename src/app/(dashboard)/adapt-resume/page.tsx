@@ -12,7 +12,6 @@ import toast from "react-hot-toast";
 import type { ResumeSchema, GenerationNotes, QualityReport } from "@/lib/resume-schema";
 import type { TemplateName, SectionName } from "@/lib/resume-templates";
 import { getDefaultSizesPx } from "@/lib/resume-templates";
-import ResumeFeedback from "@/components/ui/ResumeFeedback";
 import Modal from "@/components/ui/Modal";
 import AIProgressModal from "@/components/ui/AIProgressModal";
 import SaveLimitModal from "@/components/ui/SaveLimitModal";
@@ -78,8 +77,6 @@ export default function AdaptResumePage() {
   const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_qualityReport, setQualityReport] = useState<QualityReport | null>(null);
-  const [postCorrections, setPostCorrections] = useState<string[]>([]);
-  const [qualityFlags, setQualityFlags] = useState<string[]>([]);
 
   // Editor state — granular px overrides per category. `null` means "use template default".
   const [sectionTitleFontPx, setSectionTitleFontPx] = useState<number | null>(null);
@@ -280,8 +277,6 @@ export default function AdaptResumePage() {
       setCandidateLevel(level);
       setGenerationNotes((data.data?.generationNotes as GenerationNotes) || null);
       setQualityReport((data.data?.qualityReport as QualityReport) || null);
-      setPostCorrections((data.data?.postCorrections as string[]) || []);
-      setQualityFlags((data.data?.qualityFlags as string[]) || []);
       setResumeData(schema);
       setAvailableSections(getPopulatedSections(schema));
       stopProgress();
@@ -365,8 +360,6 @@ export default function AdaptResumePage() {
     setCandidateLevel(undefined);
     setGenerationNotes(null);
     setQualityReport(null);
-    setPostCorrections([]);
-    setQualityFlags([]);
     setSectionTitleFontPx(null);
     setEntryTitleFontPx(null);
     setBodyFontPx(null);
@@ -554,7 +547,6 @@ export default function AdaptResumePage() {
               </div>
             </div>
 
-            <ResumeFeedback postCorrections={postCorrections} qualityFlags={qualityFlags} />
           </div>
         </div>
 

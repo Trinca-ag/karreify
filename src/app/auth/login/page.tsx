@@ -25,7 +25,12 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro ao fazer login";
-      if (message.includes("invalid-credential")) {
+      // admin-account-not-allowed is masked as a generic credential failure to
+      // avoid leaking that the email belongs to an admin account.
+      if (
+        message.includes("invalid-credential") ||
+        message.includes("admin-account-not-allowed")
+      ) {
         toast.error("Email ou senha incorretos.");
       } else {
         toast.error("Erro ao fazer login. Tente novamente.");
@@ -41,8 +46,14 @@ export default function LoginPage() {
       await loginWithGoogle();
       toast.success("Login realizado com sucesso!");
       router.push("/dashboard");
-    } catch {
-      toast.error("Erro ao fazer login com Google.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "";
+      // Same masking rationale as above
+      if (message.includes("admin-account-not-allowed")) {
+        toast.error("Email ou senha incorretos.");
+      } else {
+        toast.error("Erro ao fazer login com Google.");
+      }
     } finally {
       setLoading(false);
     }

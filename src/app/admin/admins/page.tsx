@@ -5,8 +5,8 @@ import { useAdminAuth } from "@/components/providers/AdminAuthProvider";
 import { adminFetch, type AdminProfile } from "@/services/admin";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
 import { Shield, Plus, Trash2, AlertTriangle } from "lucide-react";
-import Link from "next/link";
 import toast from "react-hot-toast";
 
 function roleBadge(role: string) {
@@ -14,12 +14,17 @@ function roleBadge(role: string) {
   return "bg-white/[0.06] text-gray-400 border-white/10";
 }
 
+const emptyForm = { name: "", username: "", email: "", password: "", confirmPassword: "" };
+
 export default function AdminsPage() {
   const { adminData } = useAdminAuth();
   const [admins, setAdmins] = useState<AdminProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<AdminProfile | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState(emptyForm);
+  const [createLoading, setCreateLoading] = useState(false);
 
   async function fetchAdmins() {
     setLoading(true);
@@ -52,6 +57,54 @@ export default function AdminsPage() {
     }
   };
 
+  const closeCreate = () => {
+    if (createLoading) return;
+    setCreateOpen(false);
+    setCreateForm(emptyForm);
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { name, username, email, password, confirmPassword } = createForm;
+    if (!name.trim() || !username.trim() || !email.trim() || !password || !confirmPassword) {
+      toast.error("Preencha todos os campos.");
+      return;
+    }
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+      toast.error("Username deve ter 3-20 caracteres (letras, números, _).");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("As senhas não coincidem.");
+      return;
+    }
+    if (password.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+
+    setCreateLoading(true);
+    try {
+      const res = await adminFetch("/api/admin/create", {
+        method: "POST",
+        body: JSON.stringify({
+          name: name.trim(),
+          username: username.toLowerCase().trim(),
+          email: email.toLowerCase().trim(),
+          password,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || "Erro ao criar administrador."); return; }
+      toast.success("Administrador criado com sucesso!");
+      setCreateOpen(false);
+      setCreateForm(emptyForm);
+      fetchAdmins();
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -65,11 +118,12 @@ export default function AdminsPage() {
             {admins.length} administrador{admins.length !== 1 ? "es" : ""} cadastrado{admins.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Link href="/admin/register">
-          <button className="flex items-center gap-2 px-4 py-2 bg-primary-500/10 border border-primary-500/20 text-primary-400 rounded-xl hover:bg-primary-500/20 transition-colors text-sm font-medium">
-            <Plus className="w-4 h-4" /> Novo Admin
-          </button>
-        </Link>
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-500/10 border border-primary-500/20 text-primary-400 rounded-xl hover:bg-primary-500/20 transition-colors text-sm font-medium"
+        >
+          <Plus className="w-4 h-4" /> Novo Admin
+        </button>
       </div>
 
       {loading ? (
@@ -132,6 +186,65 @@ export default function AdminsPage() {
           )}
         </div>
       )}
+
+      {/* Create Admin Modal */}
+      <Modal isOpen={createOpen} onClose={closeCreate} title="Novo administrador" size="sm">
+        <form onSubmit={handleCreate} action="javascript:void(0)" className="space-y-4">
+          <Input
+            label="Nome completo"
+            type="text"
+            value={createForm.name}
+            onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+            placeholder="Seu nome"
+            required
+          />
+          <Input
+            label="Username"
+            type="text"
+            value={createForm.username}
+            onChange={e =>
+              setCreateForm(f => ({
+                ...f,
+                username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+              }))
+            }
+            placeholder="ex: joao_silva"
+            required
+          />
+          <Input
+            label="E-mail"
+            type="email"
+            value={createForm.email}
+            onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))}
+            placeholder="email@exemplo.com"
+            required
+          />
+          <Input
+            label="Senha"
+            type="password"
+            value={createForm.password}
+            onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+            placeholder="Mínimo 6 caracteres"
+            required
+          />
+          <Input
+            label="Confirmar senha"
+            type="password"
+            value={createForm.confirmPassword}
+            onChange={e => setCreateForm(f => ({ ...f, confirmPassword: e.target.value }))}
+            placeholder="Repita a senha"
+            required
+          />
+          <div className="flex gap-3 justify-end pt-2">
+            <Button variant="ghost" type="button" onClick={closeCreate} disabled={createLoading}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={createLoading}>
+              Criar admin
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Delete Confirm Modal */}
       <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Remover Administrador" size="sm">

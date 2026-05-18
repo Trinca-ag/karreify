@@ -50,7 +50,10 @@ export function getDefaultSizesPx(
 
   const bodyPt = size === "xsmall" ? 12 : size === "small" ? 11.5 : size === "medium" ? 9.5 : 9;
   const metaPt = 8.5;
-  const sectionGapPt = size === "xsmall" ? 20 : size === "small" ? 18 : size === "medium" ? 12 : 9;
+  // Defaults tightened (large 9→6, medium 12→9, small 18→14, xsmall 20→18) so the
+  // first-generated PDF is more likely to fit a single page without needing the
+  // user to manually shrink the section gap.
+  const sectionGapPt = size === "xsmall" ? 18 : size === "small" ? 14 : size === "medium" ? 9 : 6;
 
   return {
     sectionTitleFontPx: ptToPx(sectionTitlePt),
@@ -268,7 +271,7 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   const sectionTitleFs = adjustPt(size === "xsmall" ? "14pt" : size === "small" ? "13pt" : size === "medium" ? "11pt" : "10.5pt", fsOff, 1.5);
   const contactFs = adjustPt("9pt", fsOff, 0.75);
   const entryDateFs = adjustPt("9pt", fsOff, 0.75);
-  const sectionGap = adjustPt(size === "xsmall" ? "20pt" : size === "small" ? "18pt" : size === "medium" ? "12pt" : "9pt", spOff, 3, 2);
+  const sectionGap = adjustPt(size === "xsmall" ? "18pt" : size === "small" ? "14pt" : size === "medium" ? "9pt" : "6pt", spOff, 3, 2);
   const entryGap = adjustPt(size === "xsmall" ? "14pt" : size === "small" ? "12pt" : size === "medium" ? "8pt" : "6pt", spOff, 2, 0);
   const bulletGap = adjustPt(size === "xsmall" ? "5pt" : size === "small" ? "4pt" : size === "medium" ? "2pt" : "1.5pt", spOff, 1, 0);
   const lineHeight = size === "xsmall" ? "1.7" : size === "small" ? "1.6" : "1.45";
@@ -277,12 +280,6 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   const margins = size === "xsmall" ? "22mm 24mm 20mm" : size === "small" ? "20mm 22mm 18mm" : size === "medium" ? "16mm 18mm 14mm" : "14mm 16mm 12mm";
 
   // ── Granular px overrides (resolve to CSS-ready strings; fall back to legacy pt defaults) ──
-  const hasPxOverrides =
-    options?.sectionTitleFontPx != null ||
-    options?.entryTitleFontPx != null ||
-    options?.bodyFontPx != null ||
-    options?.metaFontPx != null ||
-    options?.sectionSpacingPx != null;
   const sectionTitleFsEff = options?.sectionTitleFontPx != null ? `${options.sectionTitleFontPx}px` : sectionTitleFs;
   const entryRoleFsEff = options?.entryTitleFontPx != null ? `${options.entryTitleFontPx}px` : bodyFs;
   const entryDateFsEff = options?.entryTitleFontPx != null ? `${options.entryTitleFontPx}px` : entryDateFs;
@@ -291,16 +288,14 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   const metaFsEff = options?.metaFontPx != null ? `${options.metaFontPx}px` : "8.5pt";
   const sectionGapEff = options?.sectionSpacingPx != null ? `${options.sectionSpacingPx}px` : sectionGap;
 
-  // When user has manual adjustments, use @page margin for top/bottom so multi-page PDFs
-  // get consistent margins on every page. Otherwise keep padding on .page (single-page mode).
-  const hasAdjustments = !!(fsOff || spOff || options?.hiddenSections?.length || hasPxOverrides);
+  // Always use @page margin for top/bottom + .page padding LR only — the same
+  // layout works for single- and multi-page resumes, and avoids the surprise
+  // where changing any adjustment also swapped the page model and made the
+  // visible spacing appear to shrink despite the slider going up.
   const [mTop, mLR, mBottom] = margins.split(" ");
-  const pageAtRule = hasAdjustments
-    ? `@page { size: A4; margin: ${mTop} 0 ${mBottom || mTop} 0; }`
-    : `@page { size: A4; margin: 0; }`;
-  const pageCss = hasAdjustments
-    ? `width: 210mm; padding: 0 ${mLR};`
-    : `width: 210mm; min-height: 297mm; padding: ${margins};`;
+  const mBot = mBottom || mTop;
+  const pageAtRule = `@page { size: A4; margin: ${mTop} 0 ${mBot} 0; }`;
+  const pageCss = `width: 210mm; padding: 0 ${mLR};`;
 
   const contactLine = buildContactLine(data.basics, ATS_LINK_COLOR);
 
@@ -462,6 +457,11 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
     border-bottom: 0.5pt solid #ccc;
     padding-bottom: 2pt;
     margin-bottom: 6pt;
+    /* Never end a printed page with just a section title — keep it with its
+       first entry, otherwise content barely-over-the-page-limit leaves an
+       orphaned title with huge whitespace below. */
+    page-break-after: avoid;
+    break-after: avoid;
   }
 
   .summary {
@@ -473,8 +473,6 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   /* ── Entries ─────────────────────── */
   .entry {
     margin-bottom: ${entryGap};
-    page-break-inside: avoid;
-    break-inside: avoid;
   }
   .entry:last-child { margin-bottom: 0; }
   .entry-row {
@@ -542,7 +540,7 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
   }
 </style>
 </head>
-<body>
+<body data-page-margin-top="${mTop}" data-page-margin-bottom="${mBot}">
 <div class="page">
 
   <div class="header">
@@ -600,7 +598,7 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   const sectionTitleFs = adjustPt(size === "xsmall" ? "13pt" : size === "small" ? "12pt" : size === "medium" ? "10.5pt" : "10pt", fsOff, 1.5);
   const contactFs = adjustPt("9pt", fsOff, 0.75);
   const entryDateFs = adjustPt("9pt", fsOff, 0.75);
-  const sectionGap = adjustPt(size === "xsmall" ? "20pt" : size === "small" ? "18pt" : size === "medium" ? "12pt" : "9pt", spOff, 3, 2);
+  const sectionGap = adjustPt(size === "xsmall" ? "18pt" : size === "small" ? "14pt" : size === "medium" ? "9pt" : "6pt", spOff, 3, 2);
   const entryGap = adjustPt(size === "xsmall" ? "14pt" : size === "small" ? "12pt" : size === "medium" ? "8pt" : "6pt", spOff, 2, 0);
   const bulletGap = adjustPt(size === "xsmall" ? "5pt" : size === "small" ? "4pt" : size === "medium" ? "2pt" : "1.5pt", spOff, 1, 0);
   const lineHeight = size === "xsmall" ? "1.7" : size === "small" ? "1.6" : "1.45";
@@ -609,12 +607,6 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   const margins = size === "xsmall" ? "22mm 24mm 20mm" : size === "small" ? "20mm 22mm 18mm" : size === "medium" ? "16mm 18mm 14mm" : "14mm 16mm 12mm";
 
   // ── Granular px overrides (resolve to CSS-ready strings; fall back to legacy pt defaults) ──
-  const hasPxOverrides =
-    options?.sectionTitleFontPx != null ||
-    options?.entryTitleFontPx != null ||
-    options?.bodyFontPx != null ||
-    options?.metaFontPx != null ||
-    options?.sectionSpacingPx != null;
   const sectionTitleFsEff = options?.sectionTitleFontPx != null ? `${options.sectionTitleFontPx}px` : sectionTitleFs;
   const entryRoleFsEff = options?.entryTitleFontPx != null ? `${options.entryTitleFontPx}px` : bodyFs;
   const entryDateFsEff = options?.entryTitleFontPx != null ? `${options.entryTitleFontPx}px` : entryDateFs;
@@ -623,21 +615,14 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   const metaFsEff = options?.metaFontPx != null ? `${options.metaFontPx}px` : "8.5pt";
   const sectionGapEff = options?.sectionSpacingPx != null ? `${options.sectionSpacingPx}px` : sectionGap;
 
-  const hasAdjustments = !!(fsOff || spOff || options?.hiddenSections?.length || hasPxOverrides);
+  // Always use the multi-page-aware layout (route.ts mirrors these margins to
+  // puppeteer's pdf options and injects the accent bar via `headerTemplate`).
+  // Unified for the same reason as in templateProfissional — adjusting any
+  // control must not also swap the page model under the user.
   const [mTop, mLR, mBottom] = margins.split(" ");
   const mBot = mBottom || mTop;
-  // Single-page mode: @page margin 0 + .page padding — auto-layout fits 1 page; accent bar
-  // (in CSS, position:fixed top:0) touches the paper top edge.
-  // Multi-page mode: @page reserves real top/bottom margin space on every page so content
-  // never bleeds into the header area. Route.ts mirrors these margins to puppeteer's pdf
-  // options AND injects the accent bar via `headerTemplate` (which natively repeats on each
-  // page). The `.accent-bar` element is omitted from the body in this mode.
-  const pageAtRule = hasAdjustments
-    ? `@page { size: A4; margin: ${mTop} 0 ${mBot} 0; }`
-    : `@page { size: A4; margin: 0; }`;
-  const pageCss = hasAdjustments
-    ? `width: 210mm; padding: 0 ${mLR}; position: relative;`
-    : `width: 210mm; min-height: 297mm; padding: ${margins}; padding-top: calc(${mTop} + 4pt); position: relative;`;
+  const pageAtRule = `@page { size: A4; margin: ${mTop} 0 ${mBot} 0; }`;
+  const pageCss = `width: 210mm; padding: 0 ${mLR}; position: relative;`;
 
   const contactLine = buildContactLine(data.basics, MODERNO_ACCENT);
 
@@ -811,6 +796,10 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
     border-bottom: 1pt solid ${MODERNO_ACCENT_40};
     padding-bottom: 3pt;
     margin-bottom: 6pt;
+    /* Keep section titles with their first entry — prevents orphaned titles
+       at the bottom of a page when content barely overflows. */
+    page-break-after: avoid;
+    break-after: avoid;
   }
 
   .summary {
@@ -822,8 +811,6 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   /* ── Entries ─────────────────────── */
   .entry {
     margin-bottom: ${entryGap};
-    page-break-inside: avoid;
-    break-inside: avoid;
   }
   .entry:last-child { margin-bottom: 0; }
   .entry-row {
@@ -896,10 +883,8 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
   }
 </style>
 </head>
-<body>
+<body data-page-margin-top="${mTop}" data-page-margin-bottom="${mBot}">
 <div class="page">
-
-  ${hasAdjustments ? "" : `<div class="accent-bar"></div>`}
 
   <div class="header">
     <div class="name">${esc(data.basics.name)}</div>

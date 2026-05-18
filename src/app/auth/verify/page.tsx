@@ -15,7 +15,7 @@ import { ShieldCheck, Mail } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function VerifyPage() {
-  const { user, loading: authLoading, deviceVerified, markDeviceVerified } = useAuthContext();
+  const { user, loading: authLoading, deviceVerified, isAdmin, markDeviceVerified } = useAuthContext();
   const router = useRouter();
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
@@ -62,6 +62,11 @@ export default function VerifyPage() {
   // Redirect if already verified
   useEffect(() => {
     if (authLoading) return;
+    if (isAdmin) {
+      // Defensive — admin sessions don't go through device verification.
+      router.push("/admin");
+      return;
+    }
     if (!user) {
       // Firebase may have the user set even if the provider context hasn't
       // propagated yet (e.g. right after a fresh register). Only bounce to
@@ -74,7 +79,7 @@ export default function VerifyPage() {
     if (deviceVerified) {
       router.push("/dashboard");
     }
-  }, [authLoading, user, deviceVerified, router]);
+  }, [authLoading, isAdmin, user, deviceVerified, router]);
 
   // Send code on mount
   useEffect(() => {

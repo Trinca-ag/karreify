@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { verifyAdminRequest } from "@/utils/admin-verify";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +14,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "A senha deve ter pelo menos 6 caracteres" }, { status: 400 });
     }
 
+    // Only authenticated admins can create new admins.
+    try {
+      await verifyAdminRequest(request);
+    } catch {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
     const normalizedUsername = username.toLowerCase().trim();
 
@@ -24,6 +32,21 @@ export async function POST(request: NextRequest) {
       .get();
     if (!emailSnap.empty) {
       return NextResponse.json({ error: "Este e-mail já está cadastrado como administrador" }, { status: 409 });
+    }
+
+    // Check email not already a regular user — admin and user accounts must be
+    // strictly separate (they share the Firebase Auth pool, so allowing both
+    // would let an admin sign in to the user-side dashboard).
+    const userEmailSnap = await adminDb
+      .collection("users")
+      .where("email", "==", normalizedEmail)
+      .limit(1)
+      .get();
+    if (!userEmailSnap.empty) {
+      return NextResponse.json(
+        { error: "Este e-mail já está cadastrado como usuário comum. Use outro e-mail para a conta de administrador." },
+        { status: 409 }
+      );
     }
 
     // Check username uniqueness

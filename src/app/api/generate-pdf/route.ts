@@ -54,24 +54,31 @@ async function generatePdfBuffer(
 
     // Auto-layout: compress or expand content to fit exactly 1 A4 page
     // When user has manual adjustments, skip auto-layout — respect their choices
-    if (skipAutoLayout) {
-      // Remove min-height so small content doesn't get artificially stretched
-      await page.evaluate(() => {
-        const pg = document.querySelector(".page") as HTMLElement;
-        if (pg) pg.style.minHeight = "0";
-      });
-    }
-
     if (!skipAutoLayout) await page.evaluate(() => {
       const pg = document.querySelector(".page") as HTMLElement;
       if (!pg) return;
 
-      // Measure A4 height in pixels (DPI-independent)
+      // Measure 1mm in pixels (DPI-independent) so we can convert the @page
+      // margins (recorded as data attributes by the template) into px.
       const ruler = document.createElement("div");
-      ruler.style.cssText = "height:297mm;position:absolute;visibility:hidden";
+      ruler.style.cssText = "height:1mm;position:absolute;visibility:hidden";
       document.body.appendChild(ruler);
-      const A4 = ruler.offsetHeight;
+      const mmPx = ruler.offsetHeight;
       document.body.removeChild(ruler);
+      const A4 = 297 * mmPx;
+
+      // The template now always uses @page { margin: ${mTop} 0 ${mBot} 0 }, so
+      // the real usable height per printed page is A4 minus those margins.
+      // Targeting raw A4 here would let content silently overflow the printable
+      // area (and paginate to 2 pages) without auto-layout knowing.
+      function parseMm(v: string | null | undefined): number {
+        if (!v) return 0;
+        const n = parseFloat(v);
+        return Number.isFinite(n) ? n : 0;
+      }
+      const mTop = parseMm(document.body.getAttribute("data-page-margin-top"));
+      const mBot = parseMm(document.body.getAttribute("data-page-margin-bottom"));
+      const printableHeight = A4 - (mTop + mBot) * mmPx;
 
       // Natural height without min-height constraint
       function naturalH(): number {
@@ -108,8 +115,8 @@ async function generatePdfBuffer(
       }
 
       let h = naturalH();
-      const wasOverflow = h > A4;
-      console.log("[Layout] initial h=" + h + " A4=" + A4 + " diff=" + (h - A4));
+      const wasOverflow = h > printableHeight;
+      console.log("[Layout] initial h=" + h + " printable=" + printableHeight + " diff=" + (h - printableHeight));
 
       /* ── OVERFLOW: compress to fit 1 page ── */
       if (wasOverflow) {
@@ -117,42 +124,42 @@ async function generatePdfBuffer(
         for (const f of [0.6, 0.4, 0.2, 0]) {
           scaleGaps(f);
           h = naturalH();
-          if (h <= A4) {
+          if (h <= printableHeight) {
             console.log("[Layout] fit with gap factor " + f);
             break;
           }
         }
 
         // Phase 2: Scale font sizes (floor 0.75x)
-        if (h > A4) {
-          const ratio = Math.max(A4 / h, 0.75);
+        if (h > printableHeight) {
+          const ratio = Math.max(printableHeight / h, 0.75);
           scaleFonts(ratio);
           h = naturalH();
           console.log("[Layout] font scale " + ratio.toFixed(3) + " -> h=" + h);
         }
 
-        // Phase 3: Reduce page padding
-        if (h > A4) {
+        // Phase 3: Reduce page padding (only LR padding exists in the unified
+        // layout, so we trim the LR padding instead of top/bottom).
+        if (h > printableHeight) {
           const cs = getComputedStyle(pg);
-          const pT = parseFloat(cs.paddingTop);
-          const pB = parseFloat(cs.paddingBottom);
-          const excess = h - A4;
-          pg.style.paddingTop = Math.max(pT - excess * 0.4, pT * 0.5) + "px";
-          pg.style.paddingBottom = Math.max(pB - excess * 0.6, pB * 0.5) + "px";
+          const pL = parseFloat(cs.paddingLeft);
+          const pR = parseFloat(cs.paddingRight);
+          pg.style.paddingLeft = Math.max(pL * 0.6, 12) + "px";
+          pg.style.paddingRight = Math.max(pR * 0.6, 12) + "px";
           h = naturalH();
-          console.log("[Layout] padding reduced -> h=" + h);
+          console.log("[Layout] LR padding reduced -> h=" + h);
         }
 
         // Phase 4: Aggressive font scale (no floor)
-        if (h > A4) {
-          scaleFonts(A4 / h);
+        if (h > printableHeight) {
+          scaleFonts(printableHeight / h);
           h = naturalH();
           console.log("[Layout] aggressive font -> h=" + h);
         }
 
         // Safety net: force single page by clipping
-        if (naturalH() > A4) {
-          pg.style.maxHeight = A4 + "px";
+        if (naturalH() > printableHeight) {
+          pg.style.maxHeight = printableHeight + "px";
           pg.style.overflow = "hidden";
           console.warn("[Layout] WARN: forced clip to prevent 2nd page");
         }
@@ -161,8 +168,8 @@ async function generatePdfBuffer(
       /* ── UNDERFILL: distribute extra space with max-gap limits ── */
       if (!wasOverflow) {
         h = naturalH();
-        if (h > 0 && h < A4 * 0.97) {
-          const spare = A4 - h;
+        if (h > 0 && h < printableHeight * 0.97) {
+          const spare = printableHeight - h;
           const MAX_PRIMARY_GAP = 32;
           const MAX_SECONDARY_GAP = 16;
 
@@ -206,7 +213,7 @@ async function generatePdfBuffer(
           console.log("[Layout] underfill: gaps used " + gapUsed.toFixed(0) + "px of " + spare.toFixed(0) + "px");
 
           // Phase 2: Complementary fill strategies for remaining space
-          const remaining = A4 - naturalH();
+          const remaining = printableHeight - naturalH();
           if (remaining > 10) {
             // 2a. Increase summary line-height (up to 1.85)
             const summary = pg.querySelector(".summary") as HTMLElement;
@@ -243,7 +250,7 @@ async function generatePdfBuffer(
               }
             }
 
-            const finalRemaining = A4 - naturalH();
+            const finalRemaining = printableHeight - naturalH();
             console.log("[Layout] underfill: after complementary fill, remaining ~" + finalRemaining.toFixed(0) + "px");
           }
         }
@@ -255,14 +262,22 @@ async function generatePdfBuffer(
       const pg = document.querySelector(".page") as HTMLElement;
       if (!pg) return 1;
       const ruler = document.createElement("div");
-      ruler.style.cssText = "height:297mm;position:absolute;visibility:hidden";
+      ruler.style.cssText = "height:1mm;position:absolute;visibility:hidden";
       document.body.appendChild(ruler);
-      const a4 = ruler.offsetHeight;
+      const mmPx = ruler.offsetHeight;
       document.body.removeChild(ruler);
+      function parseMm(v: string | null): number {
+        if (!v) return 0;
+        const n = parseFloat(v);
+        return Number.isFinite(n) ? n : 0;
+      }
+      const mTop = parseMm(document.body.getAttribute("data-page-margin-top"));
+      const mBot = parseMm(document.body.getAttribute("data-page-margin-bottom"));
+      const printable = (297 - mTop - mBot) * mmPx;
       pg.style.minHeight = "0";
       const h = pg.offsetHeight;
       pg.style.minHeight = "";
-      return Math.ceil(h / a4);
+      return printable > 0 ? Math.ceil(h / printable) : 1;
     });
     if (pageCount > 1) {
       console.warn("[PDF] Content still spans " + pageCount + " pages after layout adjustment");
@@ -367,12 +382,12 @@ export async function POST(request: NextRequest) {
       hasPxOverrides
     );
 
-    // Moderno with manual adjustments may overflow to multiple pages. Use puppeteer's
-    // headerTemplate to draw the navy accent bar at the top of every page (CSS
-    // `position: fixed` doesn't repeat reliably in Chromium's PDF print path), and
-    // override page margins so every page has consistent top/bottom spacing.
+    // Moderno always renders its accent bar via puppeteer's headerTemplate (so
+    // it repeats on every page). The template's .page no longer carries the
+    // bar — the page model is unified single/multi-page, and CSS position:fixed
+    // wouldn't repeat reliably in Chromium's PDF print path anyway.
     let extraPdfOptions: Record<string, unknown> = {};
-    if (template === "moderno" && hasManualAdjustments) {
+    if (template === "moderno") {
       const m = getModernoPdfMargins(resumeData, templateOptions);
       // Chromium wraps the headerTemplate in a `<div id="header">` that has default
       // padding (~5px), which creates a visible gap between the bar and the paper edge.
@@ -386,7 +401,12 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    const pdfBuffer = await generatePdfBuffer(html, hasManualAdjustments, extraPdfOptions);
+    // Always skip server-side auto-layout: it used to silently rescale gaps so
+    // the slider value never matched what got rendered, and it couldn't see
+    // CSS page-break constraints — so a section title could end up alone at
+    // the bottom of page 1 with the entries shoved to page 2. WYSIWYG wins.
+    void hasManualAdjustments;
+    const pdfBuffer = await generatePdfBuffer(html, true, extraPdfOptions);
 
     // 3. Return PDF
     return new NextResponse(new Uint8Array(pdfBuffer), {
