@@ -48,6 +48,13 @@ function stripHtml(input?: string): string {
     .trim();
 }
 
+/** Adzuna returns the literal string "Unknown" when a field is missing
+ *  (company, category, etc.) instead of omitting it. Treat those as empty. */
+function cleanText(input?: string): string {
+  const s = stripHtml(input);
+  return s.toLowerCase() === "unknown" ? "" : s;
+}
+
 function formatSalary(min?: number, max?: number, predicted?: string): string {
   if (!min && !max) return "";
   const fmt = (n: number) =>
@@ -107,12 +114,16 @@ export async function POST(request: NextRequest) {
     const safePeriod = period === "today" || period === "week" ? period : "month";
     const targetPage = Math.max(1, Math.min(20, page || 1));
 
+    // sort_by=date makes the Adzuna BR API surface jobs from a feed that
+    // strips company.display_name (verified empirically — same query without
+    // sort_by returns 100% jobs with company names, with sort_by=date returns
+    // 0%). max_days_old already bounds the time window, so relevance sort is
+    // the better trade.
     const params = new URLSearchParams({
       app_id: appId,
       app_key: appKey,
       results_per_page: "20",
       max_days_old: String(periodToMaxDays(safePeriod)),
-      sort_by: "date",
       "content-type": "application/json",
     });
 
@@ -166,12 +177,12 @@ export async function POST(request: NextRequest) {
     const data = (await response.json()) as AdzunaResponse;
     const jobs = (data.results || []).map((j, idx) => ({
       id: String(j.id || `${idx}-${Date.now()}`),
-      title: stripHtml(j.title) || "Vaga sem título",
-      company: stripHtml(j.company?.display_name) || "",
-      location: stripHtml(j.location?.display_name) || "",
+      title: cleanText(j.title) || "Vaga sem título",
+      company: cleanText(j.company?.display_name),
+      location: cleanText(j.location?.display_name),
       snippet: stripHtml(j.description),
       salary: formatSalary(j.salary_min, j.salary_max, j.salary_is_predicted),
-      source: stripHtml(j.category?.label) || "",
+      source: cleanText(j.category?.label),
       type: formatContractType(j.contract_type, j.contract_time),
       link: j.redirect_url || "",
       updated: j.created || "",

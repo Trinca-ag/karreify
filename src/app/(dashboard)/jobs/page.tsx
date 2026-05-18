@@ -125,7 +125,7 @@ export default function JobsPage() {
     const params = new URLSearchParams();
     if (job.company) params.set("company", job.company);
     if (job.title) params.set("title", job.title);
-    if (job.snippet) params.set("description", job.snippet);
+    if (job.snippet) params.set("description", job.snippet.slice(0, 3500));
     switch (target) {
       case "adapt":
         return `/adapt-resume?${params.toString()}`;
@@ -498,7 +498,9 @@ function JobCard({
           </a>
         )}
 
-        {/* Secondary actions */}
+        {/* Secondary actions — open the corresponding tool with the job
+            context pre-filled via URL params. Adzuna snippets are short
+            (~150-500 chars) so URL params are reliable. */}
         <div className="grid grid-cols-3 gap-1.5">
           <Link
             href={buildIntegrationLink(job, "adapt")}
@@ -518,10 +520,12 @@ function JobCard({
           </Link>
           <Link
             href={buildIntegrationLink(job, "company")}
-            title="Analisar a empresa antes da entrevista"
-            className={`flex flex-col items-center gap-1 py-2 px-1 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 text-sky-300 rounded-lg text-[11px] font-medium transition-colors ${
-              !job.company ? "opacity-40 pointer-events-none" : ""
-            }`}
+            title={
+              job.company
+                ? "Analisar a empresa antes da entrevista"
+                : "Analisar empresa — preencha o nome na próxima página"
+            }
+            className="flex flex-col items-center gap-1 py-2 px-1 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 text-sky-300 rounded-lg text-[11px] font-medium transition-colors"
           >
             <Building2 className="w-4 h-4" />
             <span>Empresa</span>

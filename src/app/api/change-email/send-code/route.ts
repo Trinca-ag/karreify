@@ -1,23 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import nodemailer from "nodemailer";
-import { emailChangeEmail } from "@/utils/email-templates";
+import { sendTransactionalEmail } from "@/lib/mailer";
+import { emailChangeEmail, emailChangeEmailText } from "@/utils/email-templates";
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-function getTransporter() {
-  const user = process.env.EMAIL_USER;
-  const pass = process.env.EMAIL_PASS;
-  if (!user || !pass) return null;
-
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || "smtp.gmail.com",
-    port: parseInt(process.env.EMAIL_PORT || "587"),
-    secure: false,
-    auth: { user, pass },
-  });
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -85,20 +72,18 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
     });
 
-    const transporter = getTransporter();
-    const html = emailChangeEmail(code);
+    const result = await sendTransactionalEmail({
+      to: normalizedEmail,
+      subject: "Confirmação de novo email — NextCV",
+      html: emailChangeEmail(code),
+      text: emailChangeEmailText(code),
+      priority: "high",
+    });
 
-    if (!transporter) {
+    if (result.fallback) {
       console.warn(`[Email] SMTP not configured. Email-change code for ${normalizedEmail}: ${code}`);
       return NextResponse.json({ success: true, fallback: true, code });
     }
-
-    await transporter.sendMail({
-      from: `"NextCV" <${process.env.EMAIL_USER}>`,
-      to: normalizedEmail,
-      subject: "Confirmação de novo email — NextCV",
-      html,
-    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

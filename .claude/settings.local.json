@@ -68,7 +68,8 @@
       "PowerShell(try { [System.IO.Directory]::Move\\(\"C:\\\\NextCV\\\\src\\\\app\\\\dashboard\", \"C:\\\\NextCV\\\\src\\\\app\\\\\\(dashboard\\)\"\\); \"moved via .NET\" } catch { \"still locked: $\\($_.Exception.Message\\)\" })",
       "PowerShell(Rename-Item *)",
       "Bash(npx eslint *)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(git stash *)"
     ]
   }
 }

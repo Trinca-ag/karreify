@@ -217,6 +217,89 @@ export function adminVerificationEmail(code: string): string {
   `);
 }
 
+// ── Plain-text alternatives ─────────────────────────────
+// Hotmail/Outlook score emails much higher when there's a real text/plain
+// part. These mirror the HTML templates with the same key info (code,
+// expiry, footer) so the message is useful even if HTML fails to render.
+
+function textFooter(): string {
+  const year = new Date().getFullYear();
+  return `\n\n--\n© ${year} NextCV — Impulsione sua carreira com IA\nEste email foi enviado automaticamente. Não responda.`;
+}
+
+export function verificationEmailText(code: string): string {
+  return `NextCV — Verificação de segurança
+
+Use o código abaixo para verificar seu dispositivo:
+
+    ${code}
+
+Este código expira em 10 minutos.
+
+Se você não solicitou este código, ignore este email.${textFooter()}`;
+}
+
+export function passwordResetEmailText(code: string): string {
+  return `NextCV — Recuperação de senha
+
+Use o código abaixo para redefinir sua senha:
+
+    ${code}
+
+Este código expira em 10 minutos.
+
+Se você não solicitou a recuperação de senha, ignore este email e mantenha sua conta segura.${textFooter()}`;
+}
+
+export function emailChangeEmailText(code: string): string {
+  return `NextCV — Confirmação de novo email
+
+Use o código abaixo para confirmar a alteração do email da sua conta:
+
+    ${code}
+
+Este código expira em 10 minutos.
+
+Se você não solicitou esta alteração, ignore este email e considere alterar sua senha.${textFooter()}`;
+}
+
+export function adminVerificationEmailText(code: string): string {
+  return `NextCV Admin — Cadastro de administrador
+
+Use o código abaixo para confirmar seu acesso ao painel administrativo:
+
+    ${code}
+
+Este código expira em 15 minutos.
+
+Se você não solicitou este código, ignore este email.${textFooter()}`;
+}
+
+export function packPurchaseEmailText(
+  userName: string,
+  packName: string,
+  baseCredits: number,
+  bonusCredits: number,
+  totalCredits: number,
+  price: number
+): string {
+  const bonusLine = bonusCredits > 0 ? `\nMoedas bônus: +${bonusCredits}` : "";
+  return `NextCV — Compra realizada
+
+Olá ${userName},
+
+Sua compra foi concluída com sucesso.
+
+Pacote: ${packName}
+Valor: R$${price} (compra única)
+Moedas base: ${baseCredits}${bonusLine}
+Total adicionado: +${totalCredits} moedas
+
+Suas moedas já estão disponíveis. Acesse o dashboard para começar a usar.${textFooter()}`;
+}
+
+// ── HTML Templates ──────────────────────────────────────
+
 export function packPurchaseEmail(
   userName: string,
   packName: string,
