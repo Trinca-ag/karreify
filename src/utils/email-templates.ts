@@ -1,82 +1,55 @@
-function baseLayout(content: string): string {
-  const year = new Date().getFullYear();
+// ── Shared layout ───────────────────────────────────────
 
-  return `
-<!DOCTYPE html>
+function appUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+}
+
+function baseLayout(content: string, previewText?: string): string {
+  const year = new Date().getFullYear();
+  const url = appUrl();
+  // Hidden preview text shown in the inbox preview pane below the subject.
+  // Email clients pick the first visible text — we shove a 1px hidden span
+  // so the preview is intentional, not a stray fragment from the heading.
+  const preview = previewText
+    ? `<span style="display:none !important;font-size:1px;color:#fafafa;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${previewText}</span>`
+    : "";
+
+  return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>Karreify</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #030712; font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  <!-- Outer wrapper with dark space background -->
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #030712;">
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;color:#111827;-webkit-font-smoothing:antialiased;">
+  ${preview}
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;">
     <tr>
-      <td align="center" style="padding: 40px 16px;">
+      <td align="center" style="padding:32px 16px;">
 
-        <!-- Main card -->
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.04),0 6px 16px rgba(15,23,42,0.05);">
 
-          <!-- Glow border wrapper -->
           <tr>
-            <td style="background: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4); border-radius: 24px; padding: 1px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a1a; border-radius: 24px;">
+            <td align="center" style="padding:36px 40px 28px;background-color:#ffffff;border-bottom:1px solid #f3f4f6;">
+              <img src="${url}/images/logo-karreify.png" alt="Karreify" width="150" style="display:block;margin:0 auto;max-width:150px;height:auto;border:0;outline:none;text-decoration:none;" />
+            </td>
+          </tr>
 
-                <!-- Top gradient accent bar -->
-                <tr>
-                  <td style="height: 4px; background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4, #8b5cf6, #3b82f6); border-radius: 24px 24px 0 0;"></td>
-                </tr>
+          <tr>
+            <td style="padding:36px 40px 28px;">
+              ${content}
+            </td>
+          </tr>
 
-                <!-- Logo section -->
-                <tr>
-                  <td align="center" style="padding: 36px 40px 8px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.08)); border: 1px solid rgba(59,130,246,0.2); border-radius: 16px; padding: 12px 20px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0">
-                            <tr>
-                              <td style="width: 32px; height: 32px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 10px; text-align: center; vertical-align: middle;">
-                                <span style="color: #ffffff; font-size: 16px; line-height: 32px;">&#9998;</span>
-                              </td>
-                              <td style="padding-left: 10px;">
-                                <span style="font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">Karre</span><span style="font-size: 22px; font-weight: 800; color: #3b82f6; letter-spacing: -0.5px;">ify</span>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
-                <!-- Content area -->
-                <tr>
-                  <td style="padding: 16px 40px 36px;">
-                    ${content}
-                  </td>
-                </tr>
-
-                <!-- Divider -->
-                <tr>
-                  <td style="padding: 0 40px;">
-                    <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(59,130,246,0.15), rgba(139,92,246,0.15), transparent);"></div>
-                  </td>
-                </tr>
-
-                <!-- Footer -->
-                <tr>
-                  <td align="center" style="padding: 24px 40px 28px;">
-                    <p style="margin: 0 0 6px; font-size: 12px; color: #4b5563; line-height: 1.5;">
-                      &copy; ${year} Karreify &middot; Impulsione sua carreira com IA
-                    </p>
-                    <p style="margin: 0; font-size: 11px; color: #374151;">
-                      Este email foi enviado automaticamente. N&atilde;o responda.
-                    </p>
-                  </td>
-                </tr>
-
-              </table>
+          <tr>
+            <td style="padding:22px 40px;background-color:#f9fafb;border-top:1px solid #f3f4f6;text-align:center;">
+              <p style="margin:0 0 6px;font-size:12px;color:#6b7280;line-height:1.5;">
+                &copy; ${year} Karreify &middot; Impuls&atilde;o de carreira com intelig&ecirc;ncia artificial.
+              </p>
+              <p style="margin:0;font-size:11px;color:#9ca3af;line-height:1.5;">
+                Este &eacute; um email autom&aacute;tico, por favor n&atilde;o responda.
+              </p>
             </td>
           </tr>
 
@@ -89,166 +62,171 @@ function baseLayout(content: string): string {
 </html>`;
 }
 
-// ── Shared helpers ──────────────────────────────────────
+// ── Atomic helpers ──────────────────────────────────────
 
-function codeBlock(code: string, accentColor: string, bgFrom: string, bgTo: string, borderColor: string): string {
+function heading(title: string): string {
+  return `<h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#0f172a;line-height:1.3;letter-spacing:-0.01em;">${title}</h1>`;
+}
+
+function paragraph(text: string, marginBottom = 22): string {
+  return `<p style="margin:0 0 ${marginBottom}px;font-size:15px;line-height:1.6;color:#374151;">${text}</p>`;
+}
+
+function smallText(text: string): string {
+  return `<p style="margin:20px 0 0;font-size:13px;line-height:1.55;color:#6b7280;">${text}</p>`;
+}
+
+function codeBlock(code: string): string {
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 24px;">
       <tr>
-        <td style="background: linear-gradient(135deg, ${bgFrom}, ${bgTo}); border: 1px solid ${borderColor}; border-radius: 16px; padding: 28px 20px; text-align: center;">
-          <!-- Individual digit boxes -->
-          <table role="presentation" cellpadding="0" cellspacing="0" align="center">
-            <tr>
-              ${code.split("").map(d => `
-                <td style="padding: 0 4px;">
-                  <div style="width: 44px; height: 56px; background: rgba(0,0,0,0.3); border: 1px solid ${borderColor}; border-radius: 12px; text-align: center; line-height: 56px;">
-                    <span style="font-size: 28px; font-weight: 800; color: ${accentColor}; font-family: 'Courier New', 'Lucida Console', monospace;">${d}</span>
-                  </div>
-                </td>
-              `).join("")}
-            </tr>
+        <td align="center" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:24px 16px;">
+          <span style="display:inline-block;font-size:30px;font-weight:700;letter-spacing:10px;color:#0f172a;font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;">
+            ${code}
+          </span>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function expiryNote(text: string): string {
+  return `<p style="margin:0 0 22px;font-size:12px;color:#6b7280;text-align:center;letter-spacing:0.02em;">${text}</p>`;
+}
+
+function ctaButton(href: string, label: string): string {
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:8px auto 0;">
+      <tr>
+        <td style="border-radius:8px;background-color:#2563eb;">
+          <a href="${href}" target="_blank" style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:0.01em;">
+            ${label}
+          </a>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function infoCard(rows: Array<{ label: string; value: string; accent?: boolean }>): string {
+  const body = rows
+    .map(
+      (r, i) => `
+      <tr>
+        <td style="padding:${i === 0 ? "0" : "10px"} 0 10px;${i < rows.length - 1 ? "border-bottom:1px solid #f1f5f9;" : ""}">
+          <span style="font-size:13px;color:#6b7280;">${r.label}</span>
+        </td>
+        <td style="padding:${i === 0 ? "0" : "10px"} 0 10px;${i < rows.length - 1 ? "border-bottom:1px solid #f1f5f9;" : ""}text-align:right;">
+          <span style="font-size:14px;color:${r.accent ? "#2563eb" : "#0f172a"};font-weight:${r.accent ? "700" : "600"};">${r.value}</span>
+        </td>
+      </tr>`
+    )
+    .join("");
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 24px;background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;">
+      <tr>
+        <td style="padding:18px 22px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${body}
           </table>
         </td>
       </tr>
     </table>`;
 }
 
-function infoPill(icon: string, text: string, highlight: string): string {
+function ticketCard(ticketId: string, title: string, extra?: string): string {
   return `
-    <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 0 8px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 24px;">
       <tr>
-        <td style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 20px;">
-          <span style="font-size: 13px; color: #6b7280;">${icon} ${text} <span style="color: #d1d5db; font-weight: 600;">${highlight}</span></span>
+        <td style="background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:18px 20px;">
+          <div style="font-size:11px;color:#6b7280;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;font-weight:600;">Chamado #${ticketId}</div>
+          <div style="font-size:15px;color:#0f172a;font-weight:600;line-height:1.4;">${title}</div>
+          ${extra ? `<div style="font-size:13px;color:#4b5563;margin-top:14px;line-height:1.6;padding-top:14px;border-top:1px solid #e5e7eb;">${extra}</div>` : ""}
         </td>
       </tr>
     </table>`;
 }
 
-function iconCircle(emoji: string, bgFrom: string, bgTo: string, borderColor: string): string {
-  return `
-    <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 0 24px;">
-      <tr>
-        <td style="width: 64px; height: 64px; background: linear-gradient(135deg, ${bgFrom}, ${bgTo}); border: 1px solid ${borderColor}; border-radius: 20px; text-align: center; vertical-align: middle;">
-          <span style="font-size: 28px; line-height: 64px;">${emoji}</span>
-        </td>
-      </tr>
-    </table>`;
-}
-
-function heading(title: string): string {
-  return `<h1 style="color: #ffffff; font-size: 24px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.5px; text-align: center;">${title}</h1>`;
-}
-
-function subtext(text: string): string {
-  return `<p style="color: #9ca3af; font-size: 14px; margin: 0 0 28px; line-height: 1.6; text-align: center;">${text}</p>`;
-}
-
-function footnote(text: string): string {
-  return `<p style="color: #4b5563; font-size: 12px; margin: 16px 0 0; line-height: 1.5; text-align: center;">${text}</p>`;
-}
-
-// ── Email Templates ─────────────────────────────────────
-
-export function verificationEmail(code: string): string {
-  return baseLayout(`
-    <div style="text-align: center;">
-      ${iconCircle("&#128737;", "rgba(59,130,246,0.15)", "rgba(139,92,246,0.1)", "rgba(59,130,246,0.25)")}
-
-      ${heading("Verifica&ccedil;&atilde;o de seguran&ccedil;a")}
-      ${subtext("Use o c&oacute;digo abaixo para verificar seu dispositivo")}
-
-      ${codeBlock(code, "#60a5fa", "rgba(59,130,246,0.08)", "rgba(139,92,246,0.05)", "rgba(59,130,246,0.15)")}
-
-      ${infoPill("&#9200;", "Expira em", "10 minutos")}
-
-      ${footnote("Se voc&ecirc; n&atilde;o solicitou este c&oacute;digo, ignore este email.")}
-    </div>
-  `);
-}
-
-export function passwordResetEmail(code: string): string {
-  return baseLayout(`
-    <div style="text-align: center;">
-      ${iconCircle("&#128273;", "rgba(251,146,60,0.15)", "rgba(245,158,11,0.1)", "rgba(251,146,60,0.25)")}
-
-      ${heading("Recupera&ccedil;&atilde;o de senha")}
-      ${subtext("Use o c&oacute;digo abaixo para redefinir sua senha")}
-
-      ${codeBlock(code, "#fb923c", "rgba(251,146,60,0.08)", "rgba(245,158,11,0.05)", "rgba(251,146,60,0.15)")}
-
-      ${infoPill("&#9200;", "Expira em", "10 minutos")}
-
-      ${footnote("Se voc&ecirc; n&atilde;o solicitou a recupera&ccedil;&atilde;o de senha, ignore este email.")}
-    </div>
-  `);
-}
-
-export function emailChangeEmail(code: string): string {
-  return baseLayout(`
-    <div style="text-align: center;">
-      ${iconCircle("&#9993;", "rgba(59,130,246,0.15)", "rgba(139,92,246,0.1)", "rgba(59,130,246,0.25)")}
-
-      ${heading("Confirma&ccedil;&atilde;o de novo email")}
-      ${subtext("Use o c&oacute;digo abaixo para confirmar a altera&ccedil;&atilde;o do email da sua conta Karreify")}
-
-      ${codeBlock(code, "#60a5fa", "rgba(59,130,246,0.08)", "rgba(139,92,246,0.05)", "rgba(59,130,246,0.15)")}
-
-      ${infoPill("&#9200;", "Expira em", "10 minutos")}
-
-      ${footnote("Se voc&ecirc; n&atilde;o solicitou esta altera&ccedil;&atilde;o, ignore este email e considere alterar sua senha.")}
-    </div>
-  `);
-}
-
-export function adminVerificationEmail(code: string): string {
-  return baseLayout(`
-    <div style="text-align: center;">
-      ${iconCircle("&#128737;", "rgba(139,92,246,0.15)", "rgba(109,40,217,0.1)", "rgba(139,92,246,0.25)")}
-
-      ${heading("Cadastro de Administrador")}
-      ${subtext("Use o c&oacute;digo abaixo para confirmar seu cadastro no painel administrativo")}
-
-      ${codeBlock(code, "#a78bfa", "rgba(139,92,246,0.08)", "rgba(109,40,217,0.05)", "rgba(139,92,246,0.15)")}
-
-      ${infoPill("&#9200;", "Expira em", "15 minutos")}
-
-      ${footnote("Se voc&ecirc; n&atilde;o solicitou este c&oacute;digo, ignore este email.")}
-    </div>
-  `);
-}
-
-// ── Plain-text alternatives ─────────────────────────────
-// Hotmail/Outlook score emails much higher when there's a real text/plain
-// part. These mirror the HTML templates with the same key info (code,
-// expiry, footer) so the message is useful even if HTML fails to render.
+// ── Plain-text helpers ──────────────────────────────────
 
 function textFooter(): string {
   const year = new Date().getFullYear();
-  return `\n\n--\n© ${year} Karreify — Impulsione sua carreira com IA\nEste email foi enviado automaticamente. Não responda.`;
+  return `\n\n--\nKarreify · © ${year}\nImpulso de carreira com inteligência artificial.\nEste é um email automático, por favor não responda.`;
+}
+
+// ── Verification codes ──────────────────────────────────
+
+export function verificationEmail(code: string): string {
+  return baseLayout(
+    `
+    ${heading("Verifique seu dispositivo")}
+    ${paragraph(
+      "Para confirmar que este dispositivo &eacute; seu, utilize o c&oacute;digo abaixo. Ele &eacute; v&aacute;lido por <strong style=\"color:#0f172a;\">10 minutos</strong>."
+    )}
+    ${codeBlock(code)}
+    ${expiryNote("V&aacute;lido por 10 minutos")}
+    ${smallText(
+      "Se voc&ecirc; n&atilde;o reconhece esta tentativa de acesso, ignore este email e considere alterar sua senha."
+    )}
+  `,
+    "Use o código de verificação para confirmar seu dispositivo."
+  );
 }
 
 export function verificationEmailText(code: string): string {
-  return `Karreify — Verificação de segurança
+  return `Karreify — Verificação de dispositivo
 
-Use o código abaixo para verificar seu dispositivo:
+Use o código abaixo para confirmar que este dispositivo é seu:
 
     ${code}
 
-Este código expira em 10 minutos.
+Válido por 10 minutos.
 
-Se você não solicitou este código, ignore este email.${textFooter()}`;
+Se você não reconhece esta tentativa de acesso, ignore este email e considere alterar sua senha.${textFooter()}`;
+}
+
+export function passwordResetEmail(code: string): string {
+  return baseLayout(
+    `
+    ${heading("Redefini&ccedil;&atilde;o de senha")}
+    ${paragraph(
+      "Recebemos um pedido para redefinir a senha da sua conta. Utilize o c&oacute;digo abaixo na pr&oacute;xima tela para concluir."
+    )}
+    ${codeBlock(code)}
+    ${expiryNote("V&aacute;lido por 10 minutos")}
+    ${smallText(
+      "Se voc&ecirc; n&atilde;o solicitou esta redefini&ccedil;&atilde;o, ignore este email. Sua senha atual continua v&aacute;lida."
+    )}
+  `,
+    "Código para redefinir sua senha."
+  );
 }
 
 export function passwordResetEmailText(code: string): string {
-  return `Karreify — Recuperação de senha
+  return `Karreify — Redefinição de senha
 
-Use o código abaixo para redefinir sua senha:
+Use o código abaixo para concluir a redefinição da sua senha:
 
     ${code}
 
-Este código expira em 10 minutos.
+Válido por 10 minutos.
 
-Se você não solicitou a recuperação de senha, ignore este email e mantenha sua conta segura.${textFooter()}`;
+Se você não solicitou esta redefinição, ignore este email. Sua senha atual continua válida.${textFooter()}`;
+}
+
+export function emailChangeEmail(code: string): string {
+  return baseLayout(
+    `
+    ${heading("Confirma&ccedil;&atilde;o de novo email")}
+    ${paragraph(
+      "Voc&ecirc; solicitou a altera&ccedil;&atilde;o do email da sua conta. Utilize o c&oacute;digo abaixo para confirmar a opera&ccedil;&atilde;o."
+    )}
+    ${codeBlock(code)}
+    ${expiryNote("V&aacute;lido por 10 minutos")}
+    ${smallText(
+      "Se voc&ecirc; n&atilde;o solicitou esta altera&ccedil;&atilde;o, ignore este email e considere alterar sua senha imediatamente."
+    )}
+  `,
+    "Confirme a alteração do email da sua conta."
+  );
 }
 
 export function emailChangeEmailText(code: string): string {
@@ -258,21 +236,73 @@ Use o código abaixo para confirmar a alteração do email da sua conta:
 
     ${code}
 
-Este código expira em 10 minutos.
+Válido por 10 minutos.
 
 Se você não solicitou esta alteração, ignore este email e considere alterar sua senha.${textFooter()}`;
 }
 
-export function adminVerificationEmailText(code: string): string {
-  return `Karreify Admin — Cadastro de administrador
+export function adminVerificationEmail(code: string): string {
+  return baseLayout(
+    `
+    ${heading("Acesso administrativo")}
+    ${paragraph(
+      "Utilize o c&oacute;digo abaixo para concluir a opera&ccedil;&atilde;o no painel administrativo do Karreify."
+    )}
+    ${codeBlock(code)}
+    ${expiryNote("V&aacute;lido por 15 minutos")}
+    ${smallText(
+      "Se voc&ecirc; n&atilde;o reconhece esta a&ccedil;&atilde;o, n&atilde;o utilize o c&oacute;digo e revise os acessos ao painel."
+    )}
+  `,
+    "Código de acesso ao painel administrativo."
+  );
+}
 
-Use o código abaixo para confirmar seu acesso ao painel administrativo:
+export function adminVerificationEmailText(code: string): string {
+  return `Karreify — Acesso administrativo
+
+Use o código abaixo para concluir a operação no painel administrativo:
 
     ${code}
 
-Este código expira em 15 minutos.
+Válido por 15 minutos.
 
-Se você não solicitou este código, ignore este email.${textFooter()}`;
+Se você não reconhece esta ação, não utilize o código e revise os acessos ao painel.${textFooter()}`;
+}
+
+// ── Pack purchase ───────────────────────────────────────
+
+export function packPurchaseEmail(
+  userName: string,
+  packName: string,
+  baseCredits: number,
+  bonusCredits: number,
+  totalCredits: number,
+  price: number
+): string {
+  const url = appUrl();
+  const rows = [
+    { label: "Pacote", value: packName, accent: true },
+    { label: "Valor", value: `R$ ${price} · compra única` },
+    { label: "Moedas base", value: String(baseCredits) },
+  ];
+  if (bonusCredits > 0) {
+    rows.push({ label: "Moedas bônus", value: `+${bonusCredits}` });
+  }
+  rows.push({ label: "Total adicionado", value: `${totalCredits} moedas`, accent: true });
+
+  return baseLayout(
+    `
+    ${heading("Compra confirmada")}
+    ${paragraph(
+      `Ol&aacute;, <strong style="color:#0f172a;">${userName}</strong>. Sua compra foi processada com sucesso e suas moedas j&aacute; est&atilde;o dispon&iacute;veis para uso.`
+    )}
+    ${infoCard(rows)}
+    ${ctaButton(`${url}/dashboard`, "Acessar dashboard")}
+    ${smallText("Caso identifique alguma divergência, abra um chamado pelo suporte.")}
+  `,
+    `Compra confirmada · ${totalCredits} moedas adicionadas.`
+  );
 }
 
 export function packPurchaseEmailText(
@@ -284,188 +314,92 @@ export function packPurchaseEmailText(
   price: number
 ): string {
   const bonusLine = bonusCredits > 0 ? `\nMoedas bônus: +${bonusCredits}` : "";
-  return `Karreify — Compra realizada
+  const url = appUrl();
+  return `Karreify — Compra confirmada
 
 Olá ${userName},
 
-Sua compra foi concluída com sucesso.
+Sua compra foi processada com sucesso. Suas moedas já estão disponíveis.
 
 Pacote: ${packName}
-Valor: R$${price} (compra única)
+Valor: R$ ${price} (compra única)
 Moedas base: ${baseCredits}${bonusLine}
-Total adicionado: +${totalCredits} moedas
+Total adicionado: ${totalCredits} moedas
 
-Suas moedas já estão disponíveis. Acesse o dashboard para começar a usar.${textFooter()}`;
+Acesse o dashboard: ${url}/dashboard
+
+Caso identifique alguma divergência, abra um chamado pelo suporte.${textFooter()}`;
 }
 
-// ── HTML Templates ──────────────────────────────────────
-
-export function packPurchaseEmail(
-  userName: string,
-  packName: string,
-  baseCredits: number,
-  bonusCredits: number,
-  totalCredits: number,
-  price: number
-): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-  const bonusRow = bonusCredits > 0 ? `
-              <tr>
-                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
-                  <span style="font-size: 13px; color: #6b7280;">Moedas b&ocirc;nus</span>
-                </td>
-                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); text-align: right;">
-                  <span style="font-size: 14px; color: #4ade80; font-weight: 600;">+${bonusCredits}</span>
-                </td>
-              </tr>` : "";
-
-  return baseLayout(`
-    <div style="text-align: center;">
-      ${iconCircle("&#127881;", "rgba(34,197,94,0.15)", "rgba(16,185,129,0.1)", "rgba(34,197,94,0.25)")}
-
-      ${heading("Compra realizada!")}
-      ${subtext(`Ol&aacute; <span style="color: #e5e7eb; font-weight: 700;">${userName}</span>, sua compra foi conclu&iacute;da com sucesso.`)}
-
-      <!-- Pack details card -->
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 28px;">
-        <tr>
-          <td style="background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.05)); border: 1px solid rgba(59,130,246,0.15); border-radius: 16px; padding: 24px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-              <!-- Pack name -->
-              <tr>
-                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
-                  <span style="font-size: 13px; color: #6b7280;">Pacote</span>
-                </td>
-                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); text-align: right;">
-                  <span style="font-size: 14px; color: #ffffff; font-weight: 700; background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${packName}</span>
-                </td>
-              </tr>
-              <!-- Price -->
-              <tr>
-                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
-                  <span style="font-size: 13px; color: #6b7280;">Valor</span>
-                </td>
-                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); text-align: right;">
-                  <span style="font-size: 14px; color: #e5e7eb; font-weight: 600;">R$${price}<span style="font-size: 12px; color: #6b7280; font-weight: 400;"> &middot; compra &uacute;nica</span></span>
-                </td>
-              </tr>
-              <!-- Base credits -->
-              <tr>
-                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
-                  <span style="font-size: 13px; color: #6b7280;">Moedas base</span>
-                </td>
-                <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); text-align: right;">
-                  <span style="font-size: 14px; color: #e5e7eb; font-weight: 600;">${baseCredits}</span>
-                </td>
-              </tr>${bonusRow}
-              <!-- Total credits -->
-              <tr>
-                <td style="padding: 10px 0;">
-                  <span style="font-size: 13px; color: #6b7280;">Total adicionado</span>
-                </td>
-                <td style="padding: 10px 0; text-align: right;">
-                  <span style="display: inline-block; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 8px; padding: 4px 12px; font-size: 14px; color: #4ade80; font-weight: 700;">+${totalCredits} moedas</span>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-
-      <!-- CTA Button -->
-      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 0 8px;">
-        <tr>
-          <td style="border-radius: 14px; background: linear-gradient(135deg, #3b82f6, #8b5cf6);">
-            <a href="${appUrl}/dashboard" target="_blank" style="display: inline-block; padding: 16px 40px; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
-              Ir para o Dashboard &#8594;
-            </a>
-          </td>
-        </tr>
-      </table>
-
-      ${footnote("Suas moedas j&aacute; est&atilde;o dispon&iacute;veis. Aproveite todos os recursos!")}
-    </div>
-  `);
-}
-
-// ── Welcome / Security ─────────────────────────────────
+// ── Welcome ─────────────────────────────────────────────
 
 export function welcomeEmail(userName: string): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  return baseLayout(`
-    <div style="text-align: center;">
-      ${iconCircle("&#128075;", "rgba(59,130,246,0.15)", "rgba(139,92,246,0.1)", "rgba(59,130,246,0.25)")}
-      ${heading("Bem-vindo(a) ao Karreify!")}
-      ${subtext(`Ol&aacute; <span style="color: #e5e7eb; font-weight: 700;">${userName}</span>, sua conta foi criada com sucesso.`)}
-
-      <p style="color: #d1d5db; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
-        Voc&ecirc; agora tem acesso a todas as ferramentas de IA do Karreify: an&aacute;lise de curr&iacute;culo,
-        cria&ccedil;&atilde;o e adapta&ccedil;&atilde;o de curr&iacute;culos, carta de apresenta&ccedil;&atilde;o e an&aacute;lise de empresas.
-      </p>
-
-      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 0 8px;">
-        <tr>
-          <td style="border-radius: 14px; background: linear-gradient(135deg, #3b82f6, #8b5cf6);">
-            <a href="${appUrl}/dashboard" target="_blank" style="display: inline-block; padding: 14px 32px; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
-              Acessar o Dashboard &#8594;
-            </a>
-          </td>
-        </tr>
-      </table>
-
-      ${footnote("Qualquer d&uacute;vida, abra um chamado em Suporte direto pelo dashboard.")}
-    </div>
-  `);
+  const url = appUrl();
+  return baseLayout(
+    `
+    ${heading("Bem-vindo(a) ao Karreify")}
+    ${paragraph(
+      `Ol&aacute;, <strong style="color:#0f172a;">${userName}</strong>. Sua conta foi criada com sucesso.`
+    )}
+    ${paragraph(
+      "A partir de agora voc&ecirc; tem acesso a todas as ferramentas de intelig&ecirc;ncia artificial da plataforma: an&aacute;lise de curr&iacute;culo, cria&ccedil;&atilde;o e adapta&ccedil;&atilde;o de curr&iacute;culos, carta de apresenta&ccedil;&atilde;o e an&aacute;lise de empresas."
+    )}
+    ${ctaButton(`${url}/dashboard`, "Acessar dashboard")}
+    ${smallText("Qualquer dúvida ou sugestão, abra um chamado pelo suporte direto no dashboard.")}
+  `,
+    "Sua conta Karreify está pronta para uso."
+  );
 }
 
 export function welcomeEmailText(userName: string): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  return `Karreify — Bem-vindo(a)!
+  const url = appUrl();
+  return `Karreify — Bem-vindo(a)
 
 Olá ${userName},
 
-Sua conta foi criada com sucesso. Você agora tem acesso a todas as ferramentas de IA do Karreify: análise de currículo, criação e adaptação de currículos, carta de apresentação e análise de empresas.
+Sua conta foi criada com sucesso. A partir de agora você tem acesso a todas as ferramentas de inteligência artificial da plataforma: análise de currículo, criação e adaptação de currículos, carta de apresentação e análise de empresas.
 
-Acesse: ${appUrl}/dashboard
+Acesse o dashboard: ${url}/dashboard
 
-Qualquer dúvida, abra um chamado em Suporte direto pelo dashboard.${textFooter()}`;
+Qualquer dúvida ou sugestão, abra um chamado pelo suporte direto no dashboard.${textFooter()}`;
 }
 
-function securityAlert(title: string, intro: string, changeWhen: string): string {
-  return baseLayout(`
-    <div style="text-align: center;">
-      ${iconCircle("&#128274;", "rgba(251,146,60,0.15)", "rgba(245,158,11,0.1)", "rgba(251,146,60,0.25)")}
-      ${heading(title)}
-      ${subtext(intro)}
+// ── Security alerts ─────────────────────────────────────
 
-      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 0 20px;">
-        <tr>
-          <td style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px 22px;">
-            <span style="font-size: 13px; color: #9ca3af;">&#9200; ${changeWhen}</span>
-          </td>
-        </tr>
-      </table>
-
-      ${footnote("Se voc&ecirc; <strong style='color:#e5e7eb;'>n&atilde;o reconhece</strong> esta a&ccedil;&atilde;o, redefina sua senha imediatamente e entre em contato com o suporte.")}
-    </div>
-  `);
+function securityAlert(title: string, intro: string, when: string): string {
+  return baseLayout(
+    `
+    ${heading(title)}
+    ${paragraph(intro)}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 22px;">
+      <tr>
+        <td style="background-color:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px 18px;">
+          <span style="font-size:13px;color:#9a3412;font-weight:600;">${when}</span>
+        </td>
+      </tr>
+    </table>
+    ${smallText(
+      "Se voc&ecirc; <strong style='color:#0f172a;'>n&atilde;o reconhece</strong> esta a&ccedil;&atilde;o, redefina sua senha imediatamente e entre em contato com o suporte."
+    )}
+  `,
+    title
+  );
 }
 
 export function passwordChangedEmail(): string {
   const when = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
   return securityAlert(
-    "Sua senha foi alterada",
+    "Senha atualizada",
     "A senha da sua conta Karreify foi atualizada com sucesso.",
-    `Alterada em ${when}`
+    `Atualizada em ${when}`
   );
 }
 
 export function passwordChangedEmailText(): string {
   const when = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-  return `Karreify — Sua senha foi alterada
+  return `Karreify — Senha atualizada
 
-A senha da sua conta Karreify foi atualizada com sucesso em ${when}.
+A senha da sua conta foi atualizada com sucesso em ${when}.
 
 Se você não reconhece esta ação, redefina sua senha imediatamente e entre em contato com o suporte.${textFooter()}`;
 }
@@ -473,88 +407,48 @@ Se você não reconhece esta ação, redefina sua senha imediatamente e entre em
 export function emailChangedEmail(oldEmail: string, newEmail: string): string {
   const when = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
   return securityAlert(
-    "Email da sua conta foi alterado",
-    `O email da sua conta foi alterado de <strong style="color:#e5e7eb;">${oldEmail}</strong> para <strong style="color:#e5e7eb;">${newEmail}</strong>.`,
-    `Alterado em ${when}`
+    "Email da conta atualizado",
+    `O email da sua conta foi alterado de <strong style="color:#0f172a;">${oldEmail}</strong> para <strong style="color:#0f172a;">${newEmail}</strong>.`,
+    `Atualizado em ${when}`
   );
 }
 
 export function emailChangedEmailText(oldEmail: string, newEmail: string): string {
   const when = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-  return `Karreify — Email da sua conta foi alterado
+  return `Karreify — Email da conta atualizado
 
 O email da sua conta foi alterado de ${oldEmail} para ${newEmail} em ${when}.
 
-Se você não reconhece esta ação, entre em contato com o suporte imediatamente.${textFooter()}`;
+Se você não reconhece esta ação, redefina sua senha imediatamente e entre em contato com o suporte.${textFooter()}`;
 }
 
 // ── Tickets ─────────────────────────────────────────────
 
-function ticketLayout(args: {
-  emoji: string;
-  bgFrom: string;
-  bgTo: string;
-  borderColor: string;
-  title: string;
-  intro: string;
-  ticketId: string;
-  ticketTitle: string;
-  extra?: string;
-  ctaLabel: string;
-}): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  return baseLayout(`
-    <div style="text-align: center;">
-      ${iconCircle(args.emoji, args.bgFrom, args.bgTo, args.borderColor)}
-      ${heading(args.title)}
-      ${subtext(args.intro)}
-
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;">
-        <tr>
-          <td style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px 18px; text-align: left;">
-            <div style="font-size: 11px; color: #6b7280; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;">Chamado #${args.ticketId}</div>
-            <div style="font-size: 14px; color: #e5e7eb; font-weight: 600;">${args.ticketTitle}</div>
-            ${args.extra ? `<div style="font-size: 13px; color: #9ca3af; margin-top: 10px; line-height: 1.5;">${args.extra}</div>` : ""}
-          </td>
-        </tr>
-      </table>
-
-      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 0 8px;">
-        <tr>
-          <td style="border-radius: 14px; background: linear-gradient(135deg, #3b82f6, #8b5cf6);">
-            <a href="${appUrl}/support/${args.ticketId}" target="_blank" style="display: inline-block; padding: 14px 28px; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
-              ${args.ctaLabel} &#8594;
-            </a>
-          </td>
-        </tr>
-      </table>
-    </div>
-  `);
-}
-
 export function ticketCreatedEmail(ticketId: string, title: string): string {
-  return ticketLayout({
-    emoji: "&#128221;",
-    bgFrom: "rgba(59,130,246,0.15)",
-    bgTo: "rgba(139,92,246,0.1)",
-    borderColor: "rgba(59,130,246,0.25)",
-    title: "Chamado aberto",
-    intro: "Recebemos seu chamado e já estamos analisando. Você ser&aacute; notificado quando o time responder.",
-    ticketId,
-    ticketTitle: title,
-    ctaLabel: "Ver chamado",
-  });
+  const url = appUrl();
+  return baseLayout(
+    `
+    ${heading("Chamado aberto com sucesso")}
+    ${paragraph(
+      "Recebemos seu chamado e nossa equipe j&aacute; foi notificada. Voc&ecirc; ser&aacute; avisado por email assim que houver uma resposta."
+    )}
+    ${ticketCard(ticketId, title)}
+    ${ctaButton(`${url}/support/${ticketId}`, "Acompanhar chamado")}
+    ${smallText("Voc&ecirc; pode acompanhar e responder ao chamado a qualquer momento pelo dashboard.")}
+  `,
+    `Chamado #${ticketId} aberto.`
+  );
 }
 
 export function ticketCreatedEmailText(ticketId: string, title: string): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const url = appUrl();
   return `Karreify — Chamado aberto
 
-Recebemos seu chamado e já estamos analisando.
+Recebemos seu chamado e a equipe foi notificada. Você receberá um email quando houver uma resposta.
 
 Chamado #${ticketId}: ${title}
 
-Acompanhe em: ${appUrl}/support/${ticketId}${textFooter()}`;
+Acompanhe em: ${url}/support/${ticketId}${textFooter()}`;
 }
 
 export function ticketReplyEmail(
@@ -562,19 +456,19 @@ export function ticketReplyEmail(
   title: string,
   preview: string
 ): string {
-  const safePreview = preview.length > 200 ? preview.slice(0, 200) + "…" : preview;
-  return ticketLayout({
-    emoji: "&#128172;",
-    bgFrom: "rgba(34,197,94,0.15)",
-    bgTo: "rgba(16,185,129,0.1)",
-    borderColor: "rgba(34,197,94,0.25)",
-    title: "Nova resposta do suporte",
-    intro: "O time respondeu seu chamado. D&aacute; uma olhada quando puder.",
-    ticketId,
-    ticketTitle: title,
-    extra: `<span style="color: #6b7280;">Pr&eacute;via:</span> &ldquo;${safePreview.replace(/[<>]/g, "")}&rdquo;`,
-    ctaLabel: "Abrir chamado",
-  });
+  const url = appUrl();
+  const sanitized = preview.replace(/[<>]/g, "");
+  const safePreview = sanitized.length > 240 ? sanitized.slice(0, 240) + "…" : sanitized;
+  const previewHtml = `<span style="color:#6b7280;">Pr&eacute;via:</span> &ldquo;${safePreview}&rdquo;`;
+  return baseLayout(
+    `
+    ${heading("Nova resposta no seu chamado")}
+    ${paragraph("Nossa equipe respondeu sua solicita&ccedil;&atilde;o. Confira abaixo:")}
+    ${ticketCard(ticketId, title, previewHtml)}
+    ${ctaButton(`${url}/support/${ticketId}`, "Abrir chamado")}
+  `,
+    `Resposta no chamado #${ticketId}.`
+  );
 }
 
 export function ticketReplyEmailText(
@@ -582,69 +476,76 @@ export function ticketReplyEmailText(
   title: string,
   preview: string
 ): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const safePreview = preview.length > 200 ? preview.slice(0, 200) + "…" : preview;
-  return `Karreify — Nova resposta do suporte
+  const url = appUrl();
+  const safePreview = preview.length > 240 ? preview.slice(0, 240) + "…" : preview;
+  return `Karreify — Nova resposta no seu chamado
 
-O time respondeu o seu chamado #${ticketId}: ${title}
+A equipe respondeu o chamado #${ticketId} (${title}).
 
-Prévia: "${safePreview}"
+Prévia da resposta:
+"${safePreview}"
 
-Abra em: ${appUrl}/support/${ticketId}${textFooter()}`;
+Acesse: ${url}/support/${ticketId}${textFooter()}`;
 }
 
 export function ticketClosedEmail(ticketId: string, title: string): string {
-  return ticketLayout({
-    emoji: "&#9989;",
-    bgFrom: "rgba(34,197,94,0.15)",
-    bgTo: "rgba(16,185,129,0.1)",
-    borderColor: "rgba(34,197,94,0.25)",
-    title: "Chamado finalizado",
-    intro: "Seu chamado foi marcado como conclu&iacute;do. Se a quest&atilde;o n&atilde;o foi resolvida, voc&ecirc; pode abrir um novo a qualquer momento.",
-    ticketId,
-    ticketTitle: title,
-    ctaLabel: "Ver detalhes",
-  });
+  const url = appUrl();
+  return baseLayout(
+    `
+    ${heading("Chamado finalizado")}
+    ${paragraph(
+      "Seu chamado foi marcado como conclu&iacute;do pela equipe. Caso a quest&atilde;o n&atilde;o tenha sido resolvida, voc&ecirc; pode abrir um novo chamado a qualquer momento."
+    )}
+    ${ticketCard(ticketId, title)}
+    ${ctaButton(`${url}/support/${ticketId}`, "Ver detalhes")}
+  `,
+    `Chamado #${ticketId} finalizado.`
+  );
 }
 
 export function ticketClosedEmailText(ticketId: string, title: string): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const url = appUrl();
   return `Karreify — Chamado finalizado
 
-Seu chamado #${ticketId} (${title}) foi marcado como concluído.
+Seu chamado #${ticketId} (${title}) foi marcado como concluído pela equipe.
 
-Se a questão não foi resolvida, abra um novo chamado em qualquer momento.
+Caso a questão não tenha sido resolvida, abra um novo chamado a qualquer momento.
 
-Acesse: ${appUrl}/support/${ticketId}${textFooter()}`;
+Acesse: ${url}/support/${ticketId}${textFooter()}`;
 }
 
-// ── Feedback Thanks ─────────────────────────────────────
+// ── Feedback ────────────────────────────────────────────
 
 export function feedbackThanksEmail(userName: string, rating: number): string {
-  const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
-  return baseLayout(`
-    <div style="text-align: center;">
-      ${iconCircle("&#128150;", "rgba(236,72,153,0.15)", "rgba(168,85,247,0.1)", "rgba(236,72,153,0.25)")}
-      ${heading("Obrigado pelo feedback!")}
-      ${subtext(`Ol&aacute; <span style="color: #e5e7eb; font-weight: 700;">${userName}</span>, sua avalia&ccedil;&atilde;o ajuda demais a evoluir o Karreify.`)}
-
-      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 0 28px;">
-        <tr>
-          <td style="background: rgba(236,72,153,0.08); border: 1px solid rgba(236,72,153,0.2); border-radius: 14px; padding: 18px 28px;">
-            <span style="font-size: 28px; letter-spacing: 4px; color: #f59e0b;">${stars}</span>
-          </td>
-        </tr>
-      </table>
-
-      ${footnote("Continuaremos lendo cada comentário com aten&ccedil;&atilde;o. At&eacute; logo!")}
-    </div>
-  `);
+  // Visual rating using filled/empty stars — character-based, no emoji.
+  const filled = "★".repeat(rating);
+  const empty = "☆".repeat(5 - rating);
+  return baseLayout(
+    `
+    ${heading("Obrigado pela sua avalia&ccedil;&atilde;o")}
+    ${paragraph(
+      `Ol&aacute;, <strong style="color:#0f172a;">${userName}</strong>. Sua opini&atilde;o nos ajuda diretamente a priorizar melhorias e evoluir o Karreify.`
+    )}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 22px;">
+      <tr>
+        <td align="center" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;">
+          <span style="font-size:11px;color:#6b7280;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;display:block;margin-bottom:8px;">Sua avalia&ccedil;&atilde;o</span>
+          <span style="font-size:28px;letter-spacing:6px;color:#f59e0b;">${filled}<span style="color:#e5e7eb;">${empty}</span></span>
+        </td>
+      </tr>
+    </table>
+    ${smallText("Continuaremos lendo cada coment&aacute;rio com aten&ccedil;&atilde;o.")}
+  `,
+    "Obrigado pelo seu feedback."
+  );
 }
 
 export function feedbackThanksEmailText(userName: string, rating: number): string {
-  return `Karreify — Obrigado pelo feedback!
+  return `Karreify — Obrigado pela sua avaliação
 
 Olá ${userName},
 
-Sua avaliação (${rating}/5) ajuda demais a evoluir o Karreify. Continuaremos lendo cada comentário com atenção.${textFooter()}`;
+Sua avaliação de ${rating}/5 foi registrada. Sua opinião nos ajuda diretamente a priorizar melhorias e evoluir o Karreify.
+
+Continuaremos lendo cada comentário com atenção.${textFooter()}`;
 }

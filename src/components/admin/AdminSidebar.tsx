@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Shield, LogOut, Menu, X, MessageSquareHeart, LifeBuoy, Briefcase } from "lucide-react";
+import { LayoutDashboard, Users, Shield, LogOut, Menu, X, MessageSquareHeart, LifeBuoy, Briefcase, Activity } from "lucide-react";
 import { useAdminAuth } from "@/components/providers/AdminAuthProvider";
 
 const menuItems = [
@@ -14,6 +14,7 @@ const menuItems = [
   { label: "Administradores", href: "/admin/admins", icon: Shield },
   { label: "Suporte", href: "/admin/support", icon: LifeBuoy },
   { label: "Feedbacks", href: "/admin/feedbacks", icon: MessageSquareHeart },
+  { label: "Consumo Adzuna", href: "/admin/adzuna", icon: Activity },
 ];
 
 function NavItem({ item, active, onClick }: { item: typeof menuItems[0]; active: boolean; onClick?: () => void }) {

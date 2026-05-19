@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, authErrorResponse } from "@/lib/auth-server";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import {
+  getCached,
+  setCached,
+  makeCacheKey,
+  recordCall,
+  type CachedJob,
+} from "@/lib/adzuna-usage";
 
 const ADZUNA_API_BASE = "https://api.adzuna.com/v1/api/jobs/br/search";
 
@@ -125,6 +132,35 @@ export async function POST(request: NextRequest) {
 
     const safePeriod = period === "today" || period === "week" ? period : "month";
     const targetPage = Math.max(1, Math.min(20, page || 1));
+    const trimmedKeywordEarly = keyword.trim().slice(0, 200);
+
+    const cacheKey = makeCacheKey({
+      keyword: trimmedKeywordEarly,
+      uf,
+      city,
+      period: safePeriod,
+      exactMatch: !!exactMatch,
+      page: targetPage,
+    });
+
+    const cached = await getCached(cacheKey);
+    if (cached) {
+      recordCall({
+        status: "cache_hit",
+        keyword: trimmedKeywordEarly,
+        uf: uf ?? "",
+        city: city ?? "",
+        period: safePeriod,
+        page: targetPage,
+        exactMatch: !!exactMatch,
+        userId: ctx.uid,
+      });
+      return NextResponse.json({
+        jobs: cached.jobs,
+        totalCount: cached.totalCount,
+        page: targetPage,
+      });
+    }
 
     // sort_by=date makes the Adzuna BR API surface jobs from a feed that
     // strips company.display_name (verified empirically — same query without
@@ -139,9 +175,8 @@ export async function POST(request: NextRequest) {
       "content-type": "application/json",
     });
 
-    const trimmedKeyword = keyword.trim().slice(0, 200);
-    if (exactMatch) params.set("what_phrase", trimmedKeyword);
-    else params.set("what", trimmedKeyword);
+    if (exactMatch) params.set("what_phrase", trimmedKeywordEarly);
+    else params.set("what", trimmedKeywordEarly);
 
     const where = buildWhere(uf, city);
     if (where) params.set("where", where);
@@ -154,10 +189,12 @@ export async function POST(request: NextRequest) {
       .replace(appKey, "***");
     console.log("[Adzuna] GET", sanitized);
 
+    const startedAt = Date.now();
     const response = await fetch(url, {
       method: "GET",
       headers: { Accept: "application/json" },
     });
+    const durationMs = Date.now() - startedAt;
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -168,6 +205,18 @@ export async function POST(request: NextRequest) {
         "body:",
         text
       );
+      recordCall({
+        status: "api_error",
+        keyword: trimmedKeywordEarly,
+        uf: uf ?? "",
+        city: city ?? "",
+        period: safePeriod,
+        page: targetPage,
+        exactMatch: !!exactMatch,
+        userId: ctx.uid,
+        httpStatus: response.status,
+        durationMs,
+      });
       const isDev = process.env.NODE_ENV !== "production";
       const hint =
         response.status === 401 || response.status === 403
@@ -187,7 +236,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = (await response.json()) as AdzunaResponse;
-    const jobs = (data.results || []).map((j, idx) => ({
+    const jobs: CachedJob[] = (data.results || []).map((j, idx) => ({
       id: String(j.id || `${idx}-${Date.now()}`),
       title: cleanText(j.title) || "Vaga sem título",
       company: cleanText(j.company?.display_name),
@@ -199,10 +248,36 @@ export async function POST(request: NextRequest) {
       link: j.redirect_url || "",
       updated: j.created || "",
     }));
+    const totalCount = data.count || 0;
+
+    recordCall({
+      status: "api_call",
+      keyword: trimmedKeywordEarly,
+      uf: uf ?? "",
+      city: city ?? "",
+      period: safePeriod,
+      page: targetPage,
+      exactMatch: !!exactMatch,
+      userId: ctx.uid,
+      httpStatus: response.status,
+      durationMs,
+    });
+
+    setCached(
+      cacheKey,
+      { jobs, totalCount, page: targetPage },
+      {
+        keyword: trimmedKeywordEarly,
+        uf: uf ?? "",
+        city: city ?? "",
+        period: safePeriod,
+        page: targetPage,
+      }
+    );
 
     return NextResponse.json({
       jobs,
-      totalCount: data.count || 0,
+      totalCount,
       page: targetPage,
     });
   } catch (err) {

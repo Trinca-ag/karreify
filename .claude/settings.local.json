@@ -77,7 +77,8 @@
       "Bash(find . *)",
       "Bash(find C:Karreifysrc *)",
       "Bash(git check-ignore *)",
-      "Bash(npm uninstall *)"
+      "Bash(npm uninstall *)",
+      "WebFetch(domain:www.oreateai.com)"
     ]
   }
 }
