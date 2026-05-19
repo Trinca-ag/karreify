@@ -53,10 +53,12 @@ service cloud.firestore {
       }
     }
 
-    // Stats - readable by all authenticated, writable by authenticated users
+    // Stats — readable by any authenticated user (dashboards). Writes are
+    // exclusively server-side via the Admin SDK (e.g. deductCreditsServer)
+    // so the totals can't be tampered with from the browser.
     match /stats/{document} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if false;
     }
 
     // Admins collection - only readable by the admin themselves or superadmins
@@ -65,9 +67,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Verification codes - authenticated users can create/read/delete their own
+    // Verification codes — server-only. All flows (device verification,
+    // password reset, email change, admin login) go through API routes that
+    // use the Admin SDK. Direct client access leaks codes across accounts.
     match /verificationCodes/{codeId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if false;
     }
 
     // Market data - read only for authenticated users

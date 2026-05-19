@@ -48,7 +48,7 @@ interface JobsCacheContextType extends JobsCacheState {
   cachePage: (key: string, jobs: Job[], totalCount: number) => void;
 }
 
-export const JOBS_CACHE_STORAGE_KEY = "nextcv_jobs_cache_v1";
+export const JOBS_CACHE_STORAGE_KEY = "karreify_jobs_cache_v1";
 const MAX_CACHED_PAGES = 5;
 
 const defaultState: JobsCacheState = {

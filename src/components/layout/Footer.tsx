@@ -14,8 +14,8 @@ export default function Footer() {
           <div className="md:col-span-5">
             <div className="flex items-center gap-2.5 mb-5">
               <Image
-                src="/images/logo_nextcv_new.png"
-                alt="NextCV"
+                src="/images/logo-karreify.png"
+                alt="Karreify"
                 width={200}
                 height={100}
                 className="object-contain h-[4.5rem] w-auto"
@@ -114,7 +114,7 @@ export default function Footer() {
 
         <div className="mt-12 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-600">
-            &copy; {new Date().getFullYear()} NextCV. Todos os direitos
+            &copy; {new Date().getFullYear()} Karreify. Todos os direitos
             reservados.
           </p>
           <div className="flex items-center gap-2">

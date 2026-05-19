@@ -69,7 +69,15 @@
       "PowerShell(Rename-Item *)",
       "Bash(npx eslint *)",
       "Bash(echo \"EXIT=$?\")",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(ren \"logo one.png\" \"logo-karreify.png\")",
+      "Bash(ren \"logo two.png\" \"favicon-karreify.png\")",
+      "Bash(mv \"C:/Karreify/public/images/logo one.png\" \"C:/Karreify/public/images/logo-karreify.png\")",
+      "Bash(mv \"C:/Karreify/public/images/logo two.png\" \"C:/Karreify/public/images/favicon-karreify.png\")",
+      "Bash(find . *)",
+      "Bash(find C:Karreifysrc *)",
+      "Bash(git check-ignore *)",
+      "Bash(npm uninstall *)"
     ]
   }
 }

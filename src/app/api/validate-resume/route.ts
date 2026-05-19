@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateCompletion } from "@/lib/deepseek";
+import { requireUser, authErrorResponse } from "@/lib/auth-server";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+
+const MAX_RESUME_LENGTH = 100_000;
 
 const VALIDATION_PROMPT = `Você irá analisar o texto extraído de um currículo enviado pelo usuário.
 Sua tarefa é identificar quais informações estão presentes e quais estão ausentes.
@@ -40,8 +44,22 @@ Campos IMPORTANTES (geram aviso mas não bloqueiam):
 Responda APENAS com o JSON, sem markdown, sem backticks.`;
 
 export async function POST(request: NextRequest) {
+  let ctx;
+  try {
+    ctx = await requireUser(request);
+  } catch (e) {
+    return authErrorResponse(e);
+  }
+
+  const rl = rateLimit(ctx.uid, { scope: "validate-resume", limit: 30, windowMs: 60_000 });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   try {
     const { resumeText } = await request.json();
+
+    if (resumeText && typeof resumeText === "string" && resumeText.length > MAX_RESUME_LENGTH) {
+      return NextResponse.json({ error: "Currículo muito longo." }, { status: 413 });
+    }
 
     if (!resumeText || typeof resumeText !== "string" || resumeText.trim().length < 20) {
       return NextResponse.json({

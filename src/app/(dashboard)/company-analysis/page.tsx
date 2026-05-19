@@ -3,14 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
+import dynamic from "next/dynamic";
 import Modal from "@/components/ui/Modal";
-import AIProgressModal from "@/components/ui/AIProgressModal";
-import SaveLimitModal from "@/components/ui/SaveLimitModal";
-import SaveSuccessModal from "@/components/ui/SaveSuccessModal";
 import SaveButton from "@/components/ui/SaveButton";
+
+const AIProgressModal = dynamic(() => import("@/components/ui/AIProgressModal"), { ssr: false });
+const SaveLimitModal = dynamic(() => import("@/components/ui/SaveLimitModal"), { ssr: false });
+const SaveSuccessModal = dynamic(() => import("@/components/ui/SaveSuccessModal"), { ssr: false });
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
-import { deductCredits, checkCredits } from "@/services/credits";
+import { checkCredits } from "@/services/credits";
+import { authedFetch } from "@/lib/api-client";
 import type { CompanyAnalysisResult } from "@/services/ai-company-analysis";
 import {
   Building2,
@@ -449,15 +452,13 @@ export default function CompanyAnalysisPage() {
     setLoading(true);
     startProgress();
     try {
-      const res = await fetch("/api/analyze-company", {
+      const res = await authedFetch("/api/analyze-company", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyName, position, userId: user.uid }),
+        body: JSON.stringify({ companyName, position }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
-      await deductCredits(user.uid, "company-analysis", `Análise de empresa — ${companyName}`);
       stopProgress();
       setResult(data.data);
       toast.success("Análise concluída!");

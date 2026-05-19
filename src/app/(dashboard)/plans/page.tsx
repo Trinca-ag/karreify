@@ -75,22 +75,6 @@ export default function PacksPage() {
     setLoading(true);
     try {
       await purchasePack(user.uid, selectedPack.id);
-
-      await fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "pack-purchase",
-          email: user.email,
-          userName: userData?.displayName || user.displayName || "Usuário",
-          packName: selectedPack.name,
-          baseCredits: selectedPack.baseCredits,
-          bonusCredits: selectedPack.bonusCredits,
-          totalCredits: selectedPack.totalCredits,
-          price: selectedPack.price,
-        }),
-      });
-
       await refreshUserData();
       toast.success(`${selectedPack.name} adquirido! +${selectedPack.totalCredits} moedas`);
       setShowConfirm(false);

@@ -34,10 +34,11 @@ export const DATE_PERIOD_LABELS: Record<DatePeriod, string> = {
   month: "Último mês",
 };
 
+import { authedFetch } from "@/lib/api-client";
+
 export async function searchJobs(filters: JobSearchFilters): Promise<JobSearchResult> {
-  const response = await fetch("/api/search-jobs", {
+  const response = await authedFetch("/api/search-jobs", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(filters),
   });
   if (!response.ok) {

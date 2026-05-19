@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireUser, authErrorResponse } from "@/lib/auth-server";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 const ADZUNA_API_BASE = "https://api.adzuna.com/v1/api/jobs/br/search";
 
@@ -81,6 +83,16 @@ function formatContractType(contractType?: string, contractTime?: string): strin
 }
 
 export async function POST(request: NextRequest) {
+  let ctx;
+  try {
+    ctx = await requireUser(request);
+  } catch (e) {
+    return authErrorResponse(e);
+  }
+
+  const rl = rateLimit(ctx.uid, { scope: "search-jobs", limit: 30, windowMs: 60_000 });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   try {
     const body = await request.json();
     const { keyword, uf, city, period, exactMatch, page } = body as {
@@ -92,9 +104,9 @@ export async function POST(request: NextRequest) {
       page?: number;
     };
 
-    if (!keyword || typeof keyword !== "string" || keyword.trim().length < 2) {
+    if (!keyword || typeof keyword !== "string" || keyword.trim().length < 2 || keyword.length > 200) {
       return NextResponse.json(
-        { error: "Informe ao menos 2 caracteres na busca." },
+        { error: "Informe entre 2 e 200 caracteres na busca." },
         { status: 400 }
       );
     }

@@ -1,19 +1,15 @@
-import { addCredits } from "@/services/credits";
+import { type CreditPackId } from "@/types";
+import { authedFetch } from "@/lib/api-client";
 import { invalidateUser } from "@/lib/cache";
-import { CREDIT_PACKS, type CreditPackId } from "@/types";
 
-export async function purchasePack(
-  userId: string,
-  packId: CreditPackId
-): Promise<void> {
-  const pack = CREDIT_PACKS.find((p) => p.id === packId);
-  if (!pack) throw new Error("Pacote não encontrado");
-
-  const description = pack.bonusCredits > 0
-    ? `Compra do ${pack.name} — ${pack.baseCredits} moedas + ${pack.bonusCredits} bônus`
-    : `Compra do ${pack.name} — ${pack.baseCredits} moedas`;
-
-  await addCredits(userId, pack.totalCredits, description);
-
+export async function purchasePack(userId: string, packId: CreditPackId): Promise<void> {
+  const res = await authedFetch("/api/credits/purchase", {
+    method: "POST",
+    body: JSON.stringify({ packId }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data?.error || "Erro ao processar compra");
+  }
   invalidateUser(userId);
 }

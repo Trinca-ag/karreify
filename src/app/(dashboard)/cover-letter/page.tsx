@@ -3,15 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
+import dynamic from "next/dynamic";
 import Modal from "@/components/ui/Modal";
-import AIProgressModal from "@/components/ui/AIProgressModal";
-import SaveLimitModal from "@/components/ui/SaveLimitModal";
-import SaveSuccessModal from "@/components/ui/SaveSuccessModal";
 import SaveButton from "@/components/ui/SaveButton";
+
+const AIProgressModal = dynamic(() => import("@/components/ui/AIProgressModal"), { ssr: false });
+const SaveLimitModal = dynamic(() => import("@/components/ui/SaveLimitModal"), { ssr: false });
+const SaveSuccessModal = dynamic(() => import("@/components/ui/SaveSuccessModal"), { ssr: false });
 import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
-import { deductCredits, checkCredits } from "@/services/credits";
+import { checkCredits } from "@/services/credits";
+import { authedFetch } from "@/lib/api-client";
 import type { CoverLetterResult } from "@/services/ai-cover-letter";
 import FileUpload from "@/components/ui/FileUpload";
 import { extractTextFromFile } from "@/utils/file-parser";
@@ -207,15 +210,13 @@ export default function CoverLetterPage() {
     startProgress();
     try {
       const resumeText = await extractTextFromFile(resumeFile!);
-      const res = await fetch("/api/generate-cover-letter", {
+      const res = await authedFetch("/api/generate-cover-letter", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeText, companyName, jobTitle, jobDescription, userId: user.uid }),
+        body: JSON.stringify({ resumeText, companyName, jobTitle, jobDescription }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
-      await deductCredits(user.uid, "cover-letter", `Carta de apresentação — ${companyName}`);
       stopProgress();
       firstResultRef.current = true;
       setResult(data.data);

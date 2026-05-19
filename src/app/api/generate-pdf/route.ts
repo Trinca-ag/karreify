@@ -46,8 +46,11 @@ async function generatePdfBuffer(
 
     const page = await browser.newPage();
 
-    // Capture inline script logs for debugging
-    page.on("console", (msg) => console.log("[PDF-Script]", msg.text()));
+    // Capture inline script logs for debugging (dev only — production keeps
+    // server logs lean and avoids leaking content shape via auto-layout traces).
+    if (process.env.NODE_ENV !== "production") {
+      page.on("console", (msg) => console.log("[PDF-Script]", msg.text()));
+    }
     page.on("pageerror", (err) => console.error("[PDF-Error]", String(err)));
 
     await page.setContent(html, { waitUntil: "networkidle0" });

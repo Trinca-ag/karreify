@@ -1,10 +1,27 @@
 /** @type {import('next').NextConfig} */
+const SECURITY_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+];
+
 const nextConfig = {
+  reactStrictMode: true,
+  poweredByHeader: false,
+  output: "standalone",
   experimental: {
     serverComponentsExternalPackages: ["@sparticuz/chromium"],
   },
   images: {
-    domains: ["firebasestorage.googleapis.com", "lh3.googleusercontent.com"],
+    remotePatterns: [
+      { protocol: "https", hostname: "firebasestorage.googleapis.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+    ],
   },
   webpack: (config) => {
     config.resolve.alias.canvas = false;
@@ -13,31 +30,29 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // Static assets — long cache
         source: "/:path*.(ico|png|jpg|jpeg|svg|webp|woff|woff2|ttf|eot)",
         headers: [
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
       {
-        // Next.js static chunks — immutable (hashed filenames)
         source: "/_next/static/:path*",
         headers: [
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
       {
-        // API routes — no cache (dynamic data)
         source: "/api/:path*",
         headers: [
           { key: "Cache-Control", value: "no-store, max-age=0" },
+          ...SECURITY_HEADERS,
         ],
       },
       {
-        // Pages — short revalidation
         source: "/:path*",
         headers: [
           { key: "X-DNS-Prefetch-Control", value: "on" },
+          ...SECURITY_HEADERS,
         ],
       },
     ];

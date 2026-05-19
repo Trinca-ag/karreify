@@ -74,10 +74,10 @@ export default function FeedbackPage() {
           </div>
           <h1 className="text-3xl md:text-5xl font-bold text-white font-heading leading-[1.1] tracking-tight">
             Nos ajude a{" "}
-            <span className="gradient-text">melhorar</span> o NextCV
+            <span className="gradient-text">melhorar</span> o Karreify
           </h1>
           <p className="text-gray-400 mt-4 text-base md:text-lg max-w-xl leading-relaxed">
-            Sua opinião é essencial para evoluirmos o NextCV. Conta pra gente o que você acha.
+            Sua opinião é essencial para evoluirmos o Karreify. Conta pra gente o que você acha.
           </p>
         </div>
       </section>

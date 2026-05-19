@@ -7,7 +7,7 @@ function baseLayout(content: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NextCV</title>
+  <title>Karreify</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #030712; font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
   <!-- Outer wrapper with dark space background -->
@@ -40,7 +40,7 @@ function baseLayout(content: string): string {
                                 <span style="color: #ffffff; font-size: 16px; line-height: 32px;">&#9998;</span>
                               </td>
                               <td style="padding-left: 10px;">
-                                <span style="font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">Next</span><span style="font-size: 22px; font-weight: 800; color: #3b82f6; letter-spacing: -0.5px;">CV</span>
+                                <span style="font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">Karre</span><span style="font-size: 22px; font-weight: 800; color: #3b82f6; letter-spacing: -0.5px;">ify</span>
                               </td>
                             </tr>
                           </table>
@@ -68,7 +68,7 @@ function baseLayout(content: string): string {
                 <tr>
                   <td align="center" style="padding: 24px 40px 28px;">
                     <p style="margin: 0 0 6px; font-size: 12px; color: #4b5563; line-height: 1.5;">
-                      &copy; ${year} NextCV &middot; Impulsione sua carreira com IA
+                      &copy; ${year} Karreify &middot; Impulsione sua carreira com IA
                     </p>
                     <p style="margin: 0; font-size: 11px; color: #374151;">
                       Este email foi enviado automaticamente. N&atilde;o responda.
@@ -189,7 +189,7 @@ export function emailChangeEmail(code: string): string {
       ${iconCircle("&#9993;", "rgba(59,130,246,0.15)", "rgba(139,92,246,0.1)", "rgba(59,130,246,0.25)")}
 
       ${heading("Confirma&ccedil;&atilde;o de novo email")}
-      ${subtext("Use o c&oacute;digo abaixo para confirmar a altera&ccedil;&atilde;o do email da sua conta NextCV")}
+      ${subtext("Use o c&oacute;digo abaixo para confirmar a altera&ccedil;&atilde;o do email da sua conta Karreify")}
 
       ${codeBlock(code, "#60a5fa", "rgba(59,130,246,0.08)", "rgba(139,92,246,0.05)", "rgba(59,130,246,0.15)")}
 
@@ -224,11 +224,11 @@ export function adminVerificationEmail(code: string): string {
 
 function textFooter(): string {
   const year = new Date().getFullYear();
-  return `\n\n--\n© ${year} NextCV — Impulsione sua carreira com IA\nEste email foi enviado automaticamente. Não responda.`;
+  return `\n\n--\n© ${year} Karreify — Impulsione sua carreira com IA\nEste email foi enviado automaticamente. Não responda.`;
 }
 
 export function verificationEmailText(code: string): string {
-  return `NextCV — Verificação de segurança
+  return `Karreify — Verificação de segurança
 
 Use o código abaixo para verificar seu dispositivo:
 
@@ -240,7 +240,7 @@ Se você não solicitou este código, ignore este email.${textFooter()}`;
 }
 
 export function passwordResetEmailText(code: string): string {
-  return `NextCV — Recuperação de senha
+  return `Karreify — Recuperação de senha
 
 Use o código abaixo para redefinir sua senha:
 
@@ -252,7 +252,7 @@ Se você não solicitou a recuperação de senha, ignore este email e mantenha s
 }
 
 export function emailChangeEmailText(code: string): string {
-  return `NextCV — Confirmação de novo email
+  return `Karreify — Confirmação de novo email
 
 Use o código abaixo para confirmar a alteração do email da sua conta:
 
@@ -264,7 +264,7 @@ Se você não solicitou esta alteração, ignore este email e considere alterar 
 }
 
 export function adminVerificationEmailText(code: string): string {
-  return `NextCV Admin — Cadastro de administrador
+  return `Karreify Admin — Cadastro de administrador
 
 Use o código abaixo para confirmar seu acesso ao painel administrativo:
 
@@ -284,7 +284,7 @@ export function packPurchaseEmailText(
   price: number
 ): string {
   const bonusLine = bonusCredits > 0 ? `\nMoedas bônus: +${bonusCredits}` : "";
-  return `NextCV — Compra realizada
+  return `Karreify — Compra realizada
 
 Olá ${userName},
 

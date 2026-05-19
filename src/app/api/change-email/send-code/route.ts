@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { sendTransactionalEmail } from "@/lib/mailer";
 import { emailChangeEmail, emailChangeEmailText } from "@/utils/email-templates";
+import { requireUser, authErrorResponse } from "@/lib/auth-server";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -10,27 +12,36 @@ function generateCode(): string {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: NextRequest) {
+  let ctx;
   try {
-    const { uid, newEmail } = await request.json();
+    ctx = await requireUser(request);
+  } catch (e) {
+    return authErrorResponse(e);
+  }
 
-    if (!uid || !newEmail) {
+  const rl = rateLimit(ctx.uid, { scope: "change-email-send", limit: 5, windowMs: 60_000 });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
+  try {
+    const { newEmail } = await request.json();
+
+    if (!newEmail) {
       return NextResponse.json(
-        { error: "uid e newEmail são obrigatórios" },
+        { error: "newEmail é obrigatório" },
         { status: 400 }
       );
     }
 
     const normalizedEmail = String(newEmail).trim().toLowerCase();
 
-    if (!EMAIL_REGEX.test(normalizedEmail)) {
+    if (!EMAIL_REGEX.test(normalizedEmail) || normalizedEmail.length > 320) {
       return NextResponse.json(
         { error: "Email inválido" },
         { status: 400 }
       );
     }
 
-    // Make sure the requested email isn't the same as the current one
-    const currentUser = await adminAuth.getUser(uid).catch(() => null);
+    const currentUser = await adminAuth.getUser(ctx.uid).catch(() => null);
     if (!currentUser) {
       return NextResponse.json(
         { error: "Usuário não encontrado" },
@@ -61,9 +72,9 @@ export async function POST(request: NextRequest) {
     const code = generateCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    const docId = `email-change_${uid}_${Date.now()}`;
+    const docId = `email-change_${ctx.uid}_${Date.now()}`;
     await adminDb.collection("verificationCodes").doc(docId).set({
-      uid,
+      uid: ctx.uid,
       email: normalizedEmail,
       code,
       type: "email-change",
@@ -74,15 +85,15 @@ export async function POST(request: NextRequest) {
 
     const result = await sendTransactionalEmail({
       to: normalizedEmail,
-      subject: "Confirmação de novo email — NextCV",
+      subject: "Confirmação de novo email — Karreify",
       html: emailChangeEmail(code),
       text: emailChangeEmailText(code),
       priority: "high",
     });
 
     if (result.fallback) {
-      console.warn(`[Email] SMTP not configured. Email-change code for ${normalizedEmail}: ${code}`);
-      return NextResponse.json({ success: true, fallback: true, code });
+      console.warn("[Email] SMTP not configured. Email-change code generated but not delivered.");
+      return NextResponse.json({ success: true, fallback: true });
     }
 
     return NextResponse.json({ success: true });

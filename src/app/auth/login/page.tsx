@@ -106,8 +106,8 @@ export default function LoginPage() {
         <div className="relative z-10 animate-fade-in-up">
           <Link href="/" className="flex items-center gap-3 group">
             <Image
-              src="/images/logo_nextcv_new.png"
-              alt="NextCV"
+              src="/images/logo-karreify.png"
+              alt="Karreify"
               width={240}
               height={120}
               className="object-contain h-24 w-auto"
@@ -158,7 +158,7 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 text-gray-500 text-sm animate-fade-in-up" style={{ animationDelay: "300ms" }}>
-          &copy; {new Date().getFullYear()} NextCV. Todos os direitos reservados.
+          &copy; {new Date().getFullYear()} Karreify. Todos os direitos reservados.
         </div>
       </div>
 
@@ -172,8 +172,8 @@ export default function LoginPage() {
           <div className="lg:hidden mb-8 animate-fade-in-up">
             <Link href="/" className="flex items-center gap-2">
               <Image
-                src="/images/logo_nextcv_new.png"
-                alt="NextCV"
+                src="/images/logo-karreify.png"
+                alt="Karreify"
                 width={200}
                 height={100}
                 className="object-contain h-[4.5rem] w-auto"

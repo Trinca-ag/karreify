@@ -6,15 +6,18 @@ import Button from "@/components/ui/Button";
 import FileUpload from "@/components/ui/FileUpload";
 import ScoreCircle from "@/components/ui/ScoreCircle";
 import { extractTextFromFile } from "@/utils/file-parser";
-import { deductCredits, checkCredits, hasUsedFeature } from "@/services/credits";
+import { checkCredits, hasUsedFeature } from "@/services/credits";
+import { authedFetch } from "@/lib/api-client";
 import { FileSearch, AlertTriangle, CheckCircle, Lightbulb, RefreshCw, Sparkles, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import dynamic from "next/dynamic";
 import Modal from "@/components/ui/Modal";
-import AIProgressModal from "@/components/ui/AIProgressModal";
-import SaveLimitModal from "@/components/ui/SaveLimitModal";
-import SaveSuccessModal from "@/components/ui/SaveSuccessModal";
 import SaveButton from "@/components/ui/SaveButton";
+
+const AIProgressModal = dynamic(() => import("@/components/ui/AIProgressModal"), { ssr: false });
+const SaveLimitModal = dynamic(() => import("@/components/ui/SaveLimitModal"), { ssr: false });
+const SaveSuccessModal = dynamic(() => import("@/components/ui/SaveSuccessModal"), { ssr: false });
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
 
@@ -85,7 +88,7 @@ export default function ResumeAnalysisPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "analise-curriculo-nextcv.pdf";
+      a.download = "analise-curriculo-karreify.pdf";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -149,33 +152,18 @@ export default function ResumeAnalysisPage() {
     try {
       const resumeText = await extractTextFromFile(file);
 
-      const response = await fetch("/api/analyze-resume", {
+      const response = await authedFetch("/api/analyze-resume", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeText, userId: user.uid }),
+        body: JSON.stringify({ resumeText }),
       });
 
       const data = await response.json();
 
       if (!data.success) throw new Error(data.error || "Erro desconhecido na API");
 
-      if (usedBefore) {
-        await deductCredits(user.uid, "resume-analysis", "Análise de currículo");
-      } else {
-        const { addDoc, collection, serverTimestamp } = await import("firebase/firestore");
-        const { db } = await import("@/lib/firebase");
-        await addDoc(collection(db, "users", user.uid, "transactions"), {
-          amount: 0,
-          type: "debit",
-          feature: "resume-analysis",
-          description: "Análise de currículo (primeira grátis)",
-          createdAt: serverTimestamp(),
-        });
-      }
-
       stopProgress();
       setResult(data.data);
-      toast.success(usedBefore ? "Analise concluida!" : "Analise concluida! (primeira analise gratuita)");
+      toast.success(data.wasFree ? "Analise concluida! (primeira analise gratuita)" : "Analise concluida!");
       void prepareAnalysisSave(data.data.analysis, file.name);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);

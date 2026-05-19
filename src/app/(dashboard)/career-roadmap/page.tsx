@@ -5,7 +5,8 @@ import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import { deductCredits, checkCredits } from "@/services/credits";
+import { checkCredits } from "@/services/credits";
+import { authedFetch } from "@/lib/api-client";
 import { Map, CheckCircle, BookOpen, Award, Code, Users, ChevronDown, ChevronUp, Trophy, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -50,19 +51,17 @@ export default function CareerRoadmapPage() {
 
     setLoading(true);
     try {
-      const response = await fetch("/api/career-roadmap", {
+      const response = await authedFetch("/api/career-roadmap", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentRole, currentArea, experienceLevel, targetRole, timeline, userId: user.uid }),
+        body: JSON.stringify({ currentRole, currentArea, experienceLevel, targetRole, timeline }),
       });
       const data = await response.json();
       if (!data.success) throw new Error(data.error);
 
-      await deductCredits(user.uid, "career-roadmap", "Geracao de roadmap de carreira");
       setResult(data.data);
       toast.success("Roadmap gerado!");
     } catch (error) {
-      console.error(error);
+      console.error("[career-roadmap] generate failed:", error);
       toast.error("Erro ao gerar roadmap.");
     } finally { setLoading(false); }
   };

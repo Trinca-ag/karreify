@@ -48,7 +48,7 @@ export default function AdminSidebar() {
         {/* Logo */}
         <div className="px-5 py-5 border-b border-white/[0.06]">
           <Link href="/admin" className="flex items-center gap-3">
-            <Image src="/images/logo_nextcv_new.png" alt="NextCV" width={120} height={30} className="h-7 w-auto" />
+            <Image src="/images/logo-karreify.png" alt="Karreify" width={120} height={30} className="h-7 w-auto" />
             <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[9px] font-bold rounded border border-amber-500/20 tracking-widest uppercase">
               Admin
             </span>
@@ -88,7 +88,7 @@ export default function AdminSidebar() {
       {/* ── Mobile top bar ── */}
       <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-dark-800/80 backdrop-blur-xl border-b border-white/[0.06] sticky top-0 z-40">
         <Link href="/admin" className="flex items-center gap-2.5">
-          <Image src="/images/logo_nextcv_new.png" alt="NextCV" width={100} height={25} className="h-6 w-auto" />
+          <Image src="/images/logo-karreify.png" alt="Karreify" width={100} height={25} className="h-6 w-auto" />
           <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[9px] font-bold rounded border border-amber-500/20 tracking-widest uppercase">
             Admin
           </span>
@@ -111,7 +111,7 @@ export default function AdminSidebar() {
           <aside className="absolute left-0 top-0 bottom-0 w-72 bg-dark-900 border-r border-white/[0.06] flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
               <Link href="/admin" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
-                <Image src="/images/logo_nextcv_new.png" alt="NextCV" width={100} height={25} className="h-6 w-auto" />
+                <Image src="/images/logo-karreify.png" alt="Karreify" width={100} height={25} className="h-6 w-auto" />
                 <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[9px] font-bold rounded border border-amber-500/20 tracking-widest uppercase">
                   Admin
                 </span>

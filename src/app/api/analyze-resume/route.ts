@@ -2,26 +2,59 @@ import { NextRequest, NextResponse } from "next/server";
 import { analyzeResume } from "@/services/ai-resume";
 import { cleanJsonResponse } from "@/utils/helpers";
 import { extractTalentFromAnalysis, saveTalent } from "@/lib/talent-bank";
+import { requireUser, authErrorResponse } from "@/lib/auth-server";
+import { deductCreditsServer, InsufficientCreditsError } from "@/lib/credits-server";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+
+const MAX_RESUME_LENGTH = 100_000;
 
 export async function POST(request: NextRequest) {
+  let ctx;
   try {
-    const { resumeText, userId } = await request.json();
+    ctx = await requireUser(request);
+  } catch (e) {
+    return authErrorResponse(e);
+  }
 
-    if (!resumeText) {
+  const rl = rateLimit(ctx.uid, { scope: "analyze-resume", limit: 20, windowMs: 60_000 });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
+  try {
+    const { resumeText } = await request.json();
+
+    if (!resumeText || typeof resumeText !== "string") {
       return NextResponse.json({ error: "Texto do currículo é obrigatório" }, { status: 400 });
     }
+    if (resumeText.length > MAX_RESUME_LENGTH) {
+      return NextResponse.json(
+        { error: `Currículo muito longo (máx ${MAX_RESUME_LENGTH} caracteres)` },
+        { status: 413 }
+      );
+    }
 
-    if (!userId) {
-      return NextResponse.json({ error: "Usuário não autenticado" }, { status: 401 });
+    let deduction;
+    try {
+      deduction = await deductCreditsServer(
+        ctx.uid,
+        "resume-analysis",
+        "Análise de currículo",
+        { firstUseFree: true }
+      );
+    } catch (e) {
+      if (e instanceof InsufficientCreditsError) {
+        return NextResponse.json(
+          { error: e.message, code: "INSUFFICIENT_CREDITS" },
+          { status: 402 }
+        );
+      }
+      throw e;
     }
 
     const result = await analyzeResume(resumeText);
-    const cleanedResult = cleanJsonResponse(result.content);
-    const parsed = JSON.parse(cleanedResult);
+    const parsed = JSON.parse(cleanJsonResponse(result.content));
 
-    // Banco de talentos — falha aqui não deve quebrar a análise pro usuário
     try {
-      await saveTalent(extractTalentFromAnalysis(parsed, userId));
+      await saveTalent(extractTalentFromAnalysis(parsed, ctx.uid));
     } catch (e) {
       console.error("saveTalent (analyze) failed:", e);
     }
@@ -30,12 +63,14 @@ export async function POST(request: NextRequest) {
       success: true,
       data: parsed,
       cache: result.cache,
+      credits: deduction.newBalance,
+      wasFree: deduction.wasFree,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("Error analyzing resume:", message, error);
+    console.error("Error analyzing resume:", message);
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: "Erro ao analisar currículo" },
       { status: 500 }
     );
   }

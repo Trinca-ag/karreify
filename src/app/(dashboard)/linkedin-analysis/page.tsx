@@ -5,7 +5,8 @@ import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
 import ScoreCircle from "@/components/ui/ScoreCircle";
 import Modal from "@/components/ui/Modal";
-import { deductCredits, checkCredits } from "@/services/credits";
+import { checkCredits } from "@/services/credits";
+import { authedFetch } from "@/lib/api-client";
 import {
   Linkedin, CheckCircle, Lightbulb, RefreshCw, Copy,
   Search, Brain, AlertTriangle, ExternalLink,
@@ -83,9 +84,8 @@ export default function LinkedInAnalysisPage() {
     setStep("fetching");
     try {
       // Step 1: fetch profile data from LinkedIn
-      const fetchRes = await fetch("/api/fetch-linkedin-profile", {
+      const fetchRes = await authedFetch("/api/fetch-linkedin-profile", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
       });
       const fetchData = await fetchRes.json();
@@ -95,15 +95,13 @@ export default function LinkedInAnalysisPage() {
 
       // Step 2: AI analysis
       setStep("analyzing");
-      const analyzeRes = await fetch("/api/analyze-linkedin", {
+      const analyzeRes = await authedFetch("/api/analyze-linkedin", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profileData: fetchData.profileText, userId: user.uid }),
+        body: JSON.stringify({ profileData: fetchData.profileText }),
       });
       const analyzeData = await analyzeRes.json();
       if (!analyzeData.success) throw new Error(analyzeData.error);
 
-      await deductCredits(user.uid, "linkedin-analysis", "Análise de perfil LinkedIn");
       setResult(analyzeData.data);
       setStep("done");
       toast.success("Análise concluída!");

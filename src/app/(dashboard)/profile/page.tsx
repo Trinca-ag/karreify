@@ -15,6 +15,7 @@ import { invalidateUser } from "@/lib/cache";
 import { getUserDevices, removeDevice } from "@/services/device-manager";
 import { deleteOwnAccount, hasPasswordProvider } from "@/services/account";
 import { getDeviceId } from "@/utils/device-fingerprint";
+import { authedFetch } from "@/lib/api-client";
 import Image from "next/image";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -132,7 +133,7 @@ export default function ProfilePage() {
       });
       setDevices(list);
     } catch (error) {
-      console.error(error);
+      console.error("[profile] loadDevices failed:", error);
     } finally {
       setDevicesLoading(false);
     }
@@ -148,7 +149,7 @@ export default function ProfilePage() {
       await refreshUserData();
       toast.success("Perfil atualizado!");
     } catch (error) {
-      console.error(error);
+      console.error("[profile] updateProfile failed:", error);
       toast.error("Erro ao atualizar perfil.");
     } finally {
       setLoading(false);
@@ -171,7 +172,7 @@ export default function ProfilePage() {
           : "Salvamento automático desativado."
       );
     } catch (error) {
-      console.error(error);
+      console.error("[profile] toggleAutoSave failed:", error);
       toast.error("Erro ao atualizar preferência.");
       setAutoSaveDocuments(!next);
     } finally {
@@ -207,10 +208,9 @@ export default function ProfilePage() {
 
     setSendingEmailCode(true);
     try {
-      const res = await fetch("/api/change-email/send-code", {
+      const res = await authedFetch("/api/change-email/send-code", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: user.uid, newEmail: target }),
+        body: JSON.stringify({ newEmail: target }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -218,7 +218,7 @@ export default function ProfilePage() {
         return;
       }
       if (data.fallback) {
-        toast("Email não configurado. Código: " + data.code, { icon: "🔑", duration: 15000 });
+        toast("Email não configurado. Tente novamente em instantes.", { icon: "⚠️", duration: 8000 });
       } else {
         toast.success("Código enviado para " + target);
       }
@@ -264,10 +264,9 @@ export default function ProfilePage() {
     const target = newEmail.trim().toLowerCase();
     setVerifyingEmail(true);
     try {
-      const res = await fetch("/api/change-email/verify", {
+      const res = await authedFetch("/api/change-email/verify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: user.uid, newEmail: target, code }),
+        body: JSON.stringify({ newEmail: target, code }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -344,7 +343,7 @@ export default function ProfilePage() {
       } else if (code === "auth/weak-password") {
         toast.error("Senha muito fraca.");
       } else {
-        console.error(error);
+        console.error("[profile] changePassword failed:", error);
         toast.error("Erro ao alterar senha.");
       }
     } finally {
@@ -363,7 +362,7 @@ export default function ProfilePage() {
       toast.success("Avatar atualizado!");
       setShowAvatarPicker(false);
     } catch (error) {
-      console.error(error);
+      console.error("[profile] updateAvatar failed:", error);
       toast.error("Erro ao atualizar avatar.");
     } finally {
       setSavingAvatar(false);
@@ -391,7 +390,7 @@ export default function ProfilePage() {
       } else if (code === "auth/popup-closed-by-user") {
         toast.error("Autenticação cancelada.");
       } else {
-        console.error(error);
+        console.error("[profile] deleteAccount failed:", error);
         toast.error("Erro ao excluir a conta. Tente novamente.");
       }
     } finally {
@@ -414,7 +413,7 @@ export default function ProfilePage() {
       setDeviceToRemove(null);
       await loadDevices();
     } catch (error) {
-      console.error(error);
+      console.error("[profile] removeDevice failed:", error);
       toast.error("Erro ao remover dispositivo.");
     } finally {
       setRemoving(false);

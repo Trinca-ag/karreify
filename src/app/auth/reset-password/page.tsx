@@ -151,8 +151,8 @@ export default function ResetPasswordPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
             <Image
-              src="/images/logo_nextcv_new.png"
-              alt="NextCV"
+              src="/images/logo-karreify.png"
+              alt="Karreify"
               width={220}
               height={110}
               className="object-contain h-20 w-auto"

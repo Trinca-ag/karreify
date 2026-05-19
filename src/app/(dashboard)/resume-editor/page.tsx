@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
-import { deductCredits, checkCredits } from "@/services/credits";
+import { checkCredits } from "@/services/credits";
+import { authedFetch } from "@/lib/api-client";
 import { FileEdit, Plus, Trash2, Sparkles, Download } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -51,24 +52,21 @@ export default function ResumeEditorPage() {
 
     setImprovingSection(section.id);
     try {
-      const response = await fetch("/api/create-resume", {
+      const response = await authedFetch("/api/create-resume", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           formData: { mode: "improve-section", section: section.title, content: section.content },
-          userId: user.uid,
+          feature: "resume-editor",
         }),
       });
       const data = await response.json();
       if (!data.success) throw new Error(data.error);
 
-      await deductCredits(user.uid, "resume-editor", `Melhoria da seção: ${section.title}`);
-
       const improved = data.data?.formattedText || data.data?.resumeData?.objective || section.content;
       updateSection(section.id, improved);
       toast.success("Seção melhorada com IA!");
     } catch (error) {
-      console.error(error);
+      console.error("[resume-editor] improveSection failed:", error);
       toast.error("Erro ao melhorar seção.");
     } finally { setImprovingSection(null); }
   };

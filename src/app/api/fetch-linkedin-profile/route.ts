@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireUser, authErrorResponse } from "@/lib/auth-server";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const maxDuration = 30;
 
@@ -258,17 +260,27 @@ function evaluateHtml(html: string): { hasRichData: boolean; blocked: boolean } 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  let ctx;
+  try {
+    ctx = await requireUser(request);
+  } catch (e) {
+    return authErrorResponse(e);
+  }
+
+  const rl = rateLimit(ctx.uid, { scope: "fetch-linkedin", limit: 10, windowMs: 60_000 });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   try {
     const { url } = await request.json();
 
-    if (!url || typeof url !== "string") {
+    if (!url || typeof url !== "string" || url.length > 500) {
       return NextResponse.json({ error: "URL obrigatória" }, { status: 400 });
     }
 
     const cleanUrl = url.trim().replace(/\/$/, "");
-    if (!/^https?:\/\/(www\.)?linkedin\.com\/in\/[\w%.-]+$/i.test(cleanUrl)) {
+    if (!/^https:\/\/(www\.)?linkedin\.com\/in\/[\w%.-]+$/i.test(cleanUrl)) {
       return NextResponse.json(
-        { error: "URL inválida. Use o formato: linkedin.com/in/seu-usuario" },
+        { error: "URL inválida. Use o formato: https://linkedin.com/in/seu-usuario" },
         { status: 400 }
       );
     }

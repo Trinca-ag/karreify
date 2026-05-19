@@ -15,7 +15,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "NextCV - Impulsione sua carreira com IA",
+  title: "Karreify - Impulsione sua carreira com IA",
   description:
     "Plataforma inteligente para criar currículos, otimizar perfis do LinkedIn e planejar sua carreira com inteligência artificial.",
   keywords: ["currículo", "IA", "carreira", "LinkedIn", "ATS", "resume builder"],

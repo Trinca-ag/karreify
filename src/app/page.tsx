@@ -398,7 +398,7 @@ function MockupShell({
 
 function AnalysisMockup() {
   return (
-    <MockupShell url="nextcv.app/resume-analysis">
+    <MockupShell url="karreify.app/resume-analysis">
       <div className="space-y-5">
         <div className="flex items-center justify-between">
           <div>
@@ -469,7 +469,7 @@ function AnalysisMockup() {
 
 function CreateMockup() {
   return (
-    <MockupShell url="nextcv.app/create-resume">
+    <MockupShell url="karreify.app/create-resume">
       <div className="space-y-4">
         <div className="flex items-center gap-3 pb-3 border-b border-white/5">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold">
@@ -519,7 +519,7 @@ function CreateMockup() {
 
 function AdaptMockup() {
   return (
-    <MockupShell url="nextcv.app/adapt-resume">
+    <MockupShell url="karreify.app/adapt-resume">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -571,7 +571,7 @@ function AdaptMockup() {
 
 function LetterMockup() {
   return (
-    <MockupShell url="nextcv.app/cover-letter">
+    <MockupShell url="karreify.app/cover-letter">
       <div className="space-y-3">
         <div className="text-right">
           <div className="text-[10px] text-gray-500">São Paulo, 13 de Maio</div>
@@ -615,7 +615,7 @@ function JobsMockup() {
     { title: "DevOps Engineer", company: "Cloud Inc", location: "Remoto", salary: "R$ 12k-18k", isNew: true },
   ];
   return (
-    <MockupShell url="nextcv.app/jobs">
+    <MockupShell url="karreify.app/jobs">
       <div className="space-y-2.5">
         {jobs.map((j, i) => (
           <div
@@ -655,7 +655,7 @@ function JobsMockup() {
 
 function CompanyMockup() {
   return (
-    <MockupShell url="nextcv.app/company-analysis">
+    <MockupShell url="karreify.app/company-analysis">
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center">
@@ -705,7 +705,7 @@ function CompanyMockup() {
 function MarketMockup() {
   const bars = [60, 78, 95, 70, 88, 55, 82];
   return (
-    <MockupShell url="nextcv.app/market">
+    <MockupShell url="karreify.app/market">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -1360,7 +1360,7 @@ export default function Home() {
             </span>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold leading-tight">
               Por que escolher o{" "}
-              <span className="gradient-text">NextCV?</span>
+              <span className="gradient-text">Karreify?</span>
             </h2>
             <p className="mt-5 text-lg text-gray-400">
               Quatro pilares que fazem a diferença quando o que está em jogo
@@ -1592,7 +1592,7 @@ export default function Home() {
             <span className="gradient-text">sua carreira?</span>
           </h2>
           <p className="mt-6 text-lg text-gray-400 max-w-xl mx-auto">
-            Junte-se a milhares de profissionais que já estão usando NextCV para
+            Junte-se a milhares de profissionais que já estão usando Karreify para
             alcançar seus objetivos.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">

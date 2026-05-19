@@ -1,9 +1,9 @@
 export function getDeviceId(): string {
   if (typeof window === "undefined") return "";
-  let id = localStorage.getItem("nextcv_device_id");
+  let id = localStorage.getItem("karreify_device_id");
   if (!id) {
     id = crypto.randomUUID();
-    localStorage.setItem("nextcv_device_id", id);
+    localStorage.setItem("karreify_device_id", id);
   }
   return id;
 }

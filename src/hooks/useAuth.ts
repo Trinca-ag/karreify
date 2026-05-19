@@ -80,7 +80,7 @@ export function useAuth() {
       await ready;
 
       if (typeof window !== "undefined") {
-        const sessionFlag = sessionStorage.getItem("nextcv_verified");
+        const sessionFlag = sessionStorage.getItem("karreify_verified");
         if (sessionFlag === "true") {
           setDeviceVerified(true);
         } else {
@@ -89,7 +89,7 @@ export function useAuth() {
             const trusted = await isDeviceTrusted(user.uid, deviceId);
             setDeviceVerified(trusted);
             if (trusted) {
-              sessionStorage.setItem("nextcv_verified", "true");
+              sessionStorage.setItem("karreify_verified", "true");
               await updateDeviceActivity(user.uid, deviceId);
             }
           }
@@ -114,14 +114,14 @@ export function useAuth() {
   }, [firebaseUser]);
 
   const markDeviceVerified = useCallback(() => {
-    sessionStorage.setItem("nextcv_verified", "true");
+    sessionStorage.setItem("karreify_verified", "true");
     setDeviceVerified(true);
   }, []);
 
   const logout = useCallback(async () => {
     invalidateAll();
     await logoutUser();
-    sessionStorage.removeItem("nextcv_verified");
+    sessionStorage.removeItem("karreify_verified");
     sessionStorage.removeItem(JOBS_CACHE_STORAGE_KEY);
     setFirebaseUser(null);
     setUserData(null);

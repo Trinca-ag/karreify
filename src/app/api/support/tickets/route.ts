@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomInt } from "node:crypto";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { TICKET_MAX_DESCRIPTION, TICKET_MAX_TITLE } from "@/types";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 function generateFiveDigit(): string {
-  return Math.floor(10000 + Math.random() * 90000).toString();
+  // crypto.randomInt is CSPRNG-backed; harder to predict than Math.random
+  // (which is fine but lets a determined attacker narrow candidate IDs).
+  return randomInt(10000, 100000).toString();
 }
 
 export async function POST(request: NextRequest) {
@@ -17,6 +21,9 @@ export async function POST(request: NextRequest) {
     }
     const token = authHeader.slice(7);
     const decoded = await adminAuth.verifyIdToken(token);
+
+    const rl = rateLimit(decoded.uid, { scope: "support-tickets-create", limit: 5, windowMs: 60_000 });
+    if (!rl.allowed) return rateLimitResponse(rl);
 
     // 2. Validate input
     const body = await request.json();

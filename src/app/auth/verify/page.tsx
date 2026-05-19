@@ -4,10 +4,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthContext } from "@/components/providers/AuthProvider";
-import { createVerificationCode, verifyCode } from "@/services/verification";
 import { registerDevice } from "@/services/device-manager";
 import { getDeviceId, getDeviceInfo } from "@/utils/device-fingerprint";
 import { auth } from "@/lib/firebase";
+import { authedFetch } from "@/lib/api-client";
 import Button from "@/components/ui/Button";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import Image from "next/image";
@@ -31,22 +31,19 @@ export default function VerifyPage() {
     setSending(true);
     try {
       const deviceId = getDeviceId();
-      const code = await createVerificationCode(user.uid, user.email, deviceId);
-
-      const res = await fetch("/api/send-email", {
+      const res = await authedFetch("/api/verification/device/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "verification", email: user.email, code }),
+        body: JSON.stringify({ deviceId }),
       });
 
       const data = await res.json();
 
       if (data.fallback) {
-        toast("Email não configurado. Código: " + code, { icon: "🔑", duration: 15000 });
+        toast("Email não configurado. Tente novamente em instantes.", { icon: "⚠️", duration: 8000 });
       } else if (data.success) {
         toast.success("Código enviado para " + user.email);
       } else {
-        toast("Código gerado: " + code, { icon: "🔑", duration: 15000 });
+        throw new Error(data.error || "Erro ao enviar código");
       }
 
       setCodeSent(true);
@@ -132,7 +129,11 @@ export default function VerifyPage() {
 
     setLoading(true);
     try {
-      const result = await verifyCode(user.uid, code);
+      const res = await authedFetch("/api/verification/device/verify", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+      });
+      const result = await res.json();
       if (result.valid) {
         const deviceId = getDeviceId();
         const info = getDeviceInfo();
@@ -171,8 +172,8 @@ export default function VerifyPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
             <Image
-              src="/images/logo_nextcv_new.png"
-              alt="NextCV"
+              src="/images/logo-karreify.png"
+              alt="Karreify"
               width={220}
               height={110}
               className="object-contain h-20 w-auto"

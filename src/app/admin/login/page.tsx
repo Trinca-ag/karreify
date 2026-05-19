@@ -295,7 +295,7 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-[420px] relative z-10">
         <div className="flex flex-col items-center mb-8">
           <Link href="/">
-            <Image src="/images/logo_nextcv_new.png" alt="NextCV" width={150} height={38} className="h-10 w-auto mb-4" />
+            <Image src="/images/logo-karreify.png" alt="Karreify" width={150} height={38} className="h-10 w-auto mb-4" />
           </Link>
           <span className="px-2.5 py-1 bg-amber-500/10 text-amber-400 text-xs font-bold rounded-lg border border-amber-500/20 tracking-widest uppercase">
             Painel Administrativo

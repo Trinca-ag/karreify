@@ -184,7 +184,7 @@ function buildHtml(data: CompanyAnalysisResult, date: string): string {
   <div class="header">
     <div>
       <div class="title">${escapeHtml(data.companyName || "Empresa")}</div>
-      <div class="sub">Relatório gerado em ${escapeHtml(date)} · NextCV</div>
+      <div class="sub">Relatório gerado em ${escapeHtml(date)} · Karreify</div>
       <div class="tags">
         ${data.industry ? `<span class="tag">${escapeHtml(data.industry)}</span>` : ""}
         ${data.size ? `<span class="tag">${escapeHtml(data.size)}</span>` : ""}

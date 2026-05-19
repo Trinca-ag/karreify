@@ -53,7 +53,7 @@ export interface SendTransactionalOptions {
    */
   text: string;
   /**
-   * "NextCV" by default. Override for admin emails ("NextCV Admin") so the
+   * "Karreify" by default. Override for admin emails ("Karreify Admin") so the
    * inbox preview shows the right context.
    */
   fromName?: string;
@@ -79,7 +79,7 @@ export async function sendTransactionalEmail(
   if (!transporter) return { sent: false, fallback: true };
 
   const user = process.env.EMAIL_USER!;
-  const fromName = opts.fromName || "NextCV";
+  const fromName = opts.fromName || "Karreify";
   const isHighPriority = opts.priority === "high";
 
   // Headers that move the needle on Microsoft inboxes. We intentionally do NOT

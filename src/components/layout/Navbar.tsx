@@ -41,11 +41,11 @@ export default function Navbar() {
             className="flex items-center gap-2.5 group"
           >
             <Image
-              src="/images/logo_nextcv_new.png"
-              alt="NextCV"
+              src="/images/logo-karreify.png"
+              alt="Karreify"
               width={200}
               height={100}
-              className="object-contain h-[4.5rem] w-auto"
+              className="object-contain h-10 w-auto"
             />
           </Link>
 

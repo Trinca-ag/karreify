@@ -21,6 +21,7 @@ import {
   formatUpdatedAt,
 } from "@/services/market-data";
 import type { MarketData, MarketInsight } from "@/services/ai-market";
+import { authedFetch } from "@/lib/api-client";
 
 type Status = "loading" | "refreshing" | "ready" | "error";
 
@@ -56,7 +57,7 @@ export default function MarketPage() {
   const refresh = async () => {
     setStatus("refreshing");
     try {
-      const res = await fetch("/api/refresh-market-data", { method: "POST" });
+      const res = await authedFetch("/api/refresh-market-data", { method: "POST" });
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       const stored = await getStoredMarketData();

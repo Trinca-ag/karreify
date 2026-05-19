@@ -1,7 +1,13 @@
-import { doc, getDoc, updateDoc, addDoc, collection, query, where, limit, getDocs, serverTimestamp, increment, setDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, limit, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { FEATURE_COSTS } from "@/types";
 import { cache, CK, TTL } from "@/lib/cache";
+
+/**
+ * Client-side read helpers. All mutations (deduct, add) live server-side
+ * inside the relevant API routes (analyze-*, credits/purchase, admin/add-credits)
+ * so credit balances and stats can't be tampered with from the browser.
+ */
 
 export async function getUserCredits(userId: string): Promise<number> {
   const cached = cache.get<number>(CK.credits(userId));
@@ -21,51 +27,6 @@ export async function checkCredits(userId: string, feature: string): Promise<boo
   return credits >= cost;
 }
 
-export async function deductCredits(
-  userId: string,
-  feature: string,
-  description: string
-): Promise<void> {
-  const cost = FEATURE_COSTS[feature] || 1;
-  const credits = await getUserCredits(userId);
-
-  if (credits < cost) {
-    throw new Error("Créditos insuficientes");
-  }
-
-  const newCredits = credits - cost;
-
-  await updateDoc(doc(db, "users", userId), {
-    credits: newCredits,
-  });
-
-  await addDoc(collection(db, "users", userId, "transactions"), {
-    amount: cost,
-    type: "debit",
-    feature,
-    description,
-    createdAt: serverTimestamp(),
-  });
-
-  // Update cache with new value instead of invalidating
-  cache.set(CK.credits(userId), newCredits, TTL.credits);
-  cache.invalidate(CK.userData(userId));
-
-  // Track feature usage in global stats
-  const statsRef = doc(db, "stats", "global");
-  try {
-    await updateDoc(statsRef, {
-      totalCreditsUsed: increment(cost),
-      [`featureUsage.${feature}`]: increment(1),
-    });
-  } catch {
-    await setDoc(statsRef, {
-      totalCreditsUsed: cost,
-      featureUsage: { [feature]: 1 },
-    }, { merge: true });
-  }
-}
-
 export async function hasUsedFeature(userId: string, feature: string): Promise<boolean> {
   const q = query(
     collection(db, "users", userId, "transactions"),
@@ -75,28 +36,4 @@ export async function hasUsedFeature(userId: string, feature: string): Promise<b
   );
   const snapshot = await getDocs(q);
   return !snapshot.empty;
-}
-
-export async function addCredits(
-  userId: string,
-  amount: number,
-  description: string
-): Promise<void> {
-  const credits = await getUserCredits(userId);
-  const newCredits = credits + amount;
-
-  await updateDoc(doc(db, "users", userId), {
-    credits: newCredits,
-  });
-
-  await addDoc(collection(db, "users", userId, "transactions"), {
-    amount,
-    type: "credit",
-    feature: "purchase",
-    description,
-    createdAt: serverTimestamp(),
-  });
-
-  cache.set(CK.credits(userId), newCredits, TTL.credits);
-  cache.invalidate(CK.userData(userId));
 }

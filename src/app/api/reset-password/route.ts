@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { rateLimit, rateLimitResponse, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,12 +13,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (newPassword.length < 6) {
+    if (typeof email !== "string" || typeof code !== "string" || typeof newPassword !== "string") {
+      return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
+    }
+
+    if (newPassword.length < 6 || newPassword.length > 128) {
       return NextResponse.json(
-        { error: "A senha deve ter pelo menos 6 caracteres" },
+        { error: "A senha deve ter entre 6 e 128 caracteres" },
         { status: 400 }
       );
     }
+
+    const ipLimit = rateLimit(getClientIp(request), { scope: "reset-password-ip", limit: 10, windowMs: 60_000 });
+    if (!ipLimit.allowed) return rateLimitResponse(ipLimit);
+    const emailLimit = rateLimit(email.toLowerCase(), { scope: "reset-password-email", limit: 5, windowMs: 60_000 });
+    if (!emailLimit.allowed) return rateLimitResponse(emailLimit);
 
     const normalizedEmail = email.toLowerCase();
 

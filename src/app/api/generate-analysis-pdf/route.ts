@@ -268,7 +268,7 @@ function buildHtml(data: AnalysisData, date: string): string {
 <body>
 
 <div class="header">
-  <div class="header-brand">NextCV</div>
+  <div class="header-brand">Karreify</div>
   <div class="header-title">Análise de Currículo</div>
   <div class="header-date">Gerado em ${escapeHtml(date)}</div>
 </div>
@@ -339,8 +339,8 @@ function buildHtml(data: AnalysisData, date: string): string {
 </div>
 
 <div class="footer">
-  <span class="footer-brand">NEXTCV</span>
-  <span class="footer-note">Análise gerada por Inteligência Artificial · nextcv.com.br</span>
+  <span class="footer-brand">KARREIFY</span>
+  <span class="footer-note">Análise gerada por Inteligência Artificial · karreify.com.br</span>
 </div>
 
 </body>
@@ -405,7 +405,7 @@ export async function POST(request: NextRequest) {
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": 'attachment; filename="analise-curriculo-nextcv.pdf"',
+        "Content-Disposition": 'attachment; filename="analise-curriculo-karreify.pdf"',
         "Cache-Control": "no-store",
       },
     });

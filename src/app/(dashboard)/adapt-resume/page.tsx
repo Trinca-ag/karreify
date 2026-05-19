@@ -5,18 +5,21 @@ import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
 import FileUpload from "@/components/ui/FileUpload";
 import { extractTextFromFile } from "@/utils/file-parser";
-import { deductCredits, checkCredits } from "@/services/credits";
+import { checkCredits } from "@/services/credits";
+import { authedFetch } from "@/lib/api-client";
 import { generateResumePDFBlob, downloadResumePDF, type PdfAdjustments } from "@/utils/resume-pdf";
 import { Target, Download, RefreshCw, FileText, Plus, Type, AlignJustify, Eye, EyeOff, PenLine, Trash2, RotateCcw, Briefcase, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import type { ResumeSchema, GenerationNotes, QualityReport } from "@/lib/resume-schema";
 import type { TemplateName, SectionName } from "@/lib/resume-templates";
 import { getDefaultSizesPx } from "@/lib/resume-templates";
+import dynamic from "next/dynamic";
 import Modal from "@/components/ui/Modal";
-import AIProgressModal from "@/components/ui/AIProgressModal";
-import SaveLimitModal from "@/components/ui/SaveLimitModal";
-import SaveSuccessModal from "@/components/ui/SaveSuccessModal";
 import SaveButton from "@/components/ui/SaveButton";
+
+const AIProgressModal = dynamic(() => import("@/components/ui/AIProgressModal"), { ssr: false });
+const SaveLimitModal = dynamic(() => import("@/components/ui/SaveLimitModal"), { ssr: false });
+const SaveSuccessModal = dynamic(() => import("@/components/ui/SaveSuccessModal"), { ssr: false });
 import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
@@ -259,18 +262,15 @@ export default function AdaptResumePage() {
       const composedTargetJob = jobTitle.trim()
         ? `Título da vaga: ${jobTitle.trim()}\n\nDescrição:\n${jobDescription}`
         : jobDescription;
-      const response = await fetch("/api/create-resume", {
+      const response = await authedFetch("/api/create-resume", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           formData: { existingResume: resumeText, mode: "improve", targetJob: composedTargetJob },
-          userId: user.uid,
+          feature: "resume-adaptation",
         }),
       });
       const data = await response.json();
       if (!data.success) throw new Error(data.error);
-
-      await deductCredits(user.uid, "resume-adaptation", "Adaptação de currículo para vaga");
 
       const schema = extractResumeSchema(data.data);
       const level = data.data?.generationNotes?.candidateLevel as string | undefined;
