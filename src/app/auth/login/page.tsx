@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loginUser, loginWithGoogle } from "@/services/firebase-auth";
@@ -10,17 +10,36 @@ import Image from "next/image";
 import { Sparkles, Shield, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 
+// Firebase Auth pode "pendurar" indefinidamente em conexões instáveis (o SDK
+// não tem timeout interno). Sem isto, o botão ficava preso em loading e só
+// recarregando a página destravava.
+const LOGIN_TIMEOUT_MS = 15000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const id = setTimeout(() => reject(new Error("login-timeout")), ms);
+    promise.then(
+      (v) => { clearTimeout(id); resolve(v); },
+      (e) => { clearTimeout(id); reject(e); },
+    );
+  });
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  // Guarda síncrona — `loading` (useState) só atualiza no próximo render, então
+  // cliques duplos muito rápidos passavam pelo `if (loading) return`.
+  const inflightRef = useRef(false);
   const router = useRouter();
 
   const handleLogin = async () => {
-    if (loading) return;
+    if (inflightRef.current) return;
+    inflightRef.current = true;
     setLoading(true);
     try {
-      await loginUser(email, password);
+      await withTimeout(loginUser(email, password), LOGIN_TIMEOUT_MS);
       toast.success("Login realizado com sucesso!");
       router.push("/dashboard");
     } catch (error: unknown) {
@@ -32,18 +51,25 @@ export default function LoginPage() {
         message.includes("admin-account-not-allowed")
       ) {
         toast.error("Email ou senha incorretos.");
+      } else if (message.includes("login-timeout") || message.includes("network-request-failed")) {
+        toast.error("Conexão instável. Verifique sua internet e tente novamente.");
+      } else if (message.includes("too-many-requests")) {
+        toast.error("Muitas tentativas. Aguarde alguns minutos.");
       } else {
         toast.error("Erro ao fazer login. Tente novamente.");
       }
     } finally {
       setLoading(false);
+      inflightRef.current = false;
     }
   };
 
   const handleGoogleLogin = async () => {
+    if (inflightRef.current) return;
+    inflightRef.current = true;
     setLoading(true);
     try {
-      await loginWithGoogle();
+      await withTimeout(loginWithGoogle(), LOGIN_TIMEOUT_MS);
       toast.success("Login realizado com sucesso!");
       router.push("/dashboard");
     } catch (error: unknown) {
@@ -51,11 +77,16 @@ export default function LoginPage() {
       // Same masking rationale as above
       if (message.includes("admin-account-not-allowed")) {
         toast.error("Email ou senha incorretos.");
+      } else if (message.includes("popup-closed-by-user") || message.includes("cancelled-popup-request")) {
+        // Usuário fechou o popup — não mostrar erro
+      } else if (message.includes("login-timeout") || message.includes("network-request-failed")) {
+        toast.error("Conexão instável. Verifique sua internet e tente novamente.");
       } else {
         toast.error("Erro ao fazer login com Google.");
       }
     } finally {
       setLoading(false);
+      inflightRef.current = false;
     }
   };
 

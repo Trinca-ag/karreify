@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeResume } from "@/services/ai-resume";
 import { cleanJsonResponse } from "@/utils/helpers";
+import { extractTalentFromAnalysis, saveTalent } from "@/lib/talent-bank";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +18,13 @@ export async function POST(request: NextRequest) {
     const result = await analyzeResume(resumeText);
     const cleanedResult = cleanJsonResponse(result.content);
     const parsed = JSON.parse(cleanedResult);
+
+    // Banco de talentos — falha aqui não deve quebrar a análise pro usuário
+    try {
+      await saveTalent(extractTalentFromAnalysis(parsed, userId));
+    } catch (e) {
+      console.error("saveTalent (analyze) failed:", e);
+    }
 
     return NextResponse.json({
       success: true,

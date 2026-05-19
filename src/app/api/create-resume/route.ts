@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createResumeFromData } from "@/services/ai-resume";
 import { cleanJsonResponse } from "@/utils/helpers";
+import { extractTalentFromSchema, saveTalent } from "@/lib/talent-bank";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +18,12 @@ export async function POST(request: NextRequest) {
     const result = await createResumeFromData(JSON.stringify(formData));
     const cleanedResult = cleanJsonResponse(result);
     const parsed = JSON.parse(cleanedResult);
+
+    try {
+      await saveTalent(extractTalentFromSchema(parsed, userId));
+    } catch (e) {
+      console.error("saveTalent (create) failed:", e);
+    }
 
     return NextResponse.json({ success: true, data: parsed });
   } catch (error) {

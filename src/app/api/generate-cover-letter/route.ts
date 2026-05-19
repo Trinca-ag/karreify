@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateCoverLetter } from "@/services/ai-cover-letter";
 import { cleanJsonResponse } from "@/utils/helpers";
+import { extractTalentFromCoverLetter, saveTalent } from "@/lib/talent-bank";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +18,12 @@ export async function POST(request: NextRequest) {
     const parsed = JSON.parse(cleanJsonResponse(raw));
 
     if (jobTitle?.trim()) parsed.jobTitle = jobTitle.trim();
+
+    try {
+      await saveTalent(extractTalentFromCoverLetter(parsed, resumeText, userId));
+    } catch (e) {
+      console.error("saveTalent (cover-letter) failed:", e);
+    }
 
     return NextResponse.json({ success: true, data: parsed });
   } catch (error) {

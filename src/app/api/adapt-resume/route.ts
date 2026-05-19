@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adaptResumeForJob } from "@/services/ai-resume";
 import { cleanJsonResponse } from "@/utils/helpers";
+import { extractTalentFromAdapted, saveTalent } from "@/lib/talent-bank";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +21,12 @@ export async function POST(request: NextRequest) {
     const result = await adaptResumeForJob(resumeText, jobDescription);
     const cleanedResult = cleanJsonResponse(result);
     const parsed = JSON.parse(cleanedResult);
+
+    try {
+      await saveTalent(extractTalentFromAdapted(parsed, userId));
+    } catch (e) {
+      console.error("saveTalent (adapt) failed:", e);
+    }
 
     return NextResponse.json({ success: true, data: parsed });
   } catch (error) {

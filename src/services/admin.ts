@@ -29,6 +29,18 @@ export interface AdminFeedbackRow {
   createdAt: string;
 }
 
+export interface AdminTalentRow {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  profession: string;
+  links: string[];
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AdminStats {
   totalUsers: number;
   totalAdmins: number;
