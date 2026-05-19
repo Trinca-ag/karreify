@@ -274,6 +274,7 @@ export default function AdaptResumePage() {
 
       const schema = extractResumeSchema(data.data);
       const level = data.data?.generationNotes?.candidateLevel as string | undefined;
+      const notificationId = data.notificationId as string | undefined;
       setCandidateLevel(level);
       setGenerationNotes((data.data?.generationNotes as GenerationNotes) || null);
       setQualityReport((data.data?.qualityReport as QualityReport) || null);
@@ -283,7 +284,7 @@ export default function AdaptResumePage() {
 
       await generatePdf(schema, selectedTemplate, level);
       toast.success("Currículo adaptado!");
-      void saveAdaptedResumeItem(schema, selectedTemplate, level);
+      void saveAdaptedResumeItem(schema, selectedTemplate, level, notificationId);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error("Adapt error:", msg);
@@ -329,13 +330,14 @@ export default function AdaptResumePage() {
   );
 
   const saveAdaptedResumeItem = useCallback(
-    async (schema: ResumeSchema, template: TemplateName, level?: string) => {
+    async (schema: ResumeSchema, template: TemplateName, level?: string, notificationId?: string) => {
       if (!user) return;
       await saver.prepare({
         uid: user.uid,
         type: "resume",
         payload: buildResumePayload(schema, template, level),
         autoSave: autoSaveEnabled,
+        notificationId,
       });
     },
     [user, saver, buildResumePayload, autoSaveEnabled]

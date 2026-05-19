@@ -8,7 +8,6 @@ import {
   FilePlus,
   Target,
   Settings,
-  CreditCard,
   FileText,
   Building2,
   TrendingUp,
@@ -68,7 +67,6 @@ const menuItems = [
 ];
 
 const bottomItems = [
-  { label: "Pacotes", href: "/plans", icon: CreditCard },
   { label: "Configurações", href: "/profile", icon: Settings },
   { label: "Suporte", href: "/support", icon: LifeBuoy },
 ];

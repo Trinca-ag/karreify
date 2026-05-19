@@ -5,6 +5,7 @@ import { extractTalentFromCoverLetter, saveTalent } from "@/lib/talent-bank";
 import { requireUser, authErrorResponse } from "@/lib/auth-server";
 import { deductCreditsServer, InsufficientCreditsError } from "@/lib/credits-server";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { createDocumentNotification } from "@/lib/notifications-server";
 
 const MAX_RESUME_LENGTH = 100_000;
 const MAX_DESCRIPTION_LENGTH = 20_000;
@@ -62,10 +63,31 @@ export async function POST(request: NextRequest) {
       console.error("saveTalent (cover-letter) failed:", e);
     }
 
+    const ts = Date.now();
+    const notificationId = await createDocumentNotification({
+      uid: ctx.uid,
+      title: "Carta de apresentação concluída",
+      message: `Sua carta para ${companyName} está pronta. Salve em Meus Arquivos nos próximos 10 minutos.`,
+      documentType: "cover-letter",
+      documentTitle: `Carta — ${companyName}`,
+      pendingPayload: {
+        kind: "pdf",
+        docType: "cover-letter",
+        sourceJson: parsed,
+        title: `Carta — ${companyName}`,
+        subtitle: jobTitle?.trim() || undefined,
+        fileName: `carta-${ts}.pdf`,
+      },
+    }).catch((e) => {
+      console.error("createDocumentNotification (cover-letter) failed:", e);
+      return null;
+    });
+
     return NextResponse.json({
       success: true,
       data: parsed,
       credits: deduction.newBalance,
+      notificationId,
     });
   } catch (error) {
     console.error("Cover letter error:", error);

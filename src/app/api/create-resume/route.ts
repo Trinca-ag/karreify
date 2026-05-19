@@ -5,6 +5,7 @@ import { extractTalentFromSchema, saveTalent } from "@/lib/talent-bank";
 import { requireUser, authErrorResponse } from "@/lib/auth-server";
 import { deductCreditsServer, InsufficientCreditsError } from "@/lib/credits-server";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { createDocumentNotification } from "@/lib/notifications-server";
 
 const ALLOWED_FEATURES = new Set(["resume-creation", "resume-editor", "resume-adaptation"]);
 const MAX_PAYLOAD_LENGTH = 200_000;
@@ -65,10 +66,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Section-improver flow uses /api/create-resume but doesn't produce a
+    // savedItem — skip the notification in that case.
+    let notificationId: string | null = null;
+    if (feature !== "resume-editor") {
+      const candidateName =
+        (parsed?.resumeData?.personalInfo?.name as string | undefined) ||
+        (parsed?.personalInfo?.name as string | undefined) ||
+        "Currículo";
+      const baseTitle = candidateName;
+      const candidateLevel = parsed?.generationNotes?.candidateLevel as string | undefined;
+      const isAdaptation = feature === "resume-adaptation";
+      notificationId = await createDocumentNotification({
+        uid: ctx.uid,
+        title: isAdaptation ? "Currículo adaptado" : "Currículo criado",
+        message: isAdaptation
+          ? "Seu currículo adaptado está pronto. Salve em Meus Arquivos nos próximos 10 minutos."
+          : "Seu novo currículo está pronto. Salve em Meus Arquivos nos próximos 10 minutos.",
+        documentType: "resume",
+        documentTitle: baseTitle,
+        pendingPayload: {
+          kind: "resume",
+          resumeData: parsed?.resumeData ?? parsed,
+          template: "classic",
+          candidateLevel,
+          title: baseTitle,
+          subtitle: isAdaptation ? "Adaptado para vaga" : "Criado com IA",
+        },
+      }).catch((e) => {
+        console.error("createDocumentNotification (resume) failed:", e);
+        return null;
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: parsed,
       credits: deduction.newBalance,
+      notificationId,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro desconhecido";

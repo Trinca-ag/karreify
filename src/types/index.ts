@@ -255,6 +255,68 @@ export const SAVED_ITEM_LABELS: Record<SavedItemType, string> = {
   "cover-letter": "Carta de Apresentação",
 };
 
+// ==================== Notifications ====================
+/**
+ * Window during which a manual-save user can still click "Salvar" on the
+ * notification after generating a document. After this the notification
+ * grays out as "Expirado" and the save endpoint refuses to persist.
+ */
+export const NOTIFICATION_SAVE_WINDOW_MS = 10 * 60 * 1000;
+
+export type NotificationType =
+  | "document-generated"
+  | "role-change"
+  | "welcome"
+  | "email-changed"
+  | "password-changed";
+
+/**
+ * Payload server stashes so the user can save the document later from a
+ * notification (manual save flow). Resume documents carry the schema JSON
+ * inline; PDF-backed documents (analysis, company-analysis, cover-letter)
+ * carry the source JSON the PDF was rendered from so the server can
+ * regenerate the PDF at save time.
+ */
+export type NotificationPendingPayload =
+  | {
+      kind: "resume";
+      resumeData: unknown;
+      template: string;
+      candidateLevel?: string;
+      title: string;
+      subtitle?: string;
+      adjustments?: Record<string, unknown>;
+    }
+  | {
+      kind: "pdf";
+      docType: "resume-analysis" | "company-analysis" | "cover-letter";
+      sourceJson: unknown;
+      title: string;
+      subtitle?: string;
+      fileName: string;
+    };
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: Date;
+
+  // document-generated only
+  documentType?: SavedItemType;
+  documentTitle?: string;
+  expiresAt?: Date;                    // +10h after createdAt
+  savedItemId?: string | null;         // populated once the doc is saved
+  savedItemRemoved?: boolean;          // set when the savedItem was deleted by user
+  pendingPayload?: NotificationPendingPayload | null; // null once saved
+
+  // role-change only
+  newRole?: UserRole;
+  creditsDelta?: number;
+}
+
 // ==================== Feedback Types ====================
 export interface Feedback {
   id: string;

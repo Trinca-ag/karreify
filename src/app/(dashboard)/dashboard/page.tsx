@@ -19,7 +19,6 @@ import {
   Briefcase,
   Sparkles,
   Zap,
-  Rocket,
   type LucideIcon,
 } from "lucide-react";
 
@@ -142,7 +141,6 @@ export default function DashboardPage() {
 
   const firstName = (user?.displayName || "Profissional").split(" ")[0];
   const credits = userData?.credits ?? 0;
-  const lowCredits = credits <= 5;
 
   return (
     <div className="relative space-y-10 pb-8">
@@ -227,38 +225,6 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* Credits CTA */}
-      {lowCredits && (
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-primary-700 to-accent-violet animate-fade-in-up animation-delay-500">
-          <div className="absolute inset-0 bg-grid-pattern opacity-15 pointer-events-none" />
-          <div className="absolute -top-20 -right-10 w-72 h-72 bg-white/10 rounded-full blur-[100px] pointer-events-none" />
-          <div className="absolute -bottom-20 -left-10 w-72 h-72 bg-accent-pink/20 rounded-full blur-[100px] pointer-events-none" />
-
-          <div className="relative p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-white/15 backdrop-blur rounded-2xl flex items-center justify-center flex-shrink-0 border border-white/20">
-                <Rocket className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white font-heading">
-                  Você está quase sem moedas
-                </h3>
-                <p className="text-white/80 text-sm mt-1 max-w-md">
-                  Recarregue agora e continue acelerando sua carreira com todas
-                  as ferramentas de IA.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/plans"
-              className="group flex items-center gap-2 px-6 py-3 bg-white text-primary-700 rounded-xl font-bold hover:bg-white/90 transition-all flex-shrink-0 shadow-lg shadow-black/20"
-            >
-              Ver pacotes
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-        </section>
-      )}
     </div>
   );
 }

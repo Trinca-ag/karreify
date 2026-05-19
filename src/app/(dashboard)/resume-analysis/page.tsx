@@ -99,7 +99,7 @@ export default function ResumeAnalysisPage() {
   }, [result]);
 
   const prepareAnalysisSave = useCallback(
-    async (analysis: AnalysisResult["analysis"], originalName: string) => {
+    async (analysis: AnalysisResult["analysis"], originalName: string, notificationId?: string) => {
       if (!user) return;
       try {
         const response = await fetch("/api/generate-analysis-pdf", {
@@ -125,6 +125,7 @@ export default function ResumeAnalysisPage() {
             },
           },
           autoSave: autoSaveEnabled,
+          notificationId,
         });
       } catch {
         /* silent — user still has the result on screen */
@@ -164,7 +165,7 @@ export default function ResumeAnalysisPage() {
       stopProgress();
       setResult(data.data);
       toast.success(data.wasFree ? "Analise concluida! (primeira analise gratuita)" : "Analise concluida!");
-      void prepareAnalysisSave(data.data.analysis, file.name);
+      void prepareAnalysisSave(data.data.analysis, file.name, data.notificationId);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error("Resume analysis error:", msg);

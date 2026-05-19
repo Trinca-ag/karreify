@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminRequest } from "@/utils/admin-verify";
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { createRoleChangeNotification } from "@/lib/notifications-server";
 
 const TESTER_GRANT = 5;
 
@@ -55,6 +56,24 @@ export async function POST(request: NextRequest) {
     }
 
     const updated = await userRef.get();
+
+    if (promotingToTester || demotingFromTester) {
+      const creditsDelta = promotingToTester ? TESTER_GRANT : -previousCredits;
+      const title = promotingToTester
+        ? "Você virou Tester!"
+        : "Seu modo Tester foi desativado";
+      const message = promotingToTester
+        ? `Sua conta foi atualizada para Tester. Você recebeu ${TESTER_GRANT} moedas.`
+        : `Sua conta voltou para User${previousCredits > 0 ? `. As ${previousCredits} moedas Tester foram removidas.` : "."}`;
+      await createRoleChangeNotification({
+        uid,
+        title,
+        message,
+        newRole: role,
+        creditsDelta,
+      }).catch((e) => console.error("role-change notification failed:", e));
+    }
+
     return NextResponse.json({
       success: true,
       role,

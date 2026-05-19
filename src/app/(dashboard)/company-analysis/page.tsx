@@ -384,7 +384,7 @@ export default function CompanyAnalysisPage() {
   }, []);
 
   const prepareCompanyAnalysisSave = useCallback(
-    async (data: CompanyAnalysisResult) => {
+    async (data: CompanyAnalysisResult, notificationId?: string) => {
       if (!user) return;
       try {
         const res = await fetch("/api/generate-company-analysis-pdf", {
@@ -409,6 +409,7 @@ export default function CompanyAnalysisPage() {
             },
           },
           autoSave: autoSaveEnabled,
+          notificationId,
         });
       } catch {
         /* silent */
@@ -462,7 +463,7 @@ export default function CompanyAnalysisPage() {
       stopProgress();
       setResult(data.data);
       toast.success("Análise concluída!");
-      void prepareCompanyAnalysisSave(data.data);
+      void prepareCompanyAnalysisSave(data.data, data.notificationId);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao analisar empresa.";
       toast.error(msg);

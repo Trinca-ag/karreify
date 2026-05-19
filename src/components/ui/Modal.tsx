@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface ModalProps {
@@ -30,6 +31,7 @@ export default function Modal({
   }, [isOpen]);
 
   if (!isOpen) return null;
+  if (typeof document === "undefined") return null;
 
   const sizes = {
     sm: "max-w-md",
@@ -38,7 +40,12 @@ export default function Modal({
     xl: "max-w-4xl",
   };
 
-  return (
+  // Portal to <body> so the modal never inherits a parent's stacking
+  // context. Specifically, ancestors with `backdrop-filter` (like the
+  // Navbar's `backdrop-blur-xl`) become the containing block for
+  // `position: fixed` descendants — that bug pinned this modal to the
+  // navbar instead of centering it on the viewport.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm"
@@ -62,6 +69,7 @@ export default function Modal({
         )}
         <div className="p-6">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

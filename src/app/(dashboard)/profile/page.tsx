@@ -332,6 +332,7 @@ export default function ProfilePage() {
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPassword);
+      void authedFetch("/api/notifications/password-changed", { method: "POST" }).catch(() => {});
       toast.success("Senha alterada com sucesso!");
       closePasswordModal();
     } catch (error) {

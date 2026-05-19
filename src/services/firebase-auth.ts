@@ -11,7 +11,16 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { cache, CK, TTL, invalidateAll } from "@/lib/cache";
+import { authedFetch } from "@/lib/api-client";
 import type { User } from "@/types";
+
+async function triggerWelcome(): Promise<void> {
+  try {
+    await authedFetch("/api/notifications/welcome", { method: "POST" });
+  } catch (e) {
+    console.error("welcome trigger failed:", e);
+  }
+}
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -54,6 +63,8 @@ export async function registerUser(
   // Pre-populate cache
   cache.set(CK.userData(user.uid), { ...userData, createdAt: new Date(), updatedAt: new Date() }, TTL.userData);
   cache.set(CK.credits(user.uid), 0, TTL.credits);
+
+  void triggerWelcome();
 
   return user;
 }
@@ -109,6 +120,8 @@ export async function loginWithGoogle(): Promise<FirebaseUser> {
 
     cache.set(CK.userData(user.uid), { ...userData, createdAt: new Date(), updatedAt: new Date() }, TTL.userData);
     cache.set(CK.credits(user.uid), 0, TTL.credits);
+
+    void triggerWelcome();
   } else {
     // Cache existing user data
     const data = userDoc.data() as User;

@@ -5,6 +5,7 @@ import { extractTalentFromAnalysis, saveTalent } from "@/lib/talent-bank";
 import { requireUser, authErrorResponse } from "@/lib/auth-server";
 import { deductCreditsServer, InsufficientCreditsError } from "@/lib/credits-server";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { createDocumentNotification } from "@/lib/notifications-server";
 
 const MAX_RESUME_LENGTH = 100_000;
 
@@ -59,12 +60,39 @@ export async function POST(request: NextRequest) {
       console.error("saveTalent (analyze) failed:", e);
     }
 
+    const ts = Date.now();
+    // The PDF endpoint for resume-analysis expects { analysis: <AnalysisData> }
+    // — i.e. the analysis object itself, NOT the wrapper that has
+    // `{ analysis: ... }`. The page also passes `data.data.analysis`, so we
+    // match that shape here. Falling back to `parsed` keeps older callers
+    // working if the AI ever returns the analysis at the top level.
+    const analysisJson = (parsed?.analysis ?? parsed) as unknown;
+    const notificationId = await createDocumentNotification({
+      uid: ctx.uid,
+      title: "Análise de currículo concluída",
+      message:
+        "Sua análise está pronta. Salve em Meus Arquivos nos próximos 10 minutos.",
+      documentType: "resume-analysis",
+      documentTitle: "Análise de Currículo",
+      pendingPayload: {
+        kind: "pdf",
+        docType: "resume-analysis",
+        sourceJson: analysisJson,
+        title: "Análise de Currículo",
+        fileName: `analise-curriculo-${ts}.pdf`,
+      },
+    }).catch((e) => {
+      console.error("createDocumentNotification (analyze) failed:", e);
+      return null;
+    });
+
     return NextResponse.json({
       success: true,
       data: parsed,
       cache: result.cache,
       credits: deduction.newBalance,
       wasFree: deduction.wasFree,
+      notificationId,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

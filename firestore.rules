@@ -51,6 +51,17 @@ service cloud.firestore {
           && request.resource.data.expiresAt == resource.data.expiresAt;
         allow delete: if isOwner(userId);
       }
+
+      // Notifications — owner can read, mark as read, and delete their own.
+      // Creation is server-only via Admin SDK so the source can't be spoofed.
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+        allow create: if false;
+        allow update: if isOwner(userId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['read']);
+        allow delete: if isOwner(userId);
+      }
     }
 
     // Stats — readable by any authenticated user (dashboards). Writes are

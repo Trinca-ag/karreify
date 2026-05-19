@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { requireUser, authErrorResponse, AuthError } from "@/lib/auth-server";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { createSimpleNotification } from "@/lib/notifications-server";
+import { sendTransactionalEmail } from "@/lib/mailer";
+import { emailChangedEmail, emailChangedEmailText } from "@/utils/email-templates";
 
 export async function POST(request: NextRequest) {
   let ctx;
@@ -69,6 +72,8 @@ export async function POST(request: NextRequest) {
       // Not found — safe to proceed
     }
 
+    const previousEmail = ctx.email ?? "";
+
     await adminAuth.updateUser(ctx.uid, {
       email: normalizedEmail,
       emailVerified: true,
@@ -78,6 +83,23 @@ export async function POST(request: NextRequest) {
       email: normalizedEmail,
       updatedAt: new Date(),
     });
+
+    await createSimpleNotification({
+      uid: ctx.uid,
+      type: "email-changed",
+      title: "Email da conta alterado",
+      message: `O email da sua conta agora é ${normalizedEmail}.`,
+    }).catch((e) => console.error("email-changed notification failed:", e));
+
+    if (previousEmail) {
+      sendTransactionalEmail({
+        to: previousEmail,
+        subject: "Karreify — seu email foi alterado",
+        html: emailChangedEmail(previousEmail, normalizedEmail),
+        text: emailChangedEmailText(previousEmail, normalizedEmail),
+        priority: "high",
+      }).catch((e) => console.error("email-changed email failed:", e));
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

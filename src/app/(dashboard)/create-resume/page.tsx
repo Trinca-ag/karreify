@@ -417,13 +417,14 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
 
   // Prepare save flow for newly created resume — respects autoSave preference.
   const prepareNewResumeItem = useCallback(
-    async (schema: ResumeSchema, template: TemplateName, level?: string) => {
+    async (schema: ResumeSchema, template: TemplateName, level?: string, notificationId?: string) => {
       if (!user) return;
       await saver.prepare({
         uid: user.uid,
         type: "resume",
         payload: buildResumePayload(schema, template, level),
         autoSave: autoSaveEnabled,
+        notificationId,
       });
     },
     [user, saver, buildResumePayload, autoSaveEnabled]
@@ -521,6 +522,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
 
       const schema = extractResumeSchema(data.data);
       const level = data.data?.generationNotes?.candidateLevel as string | undefined;
+      const notificationId = data.notificationId as string | undefined;
       setCandidateLevel(level);
       setGenerationNotes((data.data?.generationNotes as GenerationNotes) || null);
       setQualityReport((data.data?.qualityReport as QualityReport) || null);
@@ -532,7 +534,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       await generatePdf(schema, selectedTemplate, level);
 
       toast.success("Curriculo criado!");
-      void prepareNewResumeItem(schema, selectedTemplate, level);
+      void prepareNewResumeItem(schema, selectedTemplate, level, notificationId);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error("Resume creation error:", msg);

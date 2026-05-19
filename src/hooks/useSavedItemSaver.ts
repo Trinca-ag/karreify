@@ -10,6 +10,8 @@ import {
   type SavePdfPayload,
   type SaveResumePayload,
 } from "@/services/saved-items";
+import { linkNotificationToSavedItem } from "@/services/notifications";
+import { onSavedFromNotification } from "@/lib/saver-events";
 import type { SavedItem, SavedItemType } from "@/types";
 
 export type SaverPayload =
@@ -29,6 +31,10 @@ interface PreparedState {
   type: SavedItemType;
   payload: SaverPayload;
   status: SaveStatus;
+  /** When the doc came from an AI call that also created a notification,
+   *  we link the savedItem back to the notification so the bell stops
+   *  showing the "Salvar" CTA. */
+  notificationId?: string;
 }
 
 /**
@@ -52,18 +58,23 @@ export function useSavedItemSaver() {
   const savingRef = useRef(false);
 
   const commit = useCallback(
-    async (uid: string, payload: SaverPayload): Promise<boolean> => {
+    async (uid: string, payload: SaverPayload): Promise<string | null> => {
       try {
-        if (payload.kind === "resume") {
-          await createResumeItem(uid, payload.data);
-        } else {
-          await createPdfItem(uid, payload.data);
+        const id =
+          payload.kind === "resume"
+            ? await createResumeItem(uid, payload.data)
+            : await createPdfItem(uid, payload.data);
+        const notifId = preparedRef.current?.notificationId;
+        if (notifId) {
+          linkNotificationToSavedItem(notifId, id).catch(() => {
+            /* notification linking is best-effort */
+          });
         }
-        return true;
+        return id;
       } catch (err) {
         console.error("Save item error:", err);
         toast.error("Não foi possível salvar o arquivo.");
-        return false;
+        return null;
       }
     },
     []
@@ -85,6 +96,7 @@ export function useSavedItemSaver() {
       type: SavedItemType;
       payload: SaverPayload;
       autoSave: boolean;
+      notificationId?: string;
     }): Promise<void> => {
       if (savingRef.current) return;
       savingRef.current = true;
@@ -95,13 +107,23 @@ export function useSavedItemSaver() {
           params.type
         );
 
+        // Stash the notification id on the ref so commit() can link the
+        // resulting savedItem before we even hit the status update.
+        preparedRef.current = {
+          type: params.type,
+          payload: params.payload,
+          status: "needs-manual",
+          notificationId: params.notificationId,
+        };
+
         if (params.autoSave && !needsReplace) {
-          const ok = await commit(params.uid, params.payload);
-          if (ok) {
+          const savedId = await commit(params.uid, params.payload);
+          if (savedId) {
             preparedRef.current = {
               type: params.type,
               payload: params.payload,
               status: "saved",
+              notificationId: params.notificationId,
             };
             setStatus("saved");
             return;
@@ -112,6 +134,7 @@ export function useSavedItemSaver() {
           type: params.type,
           payload: params.payload,
           status: needsReplace ? "limit-reached" : "needs-manual",
+          notificationId: params.notificationId,
         };
         setStatus(needsReplace ? "limit-reached" : "needs-manual");
 
@@ -171,8 +194,8 @@ export function useSavedItemSaver() {
           return;
         }
 
-        const ok = await commit(uid, prepared.payload);
-        if (ok) {
+        const savedId = await commit(uid, prepared.payload);
+        if (savedId) {
           preparedRef.current = { ...prepared, status: "saved" };
           setStatus("saved");
           setSuccessOpen(true);
@@ -195,8 +218,8 @@ export function useSavedItemSaver() {
         if (confirmState.oldest) {
           await deleteSavedItem(uid, confirmState.oldest.id);
         }
-        const ok = await commit(uid, confirmState.pending);
-        if (ok && preparedRef.current) {
+        const savedId = await commit(uid, confirmState.pending);
+        if (savedId && preparedRef.current) {
           preparedRef.current = {
             ...preparedRef.current,
             payload: confirmState.pending,
@@ -226,6 +249,21 @@ export function useSavedItemSaver() {
 
   // Cleanup on unmount: nothing to do, but keep the hook idempotent.
   useEffect(() => () => { savingRef.current = false; }, []);
+
+  // Listen for "saved from the notification bell" — if the user is still on
+  // this page and clicks Salvar in the bell instead of the page button, we
+  // need to flip the page button to the gray Salvo state right away.
+  useEffect(() => {
+    const unsubscribe = onSavedFromNotification((notificationId) => {
+      const prepared = preparedRef.current;
+      if (!prepared) return;
+      if (prepared.notificationId !== notificationId) return;
+      if (prepared.status === "saved") return;
+      preparedRef.current = { ...prepared, status: "saved" };
+      setStatus("saved");
+    });
+    return unsubscribe;
+  }, []);
 
   return {
     prepare,

@@ -15,6 +15,7 @@ import {
   Coins,
   ChevronDown,
 } from "lucide-react";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 export default function Navbar() {
   const { user, userData, isAuthenticated, logout } = useAuthContext();
@@ -82,6 +83,7 @@ export default function Navbar() {
                     </span>
                   </div>
                 )}
+                {isDashboard && <NotificationBell />}
                 <div className="relative">
                   <button
                     onClick={() => setUserMenuOpen(!userMenuOpen)}

@@ -388,3 +388,102 @@ export function packPurchaseEmail(
     </div>
   `);
 }
+
+// ── Welcome / Security ─────────────────────────────────
+
+export function welcomeEmail(userName: string): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  return baseLayout(`
+    <div style="text-align: center;">
+      ${iconCircle("&#128075;", "rgba(59,130,246,0.15)", "rgba(139,92,246,0.1)", "rgba(59,130,246,0.25)")}
+      ${heading("Bem-vindo(a) ao Karreify!")}
+      ${subtext(`Ol&aacute; <span style="color: #e5e7eb; font-weight: 700;">${userName}</span>, sua conta foi criada com sucesso.`)}
+
+      <p style="color: #d1d5db; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
+        Voc&ecirc; agora tem acesso a todas as ferramentas de IA do Karreify: an&aacute;lise de curr&iacute;culo,
+        cria&ccedil;&atilde;o e adapta&ccedil;&atilde;o de curr&iacute;culos, carta de apresenta&ccedil;&atilde;o e an&aacute;lise de empresas.
+      </p>
+
+      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 0 8px;">
+        <tr>
+          <td style="border-radius: 14px; background: linear-gradient(135deg, #3b82f6, #8b5cf6);">
+            <a href="${appUrl}/dashboard" target="_blank" style="display: inline-block; padding: 14px 32px; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
+              Acessar o Dashboard &#8594;
+            </a>
+          </td>
+        </tr>
+      </table>
+
+      ${footnote("Qualquer d&uacute;vida, abra um chamado em Suporte direto pelo dashboard.")}
+    </div>
+  `);
+}
+
+export function welcomeEmailText(userName: string): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  return `Karreify — Bem-vindo(a)!
+
+Olá ${userName},
+
+Sua conta foi criada com sucesso. Você agora tem acesso a todas as ferramentas de IA do Karreify: análise de currículo, criação e adaptação de currículos, carta de apresentação e análise de empresas.
+
+Acesse: ${appUrl}/dashboard
+
+Qualquer dúvida, abra um chamado em Suporte direto pelo dashboard.${textFooter()}`;
+}
+
+function securityAlert(title: string, intro: string, changeWhen: string): string {
+  return baseLayout(`
+    <div style="text-align: center;">
+      ${iconCircle("&#128274;", "rgba(251,146,60,0.15)", "rgba(245,158,11,0.1)", "rgba(251,146,60,0.25)")}
+      ${heading(title)}
+      ${subtext(intro)}
+
+      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 0 20px;">
+        <tr>
+          <td style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px 22px;">
+            <span style="font-size: 13px; color: #9ca3af;">&#9200; ${changeWhen}</span>
+          </td>
+        </tr>
+      </table>
+
+      ${footnote("Se voc&ecirc; <strong style='color:#e5e7eb;'>n&atilde;o reconhece</strong> esta a&ccedil;&atilde;o, redefina sua senha imediatamente e entre em contato com o suporte.")}
+    </div>
+  `);
+}
+
+export function passwordChangedEmail(): string {
+  const when = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return securityAlert(
+    "Sua senha foi alterada",
+    "A senha da sua conta Karreify foi atualizada com sucesso.",
+    `Alterada em ${when}`
+  );
+}
+
+export function passwordChangedEmailText(): string {
+  const when = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return `Karreify — Sua senha foi alterada
+
+A senha da sua conta Karreify foi atualizada com sucesso em ${when}.
+
+Se você não reconhece esta ação, redefina sua senha imediatamente e entre em contato com o suporte.${textFooter()}`;
+}
+
+export function emailChangedEmail(oldEmail: string, newEmail: string): string {
+  const when = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return securityAlert(
+    "Email da sua conta foi alterado",
+    `O email da sua conta foi alterado de <strong style="color:#e5e7eb;">${oldEmail}</strong> para <strong style="color:#e5e7eb;">${newEmail}</strong>.`,
+    `Alterado em ${when}`
+  );
+}
+
+export function emailChangedEmailText(oldEmail: string, newEmail: string): string {
+  const when = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return `Karreify — Email da sua conta foi alterado
+
+O email da sua conta foi alterado de ${oldEmail} para ${newEmail} em ${when}.
+
+Se você não reconhece esta ação, entre em contato com o suporte imediatamente.${textFooter()}`;
+}

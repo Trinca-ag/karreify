@@ -80,6 +80,7 @@ export default function CoverLetterPage() {
   const editorDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingTextEdit = useRef(false);
   const firstResultRef = useRef(true);
+  const pendingNotificationIdRef = useRef<string | null>(null);
 
   const {
     progress,
@@ -160,7 +161,9 @@ export default function CoverLetterPage() {
             type: "cover-letter",
             payload,
             autoSave: autoSaveEnabled,
+            notificationId: pendingNotificationIdRef.current ?? undefined,
           });
+          pendingNotificationIdRef.current = null;
         } else {
           // Subsequent edits → keep the saver payload aligned with what the
           // user sees so the next manual save uploads the latest blob.
@@ -216,6 +219,7 @@ export default function CoverLetterPage() {
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
+      pendingNotificationIdRef.current = (data.notificationId as string | undefined) ?? null;
 
       stopProgress();
       firstResultRef.current = true;
