@@ -268,7 +268,11 @@ export type NotificationType =
   | "role-change"
   | "welcome"
   | "email-changed"
-  | "password-changed";
+  | "password-changed"
+  | "ticket-created"
+  | "ticket-reply"
+  | "ticket-closed"
+  | "feedback-thanks";
 
 /**
  * Payload server stashes so the user can save the document later from a
@@ -315,6 +319,9 @@ export interface Notification {
   // role-change only
   newRole?: UserRole;
   creditsDelta?: number;
+
+  // ticket-* only
+  ticketId?: string;
 }
 
 // ==================== Feedback Types ====================

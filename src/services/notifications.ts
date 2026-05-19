@@ -54,6 +54,7 @@ function rowToNotification(id: string, raw: Record<string, unknown>): Notificati
   if (raw.pendingPayload) base.pendingPayload = raw.pendingPayload as NotificationPendingPayload;
   if (raw.newRole) base.newRole = raw.newRole as UserRole;
   if (typeof raw.creditsDelta === "number") base.creditsDelta = raw.creditsDelta;
+  if (raw.ticketId) base.ticketId = raw.ticketId as string;
   return base;
 }
 

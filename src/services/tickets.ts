@@ -3,12 +3,10 @@
 import {
   collection,
   doc,
-  addDoc,
   query,
   orderBy,
   where,
   onSnapshot,
-  serverTimestamp,
   Timestamp,
   type Unsubscribe,
   type DocumentData,
@@ -16,6 +14,7 @@ import {
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 import { auth } from "@/lib/firebase";
+import { authedFetch } from "@/lib/api-client";
 import type { Ticket, TicketMessage, TicketStatus, TicketSenderRole } from "@/types";
 
 function tsToDate(v: unknown): Date {
@@ -138,29 +137,22 @@ export function subscribeTicketMessages(
 
 export async function sendTicketMessage(
   ticketId: string,
-  sender: { uid: string; role: TicketSenderRole; name: string },
+  _sender: { uid: string; role: TicketSenderRole; name: string },
   content: string
 ): Promise<void> {
+  void _sender;
   const trimmed = content.trim();
   if (!trimmed) throw new Error("Mensagem vazia");
-  await addDoc(collection(db, "tickets", ticketId, "messages"), {
-    senderId: sender.uid,
-    senderRole: sender.role,
-    senderName: sender.name,
-    content: trimmed,
-    createdAt: serverTimestamp(),
+  // The server determines sender role (admin vs owner) from the auth token
+  // and the admins collection — we don't trust the client to claim a role.
+  const res = await authedFetch(`/api/support/tickets/${ticketId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ content: trimmed }),
   });
-  // The ticket doc's lastMessageAt / messageCount are kept in sync server-side
-  // by the close API (admin) and the create API. For per-message activity the
-  // client also writes — this is allowed by rules only for the owner + admin
-  // and only on the activity fields.
-  const { updateDoc, doc: refDoc, increment } = await import("firebase/firestore");
-  await updateDoc(refDoc(db, "tickets", ticketId), {
-    lastMessageAt: serverTimestamp(),
-    lastMessageBy: sender.role,
-    messageCount: increment(1),
-    updatedAt: serverTimestamp(),
-  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || `Erro ${res.status}`);
+  }
 }
 
 // ── Storage helpers ─────────────────────────────────────────────────────

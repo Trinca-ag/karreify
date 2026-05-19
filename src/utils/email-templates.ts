@@ -487,3 +487,164 @@ O email da sua conta foi alterado de ${oldEmail} para ${newEmail} em ${when}.
 
 Se você não reconhece esta ação, entre em contato com o suporte imediatamente.${textFooter()}`;
 }
+
+// ── Tickets ─────────────────────────────────────────────
+
+function ticketLayout(args: {
+  emoji: string;
+  bgFrom: string;
+  bgTo: string;
+  borderColor: string;
+  title: string;
+  intro: string;
+  ticketId: string;
+  ticketTitle: string;
+  extra?: string;
+  ctaLabel: string;
+}): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  return baseLayout(`
+    <div style="text-align: center;">
+      ${iconCircle(args.emoji, args.bgFrom, args.bgTo, args.borderColor)}
+      ${heading(args.title)}
+      ${subtext(args.intro)}
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;">
+        <tr>
+          <td style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px 18px; text-align: left;">
+            <div style="font-size: 11px; color: #6b7280; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;">Chamado #${args.ticketId}</div>
+            <div style="font-size: 14px; color: #e5e7eb; font-weight: 600;">${args.ticketTitle}</div>
+            ${args.extra ? `<div style="font-size: 13px; color: #9ca3af; margin-top: 10px; line-height: 1.5;">${args.extra}</div>` : ""}
+          </td>
+        </tr>
+      </table>
+
+      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 0 8px;">
+        <tr>
+          <td style="border-radius: 14px; background: linear-gradient(135deg, #3b82f6, #8b5cf6);">
+            <a href="${appUrl}/support/${args.ticketId}" target="_blank" style="display: inline-block; padding: 14px 28px; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
+              ${args.ctaLabel} &#8594;
+            </a>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `);
+}
+
+export function ticketCreatedEmail(ticketId: string, title: string): string {
+  return ticketLayout({
+    emoji: "&#128221;",
+    bgFrom: "rgba(59,130,246,0.15)",
+    bgTo: "rgba(139,92,246,0.1)",
+    borderColor: "rgba(59,130,246,0.25)",
+    title: "Chamado aberto",
+    intro: "Recebemos seu chamado e já estamos analisando. Você ser&aacute; notificado quando o time responder.",
+    ticketId,
+    ticketTitle: title,
+    ctaLabel: "Ver chamado",
+  });
+}
+
+export function ticketCreatedEmailText(ticketId: string, title: string): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  return `Karreify — Chamado aberto
+
+Recebemos seu chamado e já estamos analisando.
+
+Chamado #${ticketId}: ${title}
+
+Acompanhe em: ${appUrl}/support/${ticketId}${textFooter()}`;
+}
+
+export function ticketReplyEmail(
+  ticketId: string,
+  title: string,
+  preview: string
+): string {
+  const safePreview = preview.length > 200 ? preview.slice(0, 200) + "…" : preview;
+  return ticketLayout({
+    emoji: "&#128172;",
+    bgFrom: "rgba(34,197,94,0.15)",
+    bgTo: "rgba(16,185,129,0.1)",
+    borderColor: "rgba(34,197,94,0.25)",
+    title: "Nova resposta do suporte",
+    intro: "O time respondeu seu chamado. D&aacute; uma olhada quando puder.",
+    ticketId,
+    ticketTitle: title,
+    extra: `<span style="color: #6b7280;">Pr&eacute;via:</span> &ldquo;${safePreview.replace(/[<>]/g, "")}&rdquo;`,
+    ctaLabel: "Abrir chamado",
+  });
+}
+
+export function ticketReplyEmailText(
+  ticketId: string,
+  title: string,
+  preview: string
+): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const safePreview = preview.length > 200 ? preview.slice(0, 200) + "…" : preview;
+  return `Karreify — Nova resposta do suporte
+
+O time respondeu o seu chamado #${ticketId}: ${title}
+
+Prévia: "${safePreview}"
+
+Abra em: ${appUrl}/support/${ticketId}${textFooter()}`;
+}
+
+export function ticketClosedEmail(ticketId: string, title: string): string {
+  return ticketLayout({
+    emoji: "&#9989;",
+    bgFrom: "rgba(34,197,94,0.15)",
+    bgTo: "rgba(16,185,129,0.1)",
+    borderColor: "rgba(34,197,94,0.25)",
+    title: "Chamado finalizado",
+    intro: "Seu chamado foi marcado como conclu&iacute;do. Se a quest&atilde;o n&atilde;o foi resolvida, voc&ecirc; pode abrir um novo a qualquer momento.",
+    ticketId,
+    ticketTitle: title,
+    ctaLabel: "Ver detalhes",
+  });
+}
+
+export function ticketClosedEmailText(ticketId: string, title: string): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  return `Karreify — Chamado finalizado
+
+Seu chamado #${ticketId} (${title}) foi marcado como concluído.
+
+Se a questão não foi resolvida, abra um novo chamado em qualquer momento.
+
+Acesse: ${appUrl}/support/${ticketId}${textFooter()}`;
+}
+
+// ── Feedback Thanks ─────────────────────────────────────
+
+export function feedbackThanksEmail(userName: string, rating: number): string {
+  const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+  return baseLayout(`
+    <div style="text-align: center;">
+      ${iconCircle("&#128150;", "rgba(236,72,153,0.15)", "rgba(168,85,247,0.1)", "rgba(236,72,153,0.25)")}
+      ${heading("Obrigado pelo feedback!")}
+      ${subtext(`Ol&aacute; <span style="color: #e5e7eb; font-weight: 700;">${userName}</span>, sua avalia&ccedil;&atilde;o ajuda demais a evoluir o Karreify.`)}
+
+      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 0 28px;">
+        <tr>
+          <td style="background: rgba(236,72,153,0.08); border: 1px solid rgba(236,72,153,0.2); border-radius: 14px; padding: 18px 28px;">
+            <span style="font-size: 28px; letter-spacing: 4px; color: #f59e0b;">${stars}</span>
+          </td>
+        </tr>
+      </table>
+
+      ${footnote("Continuaremos lendo cada comentário com aten&ccedil;&atilde;o. At&eacute; logo!")}
+    </div>
+  `);
+}
+
+export function feedbackThanksEmailText(userName: string, rating: number): string {
+  return `Karreify — Obrigado pelo feedback!
+
+Olá ${userName},
+
+Sua avaliação (${rating}/5) ajuda demais a evoluir o Karreify. Continuaremos lendo cada comentário com atenção.${textFooter()}`;
+}

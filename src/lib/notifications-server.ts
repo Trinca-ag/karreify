@@ -21,7 +21,12 @@ interface CreateRoleChangeInput extends Omit<CreateNotificationBase, "type"> {
 }
 
 interface CreateSimpleNotificationInput extends Omit<CreateNotificationBase, "type"> {
-  type: Exclude<NotificationType, "document-generated" | "role-change">;
+  type: Exclude<NotificationType, "document-generated" | "role-change" | "ticket-created" | "ticket-reply" | "ticket-closed">;
+}
+
+interface CreateTicketNotificationInput extends Omit<CreateNotificationBase, "type"> {
+  type: "ticket-created" | "ticket-reply" | "ticket-closed";
+  ticketId: string;
 }
 
 async function writeNotification(payload: Record<string, unknown>): Promise<string> {
@@ -94,6 +99,18 @@ export async function createSimpleNotification(
     type: input.type,
     title: input.title,
     message: input.message,
+  });
+}
+
+export async function createTicketNotification(
+  input: CreateTicketNotificationInput
+): Promise<string> {
+  return writeNotification({
+    uid: input.uid,
+    type: input.type,
+    title: input.title,
+    message: input.message,
+    ticketId: input.ticketId,
   });
 }
 

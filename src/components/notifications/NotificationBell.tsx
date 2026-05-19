@@ -150,6 +150,16 @@ export default function NotificationBell() {
       if (n.type === "document-generated") {
         setOpen(false);
         router.push("/my-files");
+        return;
+      }
+      if (
+        (n.type === "ticket-created" ||
+          n.type === "ticket-reply" ||
+          n.type === "ticket-closed") &&
+        n.ticketId
+      ) {
+        setOpen(false);
+        router.push(`/support/${n.ticketId}`);
       }
     },
     [router, user]

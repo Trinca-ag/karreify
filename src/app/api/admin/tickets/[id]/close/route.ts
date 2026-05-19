@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminRequest } from "@/utils/admin-verify";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
+import { createTicketNotification } from "@/lib/notifications-server";
+import { sendTransactionalEmail } from "@/lib/mailer";
+import { ticketClosedEmail, ticketClosedEmailText } from "@/utils/email-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +66,28 @@ export async function POST(
       images: [],
       imagesDeleted: deletedImages,
     });
+
+    // Notify the ticket owner and email them — best-effort, errors don't
+    // surface to the admin closing the ticket.
+    const userEmail = (data.userEmail as string | undefined) ?? "";
+    const ticketTitle = (data.title as string | undefined) ?? "Chamado";
+    if (userId) {
+      createTicketNotification({
+        uid: userId,
+        type: "ticket-closed",
+        title: "Chamado finalizado",
+        message: `Seu chamado #${ticketId} foi marcado como concluído.`,
+        ticketId,
+      }).catch((e) => console.error("ticket-closed notification failed:", e));
+    }
+    if (userEmail) {
+      sendTransactionalEmail({
+        to: userEmail,
+        subject: `Chamado #${ticketId} finalizado — Karreify`,
+        html: ticketClosedEmail(ticketId, ticketTitle),
+        text: ticketClosedEmailText(ticketId, ticketTitle),
+      }).catch((e) => console.error("ticket-closed email failed:", e));
+    }
 
     return NextResponse.json({ success: true, imagesDeleted: deletedImages });
   } catch (error) {

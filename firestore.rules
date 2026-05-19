@@ -125,22 +125,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /messages/{messageId} {
+        // Messages are writable only via the server route
+        // (/api/support/tickets/{id}/messages) which uses the Admin SDK and
+        // also fires the notification + email when an admin replies.
         allow read: if isOwner(get(/databases/$(database)/documents/tickets/$(ticketId)).data.userId)
                     || isAdmin();
-        allow create: if
-          get(/databases/$(database)/documents/tickets/$(ticketId)).data.status == "open"
-          && request.resource.data.senderId == request.auth.uid
-          && request.resource.data.content is string
-          && request.resource.data.content.size() > 0
-          && request.resource.data.content.size() <= 4000
-          && (
-            // Owner replying
-            (isOwner(get(/databases/$(database)/documents/tickets/$(ticketId)).data.userId)
-              && request.resource.data.senderRole == 'user')
-            // Admin replying
-            || (isAdmin() && request.resource.data.senderRole == 'admin')
-          );
-        allow update, delete: if false;
+        allow create, update, delete: if false;
       }
     }
   }

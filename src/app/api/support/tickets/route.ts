@@ -3,6 +3,9 @@ import { randomInt } from "node:crypto";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { TICKET_MAX_DESCRIPTION, TICKET_MAX_TITLE } from "@/types";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { createTicketNotification } from "@/lib/notifications-server";
+import { sendTransactionalEmail } from "@/lib/mailer";
+import { ticketCreatedEmail, ticketCreatedEmailText } from "@/utils/email-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +88,25 @@ export async function POST(request: NextRequest) {
         { error: "Não foi possível gerar um ID único, tente novamente" },
         { status: 503 }
       );
+    }
+
+    // Fire-and-forget: notify the user + email them. We don't want
+    // notification or email failures to break the ticket creation flow.
+    createTicketNotification({
+      uid: decoded.uid,
+      type: "ticket-created",
+      title: "Chamado aberto",
+      message: `Recebemos seu chamado #${ticketId}. Avisaremos quando houver uma resposta.`,
+      ticketId,
+    }).catch((e) => console.error("ticket-created notification failed:", e));
+
+    if (userEmail) {
+      sendTransactionalEmail({
+        to: userEmail,
+        subject: `Chamado #${ticketId} aberto — Karreify`,
+        html: ticketCreatedEmail(ticketId, title),
+        text: ticketCreatedEmailText(ticketId, title),
+      }).catch((e) => console.error("ticket-created email failed:", e));
     }
 
     return NextResponse.json({

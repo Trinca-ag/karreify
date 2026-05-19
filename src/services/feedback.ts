@@ -1,5 +1,4 @@
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { authedFetch } from "@/lib/api-client";
 import { FEEDBACK_MAX_COMMENT } from "@/types";
 
 export async function submitFeedback(params: {
@@ -14,12 +13,16 @@ export async function submitFeedback(params: {
   const comment = params.comment.trim();
   if (comment.length > FEEDBACK_MAX_COMMENT) throw new Error("Comentário muito longo.");
 
-  await addDoc(collection(db, "feedbacks"), {
-    uid: params.uid,
-    userName: params.userName ?? null,
-    userEmail: params.userEmail,
-    rating,
-    comment,
-    createdAt: serverTimestamp(),
+  const res = await authedFetch("/api/feedback", {
+    method: "POST",
+    body: JSON.stringify({
+      rating,
+      comment,
+      userName: params.userName,
+    }),
   });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || "Erro ao enviar feedback.");
+  }
 }

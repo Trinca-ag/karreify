@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Shield, Sparkles, Mail, Lock, Save, Trash2, ChevronRight } from "lucide-react";
+import { FileText, Shield, Sparkles, Mail, Lock, Save, Trash2, ChevronRight, LifeBuoy, MessageCircle, CheckCircle2, Heart } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   canSaveFromNotification,
@@ -29,6 +29,14 @@ function iconFor(type: Notification["type"]): { Icon: LucideIcon; tint: string }
       return { Icon: Mail, tint: "text-sky-400 bg-sky-500/10 border-sky-500/20" };
     case "password-changed":
       return { Icon: Lock, tint: "text-orange-400 bg-orange-500/10 border-orange-500/20" };
+    case "ticket-created":
+      return { Icon: LifeBuoy, tint: "text-primary-400 bg-primary-500/10 border-primary-500/20" };
+    case "ticket-reply":
+      return { Icon: MessageCircle, tint: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
+    case "ticket-closed":
+      return { Icon: CheckCircle2, tint: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
+    case "feedback-thanks":
+      return { Icon: Heart, tint: "text-pink-400 bg-pink-500/10 border-pink-500/20" };
   }
 }
 
@@ -55,8 +63,12 @@ export default function NotificationItem({
   const saved = isDocumentSaved(notification);
   const canSave = canSaveFromNotification(notification) && !saving;
   const isDoc = notification.type === "document-generated";
+  const isTicket =
+    notification.type === "ticket-created" ||
+    notification.type === "ticket-reply" ||
+    notification.type === "ticket-closed";
   const { Icon, tint } = iconFor(notification.type);
-  const clickable = isDoc && !expired;
+  const clickable = (isDoc && !expired) || (isTicket && !!notification.ticketId);
 
   return (
     <div
