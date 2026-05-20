@@ -9,11 +9,16 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
+  /* Kills body-level horizontal scroll. Fixed-positioned descendants (e.g. the
+     mobile drawer parked off-screen with translate-x-full) otherwise leak past
+     the viewport edge and let the document scroll horizontally. */
+  overflow-x: hidden;
 }
 
 @layer utilities {

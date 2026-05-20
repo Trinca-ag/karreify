@@ -10,7 +10,7 @@ import { extractTextFromFile } from "@/utils/file-parser";
 import { checkCredits } from "@/services/credits";
 import { authedFetch } from "@/lib/api-client";
 import { generateResumePDFBlob, downloadResumePDF, type PdfAdjustments } from "@/utils/resume-pdf";
-import { Upload, PenLine, Plus, Trash2, Download, RefreshCw, FileText, AlertTriangle, XCircle, Type, AlignJustify, Eye, EyeOff, RotateCcw, Sparkles, User, Target, Briefcase, GraduationCap, FolderKanban, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Upload, PenLine, Plus, Trash2, Download, RefreshCw, FileText, AlertTriangle, XCircle, Type, AlignJustify, Eye, EyeOff, RotateCcw, Sparkles, User, Target, Briefcase, GraduationCap, FolderKanban, ChevronLeft, ChevronRight, Check, Menu, X, SlidersHorizontal } from "lucide-react";
 import toast from "react-hot-toast";
 import type { ResumeSchema, GenerationNotes, QualityReport } from "@/lib/resume-schema";
 import type { TemplateName, SectionName } from "@/lib/resume-templates";
@@ -25,6 +25,7 @@ import SaveButton from "@/components/ui/SaveButton";
 const AIProgressModal = dynamic(() => import("@/components/ui/AIProgressModal"), { ssr: false });
 const SaveLimitModal = dynamic(() => import("@/components/ui/SaveLimitModal"), { ssr: false });
 const SaveSuccessModal = dynamic(() => import("@/components/ui/SaveSuccessModal"), { ssr: false });
+const PdfPreview = dynamic(() => import("@/components/ui/PdfPreview"), { ssr: false });
 import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
@@ -152,6 +153,23 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   const [availableSections, setAvailableSections] = useState<SectionName[]>([]);
   const editorDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingTextEdit = useRef(false);
+  // Mobile/tablet drawer for the editor — desktop (lg+) keeps the panel
+  // inline as before, mobile gets a slide-in panel toggled by a hamburger.
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  useEffect(() => {
+    if (!editorOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEditorOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [editorOpen]);
 
   // Form state
   const [name, setName] = useState("");
@@ -166,7 +184,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   const [languages, setLanguages] = useState("");
   const [experiences, setExperiences] = useState<FormExperience[]>([{ company: "", position: "", startDate: "", endDate: "", current: false, description: "" }]);
   const [educations, setEducations] = useState<FormEducation[]>([{ institution: "", degree: "", field: "", startDate: "", endDate: "" }]);
-  const [projects, setProjects] = useState<FormProject[]>([]);
+  const [projects, setProjects] = useState<FormProject[]>([{ type: "", customType: "", name: "", description: "", startDate: "", endDate: "", link: "" }]);
 
   // Multi-step form state (scratch mode only)
   const [step, setStep] = useState<number>(1);
@@ -655,7 +673,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     setLanguages("");
     setExperiences([{ company: "", position: "", startDate: "", endDate: "", current: false, description: "" }]);
     setEducations([{ institution: "", degree: "", field: "", startDate: "", endDate: "" }]);
-    setProjects([]);
+    setProjects([{ type: "", customType: "", name: "", description: "", startDate: "", endDate: "", link: "" }]);
     pendingFormData.current = null;
     saver.reset();
     if (pdfUrl) {
@@ -786,8 +804,9 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           </div>
         </div>
 
-        {/* Actions — above the PDF */}
-        <div className="flex flex-wrap items-center justify-start gap-3 animate-fade-in-up animation-delay-200">
+        {/* Actions — above the PDF on desktop only. On mobile/tablet the
+            same set of buttons is rendered below the PDF (see further down). */}
+        <div className="hidden lg:flex flex-wrap items-center justify-start gap-3 animate-fade-in-up animation-delay-200">
           <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="px-6 glow-blue">
             <Download className="w-4 h-4 mr-2" />
             Baixar PDF
@@ -813,6 +832,19 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
         <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
           {/* PDF Preview */}
           <div className="flex-1 min-w-0">
+            {/* Mobile/tablet trigger for the editor drawer */}
+            <div className="lg:hidden flex justify-end mb-3">
+              <button
+                type="button"
+                onClick={() => setEditorOpen(true)}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-white/[0.05] border border-white/[0.10] text-gray-200 rounded-xl hover:bg-white/[0.10] hover:border-white/20 transition-all text-sm"
+                aria-label="Abrir ajustes do currículo"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                Ajustes
+                <Menu className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden lg:h-full">
               {pdfLoading ? (
                 <div className="flex items-center justify-center h-[75vh] lg:h-full">
@@ -822,10 +854,9 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                   </div>
                 </div>
               ) : pdfUrl ? (
-                <iframe
-                  src={`${pdfUrl}#pagemode=none&navpanes=0&toolbar=1`}
+                <PdfPreview
+                  pdfUrl={pdfUrl}
                   className="w-full rounded-xl h-[75vh] lg:h-full"
-                  style={{ minHeight: "500px" }}
                   title="Preview do currículo"
                 />
               ) : (
@@ -834,10 +865,65 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                 </div>
               )}
             </div>
+
+            {/* Actions — mobile/tablet only, rendered below the PDF.
+                Desktop renders the same set above the preview. */}
+            <div className="lg:hidden flex flex-col gap-3 mt-4">
+              <div className="flex gap-3">
+                <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="flex-1 glow-blue">
+                  <Download className="w-4 h-4 mr-2" />
+                  Baixar PDF
+                </Button>
+                {!editingItemId && (
+                  <SaveButton
+                    status={saveStatus}
+                    saving={saver.saving}
+                    disabled={pdfLoading}
+                    onClick={handleManualSave}
+                    className="flex-1"
+                  />
+                )}
+              </div>
+              <button
+                onClick={handleReset}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/[0.05] border border-white/[0.10] text-gray-300 rounded-xl hover:bg-white/[0.10] hover:border-white/20 transition-all duration-200 text-sm"
+              >
+                <RefreshCw className="w-4 h-4" /> Novo currículo
+              </button>
+            </div>
           </div>
 
-          {/* Editor + Feedback sidebar */}
-          <div className="w-full lg:w-80 lg:flex-shrink-0 space-y-4">
+          {/* Editor sidebar — inline on lg+, slide-in drawer from the right on
+              mobile/tablet. The drawer markup (fixed positioning, transform,
+              backdrop) is overridden by `lg:` utilities so the desktop layout
+              stays identical to before. */}
+          {editorOpen && (
+            <div
+              className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              onClick={() => setEditorOpen(false)}
+              aria-hidden
+            />
+          )}
+          <div
+            className={`space-y-4 z-50 transform transition-transform duration-300
+              fixed inset-y-0 right-0 w-[88vw] max-w-sm bg-dark-900 border-l border-white/[0.06] p-5 overflow-y-auto
+              lg:static lg:w-80 lg:max-w-none lg:flex-shrink-0 lg:bg-transparent lg:border-0 lg:p-0 lg:overflow-visible lg:transform-none lg:transition-none
+              ${editorOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}
+            role="dialog"
+            aria-modal={editorOpen ? true : undefined}
+            aria-label="Ajustes do currículo"
+          >
+            {/* Mobile-only drawer close button */}
+            <div className="lg:hidden flex justify-end">
+              <button
+                type="button"
+                onClick={() => setEditorOpen(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                aria-label="Fechar ajustes"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             {/* Editor Controls */}
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
@@ -1074,7 +1160,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl animate-fade-in-up animation-delay-200 overflow-hidden"
         >
           {/* Stepper header */}
-          <div className="relative px-6 py-5 border-b border-white/[0.06] bg-gradient-to-r from-primary-500/[0.04] via-transparent to-accent-violet/[0.04]">
+          <div className="relative px-4 py-4 sm:px-6 sm:py-5 border-b border-white/[0.06] bg-gradient-to-r from-primary-500/[0.04] via-transparent to-accent-violet/[0.04]">
             <div className="flex items-center justify-between gap-4 mb-5">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.15em] text-primary-400/70 font-semibold">Etapa {step} de {TOTAL_STEPS}</p>
@@ -1128,11 +1214,11 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
               })}
             </div>
           </div>
-          <fieldset disabled={loading} className="p-6 border-0 m-0 min-w-0 disabled:opacity-60 disabled:cursor-not-allowed">
+          <fieldset disabled={loading} className="p-3 sm:p-6 border-0 m-0 min-w-0 disabled:opacity-60 disabled:cursor-not-allowed">
             <div key={step} className={stepDirection === "forward" ? "animate-slide-in-right" : "animate-slide-in-left"}>
             {/* Step 1: Personal info */}
             {step === 1 && (
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 sm:p-6">
               <h3 className="font-medium text-white mb-3">Dados Pessoais</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label="Nome completo" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -1148,7 +1234,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
 
             {/* Step 2: Objective */}
             {step === 2 && (
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 sm:p-6">
               <label className="block text-sm font-medium text-gray-300 mb-2">Objetivo profissional</label>
               <p className="text-xs text-gray-500 mb-3">Descreva em poucas linhas o cargo que busca, suas principais habilidades e o que você quer alcançar.</p>
               <textarea value={objective} onChange={(e) => setObjective(e.target.value)} required className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[160px]" placeholder="Ex: Desenvolvedor Full-Stack com foco em React e Node.js, buscando atuar em..." />
@@ -1157,7 +1243,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
 
             {/* Step 3: Experiences */}
             {step === 3 && (
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 sm:p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-white">Experiências</h3>
                 <button type="button" onClick={addExperience} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-white/5 text-gray-400 hover:bg-white/10 rounded-xl transition-colors">
@@ -1167,7 +1253,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
               {experiences.map((exp, i) => {
                 const touched = isExperienceTouched(exp);
                 return (
-                <div key={i} className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
+                <div key={i} className="p-3 sm:p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-5">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-400">Experiência {i + 1}</span>
                     {experiences.length > 1 && (
@@ -1208,7 +1294,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                       </label>
                     </div>
                   </div>
-                  <textarea value={exp.description} onChange={(e) => updateExperience(i, "description", e.target.value)} required={touched} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50" placeholder="Descreva suas atividades e conquistas" />
+                  <textarea value={exp.description} onChange={(e) => updateExperience(i, "description", e.target.value)} required={touched} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[160px]" placeholder="Descreva suas atividades e conquistas" />
                 </div>
                 );
               })}
@@ -1217,7 +1303,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
 
             {/* Step 4: Education */}
             {step === 4 && (
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 sm:p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-white">Formação</h3>
                 <button type="button" onClick={addEducation} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-white/5 text-gray-400 hover:bg-white/10 rounded-xl transition-colors">
@@ -1227,7 +1313,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
               {educations.map((edu, i) => {
                 const touched = isEducationTouched(edu);
                 return (
-                <div key={i} className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
+                <div key={i} className="p-3 sm:p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-400">Formação {i + 1}</span>
                     {educations.length > 1 && (
@@ -1273,7 +1359,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
 
             {/* Step 5: Projects */}
             {step === 5 && (
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 sm:p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-white">Projetos e atividades extracurriculares <span className="text-gray-500 font-normal text-sm">(opcional)</span></h3>
                 <button type="button" onClick={addProject} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-white/5 text-gray-400 hover:bg-white/10 rounded-xl transition-colors">
@@ -1286,7 +1372,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
               {projects.map((proj, i) => {
                 const touched = isProjectTouched(proj);
                 return (
-                <div key={i} className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
+                <div key={i} className="p-3 sm:p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-400">Projeto {i + 1}</span>
                     <button type="button" onClick={() => removeProject(i)} className="text-red-400 hover:text-red-300 transition-colors">
@@ -1355,11 +1441,11 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
             {/* Step 6: Skills & Languages */}
             {step === TOTAL_STEPS && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 sm:p-6">
                 <label className="block text-sm font-medium text-gray-300 mb-1">Habilidades (separadas por virgula)</label>
                 <textarea value={skills} onChange={(e) => setSkills(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[120px]" placeholder="React, TypeScript, Node.js..." />
               </div>
-              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 sm:p-6">
                 <label className="block text-sm font-medium text-gray-300 mb-1">Idiomas (separados por vírgula)</label>
                 <textarea value={languages} onChange={(e) => setLanguages(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 min-h-[120px]" placeholder="Português (nativo), Inglês (avançado)..." />
               </div>

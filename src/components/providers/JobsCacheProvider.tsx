@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -91,21 +92,64 @@ export function JobsCacheProvider({ children }: { children: ReactNode }) {
     hydratedRef.current = true;
   }, []);
 
+  // Debounce sessionStorage writes. Without this, every keystroke in the
+  // search input serializes the entire state (including big job arrays) on
+  // the main thread.
   useEffect(() => {
     if (!hydratedRef.current) return;
     if (typeof window === "undefined") return;
-    try {
-      sessionStorage.setItem(JOBS_CACHE_STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // sessionStorage may be unavailable (private mode / quota) — degrade silently
-    }
+    const handle = window.setTimeout(() => {
+      try {
+        sessionStorage.setItem(JOBS_CACHE_STORAGE_KEY, JSON.stringify(state));
+      } catch {
+        // sessionStorage may be unavailable (private mode / quota) — degrade silently
+      }
+    }, 250);
+    return () => window.clearTimeout(handle);
   }, [state]);
 
-  const setField = useCallback(
-    <K extends keyof JobsCacheState>(key: K) =>
-      (value: JobsCacheState[K]) => {
-        setState((prev) => ({ ...prev, [key]: value }));
-      },
+  // Build individual stable setters once. Previously the provider called
+  // `setField("keyword")` etc. inside the value object on every render — each
+  // call returned a brand-new function, so every consumer of useJobsCache
+  // saw a new value and re-rendered on every state change.
+  const setKeyword = useCallback(
+    (v: string) => setState((p) => ({ ...p, keyword: v })),
+    []
+  );
+  const setUf = useCallback(
+    (v: string) => setState((p) => ({ ...p, uf: v })),
+    []
+  );
+  const setCity = useCallback(
+    (v: string) => setState((p) => ({ ...p, city: v })),
+    []
+  );
+  const setPeriod = useCallback(
+    (v: DatePeriod) => setState((p) => ({ ...p, period: v })),
+    []
+  );
+  const setExactMatch = useCallback(
+    (v: boolean) => setState((p) => ({ ...p, exactMatch: v })),
+    []
+  );
+  const setPage = useCallback(
+    (v: number) => setState((p) => ({ ...p, page: v })),
+    []
+  );
+  const setJobs = useCallback(
+    (v: Job[]) => setState((p) => ({ ...p, jobs: v })),
+    []
+  );
+  const setTotalCount = useCallback(
+    (v: number) => setState((p) => ({ ...p, totalCount: v })),
+    []
+  );
+  const setSearched = useCallback(
+    (v: boolean) => setState((p) => ({ ...p, searched: v })),
+    []
+  );
+  const setError = useCallback(
+    (v: string | null) => setState((p) => ({ ...p, error: v })),
     []
   );
 
@@ -144,25 +188,43 @@ export function JobsCacheProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const value = useMemo<JobsCacheContextType>(
+    () => ({
+      ...state,
+      setKeyword,
+      setUf,
+      setCity,
+      setPeriod,
+      setExactMatch,
+      setPage,
+      setJobs,
+      setTotalCount,
+      setSearched,
+      setError,
+      reset,
+      getCachedPage,
+      cachePage,
+    }),
+    [
+      state,
+      setKeyword,
+      setUf,
+      setCity,
+      setPeriod,
+      setExactMatch,
+      setPage,
+      setJobs,
+      setTotalCount,
+      setSearched,
+      setError,
+      reset,
+      getCachedPage,
+      cachePage,
+    ]
+  );
+
   return (
-    <JobsCacheContext.Provider
-      value={{
-        ...state,
-        setKeyword: setField("keyword"),
-        setUf: setField("uf"),
-        setCity: setField("city"),
-        setPeriod: setField("period"),
-        setExactMatch: setField("exactMatch"),
-        setPage: setField("page"),
-        setJobs: setField("jobs"),
-        setTotalCount: setField("totalCount"),
-        setSearched: setField("searched"),
-        setError: setField("error"),
-        reset,
-        getCachedPage,
-        cachePage,
-      }}
-    >
+    <JobsCacheContext.Provider value={value}>
       {children}
     </JobsCacheContext.Provider>
   );

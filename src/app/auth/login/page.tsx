@@ -167,16 +167,16 @@ export default function LoginPage() {
         {/* Subtle background orb for right side */}
         <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-primary-600/5 rounded-full blur-[100px]" />
 
-        <div className="w-full max-w-md relative z-10">
+        <div className="w-full max-w-lg lg:max-w-md relative z-10">
           {/* Mobile logo */}
           <div className="lg:hidden mb-8 animate-fade-in-up">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center justify-center gap-2">
               <Image
                 src="/images/logo-karreify.png"
                 alt="Karreify"
                 width={200}
                 height={100}
-                className="object-contain h-[4.5rem] w-auto"
+                className="object-contain h-12 sm:h-14 w-auto"
               />
             </Link>
           </div>

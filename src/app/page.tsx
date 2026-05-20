@@ -319,7 +319,7 @@ const stats = [
   { value: "10k+", label: "Currículos analisados" },
   { value: "95%", label: "Satisfação dos usuários" },
   { value: "3x", label: "Mais entrevistas" },
-  { value: "50+", label: "Empresas parceiras" },
+  { value: "+7", label: "Ferramentas com IA" },
 ];
 
 const marqueeTags = [
@@ -1052,50 +1052,68 @@ export default function Home() {
       <Navbar />
 
       {/* ========== HERO ========== */}
-      <section className="relative min-h-[90vh] flex items-center noise-overlay">
+      <section className="relative lg:min-h-[90vh] flex flex-col noise-overlay">
         <div className="absolute inset-0 bg-grid-pattern opacity-60" />
         <div className="orb w-[700px] h-[700px] bg-primary-600 -top-[200px] -left-[200px] animate-pulse-glow" />
         <div className="orb w-[500px] h-[500px] bg-accent-violet -bottom-[150px] -right-[150px] animate-pulse-glow animation-delay-500" />
         <div className="orb w-[300px] h-[300px] bg-accent-cyan top-[40%] left-[60%] animate-pulse-glow animation-delay-300" />
         <Particles count={8} />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-32 w-full">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10 sm:pt-20 lg:pt-32 lg:pb-32 w-full flex-1 flex items-center">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center w-full">
             <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-8 bg-white/5 border border-white/10 backdrop-blur-sm animate-fade-in-up">
-                <Sparkles className="w-4 h-4 text-primary-400" />
-                <span className="text-gray-300">IA de última geração</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              </div>
-
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold tracking-tight leading-[1.1] animate-fade-in-up animation-delay-100">
+              <h1 className="text-center lg:text-left text-[2rem] leading-[1.15] sm:text-5xl lg:text-5xl xl:text-6xl font-heading font-bold tracking-tight sm:leading-[1.1] animate-fade-in-up animation-delay-100">
                 Transforme sua carreira com o poder da{" "}
                 <span className="gradient-text">Inteligência Artificial</span>
               </h1>
 
-              <p className="mt-6 text-lg sm:text-xl text-gray-400 leading-relaxed max-w-xl animate-fade-in-up animation-delay-200">
+              <p className="mt-5 sm:mt-6 text-center lg:text-left text-base sm:text-lg lg:text-lg xl:text-xl text-gray-400 leading-relaxed max-w-xl mx-auto lg:mx-0 animate-fade-in-up animation-delay-200">
                 Crie currículos profissionais, encontre vagas, analise empresas
                 e planeje sua carreira com IA de última geração.
               </p>
 
-              <div className="mt-10 flex flex-col sm:flex-row items-start gap-4 animate-fade-in-up animation-delay-300">
+              {/* Mockup — mobile/tablet only, between paragraph and CTAs.
+                  Desktop renders the same card in the right grid column below. */}
+              <div className="lg:hidden mt-8 max-w-md mx-auto animate-fade-in-up animation-delay-300">
+                <div className="relative animate-float-slow">
+                  <TiltCard intensity={8}>
+                    <AnalysisMockup />
+                  </TiltCard>
+                  <div className="absolute -top-4 -right-4 float-badge z-10">
+                    <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/30">
+                      Score A+
+                    </div>
+                  </div>
+                  <div
+                    className="absolute -bottom-4 -left-4 float-badge z-10"
+                    style={{ animationDelay: "2.5s" }}
+                  >
+                    <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-primary-500 to-accent-violet text-white text-xs font-bold shadow-lg shadow-primary-500/30 inline-flex items-center gap-1.5">
+                      <Sparkles className="w-3 h-3" /> IA Analisou
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-stretch sm:items-start gap-3 sm:gap-4 animate-fade-in-up animation-delay-300">
                 <Link
                   href="/auth/register"
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-primary-600 to-accent-violet text-white font-semibold rounded-xl transition-all duration-300 btn-glow"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 sm:px-8 sm:py-4 bg-gradient-to-r from-primary-600 to-accent-violet text-white font-semibold rounded-xl transition-all duration-300 btn-glow"
                 >
-                  Começar agora — é grátis
+                  Começar agora
                   <ArrowRight className="w-5 h-5" />
                 </Link>
                 <a
                   href="#how-it-works"
-                  className="inline-flex items-center gap-2 px-8 py-4 text-gray-300 font-semibold rounded-xl border border-white/10 hover:bg-white/5 hover:border-white/20 transition-all duration-300"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 sm:px-8 sm:py-4 text-gray-300 font-semibold rounded-xl border border-white/10 hover:bg-white/5 hover:border-white/20 transition-all duration-300"
                 >
                   Como funciona
                 </a>
               </div>
             </div>
 
-            {/* Right: Hero mockup com tilt */}
+            {/* Right: Hero mockup com tilt — desktop only. The mobile/tablet
+                rendering lives above the CTA buttons in the left column. */}
             <div className="hidden lg:block animate-fade-in-up animation-delay-400">
               <div className="relative animate-float-slow">
                 <TiltCard intensity={8}>
@@ -1120,9 +1138,39 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Stats Bar */}
-        <div className="absolute bottom-0 left-0 right-0 z-10 glass border-t border-white/5">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Stats Bar — flows in-page on mobile/tablet, sticks to the bottom
+            of the hero on lg+ where there's space for the absolute layout. */}
+        <div className="relative lg:absolute lg:bottom-0 lg:left-0 lg:right-0 z-10 glass border-t border-white/5">
+          {/* Mobile/tablet: infinite marquee */}
+          <div className="lg:hidden marquee py-4">
+            <div className="marquee-track">
+              {[...stats, ...stats].map((stat, i) => (
+                <div key={`a-${i}`} className="flex-shrink-0 text-center px-6">
+                  <div className="text-xl font-heading font-bold text-white glow-text">
+                    {stat.value}
+                  </div>
+                  <div className="text-[11px] text-gray-500 mt-1 whitespace-nowrap">
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="marquee-track" aria-hidden>
+              {[...stats, ...stats].map((stat, i) => (
+                <div key={`b-${i}`} className="flex-shrink-0 text-center px-6">
+                  <div className="text-xl font-heading font-bold text-white glow-text">
+                    {stat.value}
+                  </div>
+                  <div className="text-[11px] text-gray-500 mt-1 whitespace-nowrap">
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop: 4-up static grid */}
+          <div className="hidden lg:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/5">
               {stats.map((stat) => (
                 <div key={stat.label} className="py-5 px-4 text-center">
@@ -1138,7 +1186,7 @@ export default function Home() {
       </section>
 
       {/* ========== MARQUEE (transição) ========== */}
-      <section className="relative py-10 bg-dark-900 border-y border-white/5">
+      <section className="hidden lg:block relative py-10 bg-dark-900 border-y border-white/5">
         <div className="marquee">
           <div className="marquee-track">
             {[...marqueeTags, ...marqueeTags].map((tag, i) => (

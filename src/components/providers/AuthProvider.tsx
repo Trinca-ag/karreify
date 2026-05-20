@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, ReactNode } from "react";
+import { createContext, useContext, useMemo, ReactNode } from "react";
 import { User as FirebaseUser } from "firebase/auth";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@/types";
@@ -32,7 +32,25 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
 
-  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+  // useAuth returns a fresh object on every render. Without memoization,
+  // every consumer of AuthContext re-renders on any unrelated parent
+  // re-render — and AuthProvider sits above the entire app. We depend on
+  // each field individually (not `auth`) on purpose: depending on `auth`
+  // would defeat the memo since the object identity changes every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const value = useMemo<AuthContextType>(() => auth, [
+    auth.user,
+    auth.userData,
+    auth.loading,
+    auth.isAuthenticated,
+    auth.deviceVerified,
+    auth.isAdmin,
+    auth.logout,
+    auth.refreshUserData,
+    auth.markDeviceVerified,
+  ]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuthContext() {

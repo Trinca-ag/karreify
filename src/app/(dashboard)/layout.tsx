@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/providers/AuthProvider";
-import { JobsCacheProvider } from "@/components/providers/JobsCacheProvider";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -39,16 +38,17 @@ export default function DashboardLayout({
   }
 
   return (
-    <JobsCacheProvider>
-      <div className="min-h-screen bg-dark-900 text-white">
-        <Navbar />
-        <div className="flex pt-16">
-          <Sidebar />
-          <main className="flex-1 p-6 lg:p-8 overflow-auto">
-            <div className="max-w-6xl mx-auto">{children}</div>
-          </main>
-        </div>
+    <div className="min-h-screen bg-dark-900 text-white overflow-x-hidden">
+      <Navbar />
+      <div className="flex pt-16">
+        <Sidebar />
+        {/* min-w-0 lets the flex item shrink to fit the viewport. Without it,
+            `flex-1`'s default `min-width: auto` lets wide inner content push
+            <main> beyond the container, causing body-level horizontal scroll. */}
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-auto">
+          <div className="max-w-6xl mx-auto">{children}</div>
+        </main>
       </div>
-    </JobsCacheProvider>
+    </div>
   );
 }

@@ -10,6 +10,7 @@ import SaveButton from "@/components/ui/SaveButton";
 const AIProgressModal = dynamic(() => import("@/components/ui/AIProgressModal"), { ssr: false });
 const SaveLimitModal = dynamic(() => import("@/components/ui/SaveLimitModal"), { ssr: false });
 const SaveSuccessModal = dynamic(() => import("@/components/ui/SaveSuccessModal"), { ssr: false });
+const PdfPreview = dynamic(() => import("@/components/ui/PdfPreview"), { ssr: false });
 import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
@@ -424,27 +425,32 @@ export default function CoverLetterPage() {
         </fieldset>
       ) : (
         <div className="space-y-4 animate-fade-in-up animation-delay-200">
-          {/* Actions — above the PDF */}
-          <div className="flex flex-wrap items-center justify-start gap-3">
-            <Button
-              onClick={handleDownloadPDF}
-              disabled={downloadLoading || pdfLoading}
-              loading={downloadLoading}
-              className="px-6 glow-blue"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Baixar PDF
-            </Button>
-            <SaveButton
-              status={saver.status}
-              saving={saver.saving}
-              disabled={pdfLoading}
-              onClick={handleManualSave}
-              className="px-6"
-            />
+          {/* Actions — above the PDF. On mobile/tablet, Baixar PDF + Salvar
+              share a row (50/50) and Nova carta gets its own full-width row.
+              `lg:contents` flattens the inner wrapper on desktop so the
+              flex-wrap behavior matches the previous layout. */}
+          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+            <div className="flex gap-3 lg:contents">
+              <Button
+                onClick={handleDownloadPDF}
+                disabled={downloadLoading || pdfLoading}
+                loading={downloadLoading}
+                className="flex-1 lg:flex-initial lg:px-6 glow-blue"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Baixar PDF
+              </Button>
+              <SaveButton
+                status={saver.status}
+                saving={saver.saving}
+                disabled={pdfLoading}
+                onClick={handleManualSave}
+                className="flex-1 lg:flex-initial lg:px-6"
+              />
+            </div>
             <button
               onClick={handleReset}
-              className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition-colors text-sm flex-shrink-0"
+              className="w-full lg:w-auto flex items-center justify-center lg:justify-start gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition-colors text-sm lg:flex-shrink-0"
             >
               <RefreshCw className="w-4 h-4" /> Nova carta
             </button>
@@ -463,11 +469,10 @@ export default function CoverLetterPage() {
                     </div>
                   </div>
                 ) : pdfUrl ? (
-                  <div className="relative h-[75vh] lg:h-full">
-                    <iframe
-                      src={`${pdfUrl}#pagemode=none&navpanes=0&toolbar=1`}
-                      className="w-full h-full rounded-xl"
-                      style={{ minHeight: "500px" }}
+                  <div className="relative lg:h-full">
+                    <PdfPreview
+                      pdfUrl={pdfUrl}
+                      className="w-full h-[75vh] lg:h-full rounded-xl"
                       title="Preview da carta"
                     />
                     {pdfLoading && (

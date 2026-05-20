@@ -155,7 +155,7 @@ export default function ResetPasswordPage() {
               alt="Karreify"
               width={220}
               height={110}
-              className="object-contain h-20 w-auto"
+              className="object-contain h-12 sm:h-14 lg:h-20 w-auto"
             />
           </Link>
         </div>

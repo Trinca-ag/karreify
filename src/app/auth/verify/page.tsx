@@ -176,13 +176,13 @@ export default function VerifyPage() {
               alt="Karreify"
               width={220}
               height={110}
-              className="object-contain h-20 w-auto"
+              className="object-contain h-12 sm:h-14 lg:h-20 w-auto"
             />
           </Link>
         </div>
 
         {/* Card */}
-        <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8">
+        <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 sm:p-8">
           <div className="text-center mb-6">
             <div className="w-16 h-16 bg-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <ShieldCheck className="w-8 h-8 text-primary-400" />
@@ -200,7 +200,7 @@ export default function VerifyPage() {
           </div>
 
           {/* Code inputs */}
-          <div className="flex justify-center gap-2.5 mb-6" onPaste={handlePaste}>
+          <div className="flex justify-center gap-1.5 sm:gap-2.5 mb-6 px-1" onPaste={handlePaste}>
             {digits.map((digit, i) => (
               <input
                 key={i}
@@ -211,7 +211,7 @@ export default function VerifyPage() {
                 value={digit}
                 onChange={(e) => handleDigitChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
-                className="w-12 h-14 text-center text-xl font-bold bg-white/[0.05] border border-white/[0.1] rounded-xl text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-all"
+                className="w-9 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold bg-white/[0.05] border border-white/[0.1] rounded-xl text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-all"
               />
             ))}
           </div>

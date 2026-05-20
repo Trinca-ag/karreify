@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, BellRing, X } from "lucide-react";
 import toast from "react-hot-toast";
+import dynamic from "next/dynamic";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import {
   subscribeNotifications,
@@ -15,7 +16,13 @@ import {
 import { emitSavedFromNotification } from "@/lib/saver-events";
 import type { Notification, SavedItem, SavedItemType } from "@/types";
 import NotificationItem from "./NotificationItem";
-import SaveLimitModal from "@/components/ui/SaveLimitModal";
+
+// Modal only ever opens when the user clicks "Salvar" on a notification
+// and hits the saved-items quota. Loading it lazily keeps it out of the
+// navbar bundle that ships on every dashboard page.
+const SaveLimitModal = dynamic(() => import("@/components/ui/SaveLimitModal"), {
+  ssr: false,
+});
 
 interface ReplaceState {
   notificationId: string;
@@ -213,7 +220,7 @@ export default function NotificationBell() {
         {open && (
           <div
             ref={panelRef}
-            className="absolute right-0 mt-2 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl bg-dark-800 border border-white/10 shadow-2xl shadow-black/40 overflow-hidden z-50"
+            className="absolute -right-10 md:right-0 mt-2 w-[300px] md:w-[360px] max-w-[calc(100vw-1.5rem)] rounded-2xl bg-dark-800 border border-white/10 shadow-2xl shadow-black/40 overflow-hidden z-50"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
               <h3 className="text-sm font-heading font-semibold text-white">Notificações</h3>
