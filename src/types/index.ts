@@ -394,6 +394,7 @@ export const FEATURE_COSTS: Record<string, number> = {
   "career-roadmap": 20,
   "cover-letter": 1,
   "company-analysis": 1,
+  "jobs-search": 1,
 };
 
 // ==================== Credit Packs ====================

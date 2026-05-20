@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
+import Modal from "@/components/ui/Modal";
 import {
   Briefcase,
   Search,
@@ -18,16 +19,20 @@ import {
   ChevronRight,
   X,
   Sparkles,
+  Lock,
+  Coins,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   searchJobs,
   formatRelativeDate,
+  JobsSearchError,
   type Job,
   type DatePeriod,
 } from "@/services/jobs";
 import { BRAZILIAN_STATES, fetchCitiesByUF } from "@/lib/ibge";
 import { useJobsCache } from "@/components/providers/JobsCacheProvider";
+import { useAuthContext } from "@/components/providers/AuthProvider";
 
 const PERIOD_OPTIONS: { value: DatePeriod; label: string }[] = [
   { value: "today", label: "Hoje" },
@@ -64,9 +69,13 @@ export default function JobsPage() {
     cachePage,
   } = useJobsCache();
 
+  const { userData } = useAuthContext();
+  const isTester = userData?.role === "tester";
+
   const [cities, setCities] = useState<string[]>([]);
   const [citiesLoading, setCitiesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [testerLimitOpen, setTesterLimitOpen] = useState(false);
 
   useEffect(() => {
     if (!uf) {
@@ -78,6 +87,10 @@ export default function JobsPage() {
       .then((c) => setCities(c))
       .finally(() => setCitiesLoading(false));
   }, [uf]);
+
+  useEffect(() => {
+    if (isTester) setTesterLimitOpen(true);
+  }, [isTester]);
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(totalCount / PAGE_SIZE)),
@@ -136,6 +149,17 @@ export default function JobsPage() {
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (err) {
+      if (err instanceof JobsSearchError && err.code === "TESTER_LIMIT_REACHED") {
+        setTesterLimitOpen(true);
+        return;
+      }
+      if (err instanceof JobsSearchError && err.code === "INSUFFICIENT_CREDITS") {
+        toast.error("Você não tem moedas suficientes para buscar vagas.");
+        setError("Saldo de moedas insuficiente. Recarregue em Pacotes para continuar buscando.");
+        setJobs([]);
+        setTotalCount(0);
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Erro ao buscar vagas.";
       setError(msg);
       setJobs([]);
@@ -192,9 +216,6 @@ export default function JobsPage() {
                 Oportunidades reais publicadas na web, com no máximo 30 dias. Filtre por cargo, estado e cidade.
               </p>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 text-xs rounded-lg border border-emerald-500/20 flex-shrink-0 self-start mt-1">
-              Gratuito
-            </span>
           </div>
         </div>
       </section>
@@ -331,6 +352,25 @@ export default function JobsPage() {
               </Button>
             </div>
           </div>
+          {isTester ? (
+            <div className="flex items-start gap-2 px-3 py-2 bg-violet-500/5 border border-violet-500/15 rounded-lg text-[11px] text-violet-200 leading-relaxed">
+              <Lock className="w-3.5 h-3.5 text-violet-300 flex-shrink-0 mt-0.5" />
+              <span>
+                Conta no modo Tester: você tem direito a apenas{" "}
+                <span className="font-semibold text-white">1 busca</span>, sem
+                navegação entre páginas.
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 px-3 py-2 bg-yellow-500/5 border border-yellow-500/15 rounded-lg text-[11px] text-yellow-200 leading-relaxed">
+              <Coins className="w-3.5 h-3.5 text-yellow-300 flex-shrink-0 mt-0.5" />
+              <span>
+                Cada nova busca custa{" "}
+                <span className="font-semibold text-white">1 moeda</span>.
+                Navegar entre páginas dos resultados é gratuito.
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -392,7 +432,7 @@ export default function JobsPage() {
                 vagas encontradas
               </span>
             </div>
-            {totalCount > PAGE_SIZE && (
+            {!isTester && totalCount > PAGE_SIZE && (
               <span className="text-xs text-gray-500 px-3 py-1 bg-white/5 border border-white/10 rounded-lg">
                 página {page} de {totalPages.toLocaleString("pt-BR")}
               </span>
@@ -409,7 +449,7 @@ export default function JobsPage() {
             ))}
           </div>
 
-          {totalCount > PAGE_SIZE && (
+          {!isTester && totalCount > PAGE_SIZE && (
             <div className="flex items-center justify-center gap-2 pt-2">
               <button
                 onClick={() => runSearch(page - 1)}
@@ -441,6 +481,32 @@ export default function JobsPage() {
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={testerLimitOpen}
+        onClose={() => setTesterLimitOpen(false)}
+        size="sm"
+      >
+        <div className="text-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-black/20">
+            <Lock className="w-7 h-7 text-white" />
+          </div>
+          <h2 className="mt-5 text-lg font-bold text-white font-heading">
+            Limite de buscas atingido
+          </h2>
+          <p className="mt-2 text-sm text-gray-400">
+            Contas no modo Tester têm direito a apenas{" "}
+            <span className="text-white font-semibold">1 busca</span> de vagas.
+            Em caso de dúvidas, entre em contato com a equipe.
+          </p>
+          <Button
+            onClick={() => setTesterLimitOpen(false)}
+            className="mt-6 w-full"
+          >
+            Entendi
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

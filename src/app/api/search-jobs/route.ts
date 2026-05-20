@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, authErrorResponse } from "@/lib/auth-server";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
+import { deductCreditsServer, InsufficientCreditsError } from "@/lib/credits-server";
 import {
   getCached,
   setCached,
@@ -8,6 +11,8 @@ import {
   recordCall,
   type CachedJob,
 } from "@/lib/adzuna-usage";
+
+const JOBS_SEARCH_FEATURE = "jobs-search";
 
 const ADZUNA_API_BASE = "https://api.adzuna.com/v1/api/jobs/br/search";
 
@@ -133,6 +138,57 @@ export async function POST(request: NextRequest) {
     const safePeriod = period === "today" || period === "week" ? period : "month";
     const targetPage = Math.max(1, Math.min(20, page || 1));
     const trimmedKeywordEarly = keyword.trim().slice(0, 200);
+
+    // Pagination of an already-paid search doesn't charge. Charging only on
+    // page=1 keeps the cost predictable for users (1 moeda per "Buscar" click)
+    // and gives testers a single search that they can paginate through freely.
+    if (targetPage === 1) {
+      const userSnap = await adminDb.collection("users").doc(ctx.uid).get();
+      const role = userSnap.data()?.role === "tester" ? "tester" : "user";
+
+      if (role === "tester") {
+        const prior = await adminDb
+          .collection("users")
+          .doc(ctx.uid)
+          .collection("transactions")
+          .where("feature", "==", JOBS_SEARCH_FEATURE)
+          .where("type", "==", "debit")
+          .limit(1)
+          .get();
+        if (!prior.empty) {
+          return NextResponse.json(
+            {
+              error: "Testers têm direito a apenas 1 busca de vagas gratuita.",
+              code: "TESTER_LIMIT_REACHED",
+            },
+            { status: 403 }
+          );
+        }
+        await adminDb
+          .collection("users")
+          .doc(ctx.uid)
+          .collection("transactions")
+          .add({
+            amount: 0,
+            type: "debit",
+            feature: JOBS_SEARCH_FEATURE,
+            description: "Busca de vagas (tester — primeira grátis)",
+            createdAt: FieldValue.serverTimestamp(),
+          });
+      } else {
+        try {
+          await deductCreditsServer(ctx.uid, JOBS_SEARCH_FEATURE, "Busca de vagas");
+        } catch (e) {
+          if (e instanceof InsufficientCreditsError) {
+            return NextResponse.json(
+              { error: e.message, code: "INSUFFICIENT_CREDITS" },
+              { status: 402 }
+            );
+          }
+          throw e;
+        }
+      }
+    }
 
     const cacheKey = makeCacheKey({
       keyword: trimmedKeywordEarly,

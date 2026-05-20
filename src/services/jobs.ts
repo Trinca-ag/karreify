@@ -36,14 +36,30 @@ export const DATE_PERIOD_LABELS: Record<DatePeriod, string> = {
 
 import { authedFetch } from "@/lib/api-client";
 
+export class JobsSearchError extends Error {
+  code?: string;
+  status: number;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.code = code;
+    this.status = status;
+  }
+}
+
 export async function searchJobs(filters: JobSearchFilters): Promise<JobSearchResult> {
   const response = await authedFetch("/api/search-jobs", {
     method: "POST",
     body: JSON.stringify(filters),
   });
   if (!response.ok) {
-    const data = await response.json().catch(() => ({} as { error?: string }));
-    throw new Error(data.error || "Erro ao buscar vagas.");
+    const data = await response
+      .json()
+      .catch(() => ({} as { error?: string; code?: string }));
+    throw new JobsSearchError(
+      data.error || "Erro ao buscar vagas.",
+      response.status,
+      data.code
+    );
   }
   return response.json();
 }

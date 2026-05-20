@@ -78,7 +78,11 @@
       "Bash(find C:Karreifysrc *)",
       "Bash(git check-ignore *)",
       "Bash(npm uninstall *)",
-      "WebFetch(domain:www.oreateai.com)"
+      "WebFetch(domain:www.oreateai.com)",
+      "WebFetch(domain:jooble.org)",
+      "WebFetch(domain:serpapi.com)",
+      "WebFetch(domain:rapidapi.com)",
+      "Bash(dir C:Karreify *)"
     ]
   }
 }

@@ -4,7 +4,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { createRoleChangeNotification } from "@/lib/notifications-server";
 
-const TESTER_GRANT = 5;
+const TESTER_GRANT = 10;
 
 export async function POST(request: NextRequest) {
   try {
