@@ -40,6 +40,9 @@ import {
   EyeOff,
   RotateCcw,
   PenLine,
+  Menu,
+  X,
+  SlidersHorizontal,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -77,6 +80,23 @@ export default function CoverLetterPage() {
   const [hideSubject, setHideSubject] = useState(false);
   const [hideContactHeader, setHideContactHeader] = useState(false);
   const [editingField, setEditingField] = useState<"identidade" | "destinatario" | "assunto" | "corpo" | null>(null);
+  // Mobile/tablet drawer for the editor — desktop (lg+) keeps the panel
+  // inline; mobile gets a slide-in panel toggled by a hamburger.
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  useEffect(() => {
+    if (!editorOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEditorOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [editorOpen]);
 
   const editorDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingTextEdit = useRef(false);
@@ -425,32 +445,28 @@ export default function CoverLetterPage() {
         </fieldset>
       ) : (
         <div className="space-y-4 animate-fade-in-up animation-delay-200">
-          {/* Actions — above the PDF. On mobile/tablet, Baixar PDF + Salvar
-              share a row (50/50) and Nova carta gets its own full-width row.
-              `lg:contents` flattens the inner wrapper on desktop so the
-              flex-wrap behavior matches the previous layout. */}
-          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
-            <div className="flex gap-3 lg:contents">
-              <Button
-                onClick={handleDownloadPDF}
-                disabled={downloadLoading || pdfLoading}
-                loading={downloadLoading}
-                className="flex-1 lg:flex-initial lg:px-6 glow-blue"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Baixar PDF
-              </Button>
-              <SaveButton
-                status={saver.status}
-                saving={saver.saving}
-                disabled={pdfLoading}
-                onClick={handleManualSave}
-                className="flex-1 lg:flex-initial lg:px-6"
-              />
-            </div>
+          {/* Actions — above the PDF on desktop only. On mobile/tablet the
+              same set of buttons is rendered below the PDF (see further down). */}
+          <div className="hidden lg:flex flex-wrap items-center justify-start gap-3">
+            <Button
+              onClick={handleDownloadPDF}
+              disabled={downloadLoading || pdfLoading}
+              loading={downloadLoading}
+              className="px-6 glow-blue"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Baixar PDF
+            </Button>
+            <SaveButton
+              status={saver.status}
+              saving={saver.saving}
+              disabled={pdfLoading}
+              onClick={handleManualSave}
+              className="px-6"
+            />
             <button
               onClick={handleReset}
-              className="w-full lg:w-auto flex items-center justify-center lg:justify-start gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition-colors text-sm lg:flex-shrink-0"
+              className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] border border-white/[0.10] text-gray-300 rounded-xl hover:bg-white/[0.10] hover:border-white/20 transition-all duration-200 text-sm flex-shrink-0"
             >
               <RefreshCw className="w-4 h-4" /> Nova carta
             </button>
@@ -460,6 +476,19 @@ export default function CoverLetterPage() {
           <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
             {/* PDF Preview */}
             <div className="flex-1 min-w-0">
+              {/* Mobile/tablet trigger for the editor drawer */}
+              <div className="lg:hidden flex justify-end mb-3">
+                <button
+                  type="button"
+                  onClick={() => setEditorOpen(true)}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-white/[0.05] border border-white/[0.10] text-gray-200 rounded-xl hover:bg-white/[0.10] hover:border-white/20 transition-all text-sm"
+                  aria-label="Abrir ajustes da carta"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  Ajustes
+                  <Menu className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden lg:h-full">
                 {pdfLoading && !pdfUrl ? (
                   <div className="flex items-center justify-center h-[75vh] lg:h-full">
@@ -488,10 +517,66 @@ export default function CoverLetterPage() {
                   </div>
                 )}
               </div>
+
+              {/* Actions — mobile/tablet only, rendered below the PDF.
+                  Desktop renders the same set above the preview. */}
+              <div className="lg:hidden flex flex-col gap-3 mt-4">
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleDownloadPDF}
+                    disabled={downloadLoading || pdfLoading}
+                    loading={downloadLoading}
+                    className="flex-1 glow-blue"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Baixar PDF
+                  </Button>
+                  <SaveButton
+                    status={saver.status}
+                    saving={saver.saving}
+                    disabled={pdfLoading}
+                    onClick={handleManualSave}
+                    className="flex-1"
+                  />
+                </div>
+                <button
+                  onClick={handleReset}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/[0.05] border border-white/[0.10] text-gray-300 rounded-xl hover:bg-white/[0.10] hover:border-white/20 transition-all duration-200 text-sm"
+                >
+                  <RefreshCw className="w-4 h-4" /> Nova carta
+                </button>
+              </div>
             </div>
 
-            {/* Editor sidebar */}
-            <div className="w-full lg:w-80 lg:flex-shrink-0 space-y-4">
+            {/* Editor sidebar — inline on lg+, slide-in drawer from the right on
+                mobile/tablet. */}
+            {editorOpen && (
+              <div
+                className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+                onClick={() => setEditorOpen(false)}
+                aria-hidden
+              />
+            )}
+            <div
+              className={`space-y-4 z-50 transform transition-transform duration-300
+                fixed inset-y-0 right-0 w-[88vw] max-w-sm bg-dark-900 border-l border-white/[0.06] p-5 overflow-y-auto
+                lg:static lg:w-80 lg:max-w-none lg:flex-shrink-0 lg:bg-transparent lg:border-0 lg:p-0 lg:overflow-visible lg:transform-none lg:transition-none
+                ${editorOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}
+              role="dialog"
+              aria-modal={editorOpen ? true : undefined}
+              aria-label="Ajustes da carta"
+            >
+              {/* Mobile-only drawer close button */}
+              <div className="lg:hidden flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setEditorOpen(false)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                  aria-label="Fechar ajustes"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-white">Ajustes</h3>

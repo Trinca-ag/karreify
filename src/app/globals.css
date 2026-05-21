@@ -721,6 +721,35 @@ body {
   background: rgba(255, 255, 255, 0.15);
 }
 
+/* ========== Mobile Performance Overrides ==========
+   `backdrop-filter: blur(...)` and animated blurred orbs are the single
+   biggest source of scroll/navigation lag on mid/low mobile GPUs — every
+   scroll frame forces a full re-rasterization through the blur filter.
+   On screens < lg (1024px) we strip the blur (solid translucency stays),
+   freeze the pulse-glow orbs, and drop the grid overlay. Visual loss is
+   minimal on dark backgrounds; perf win is dramatic. Desktop is untouched. */
+@media (max-width: 1023px) {
+  .backdrop-blur,
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-3xl,
+  .glass,
+  .glass-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .animate-pulse-glow {
+    animation: none;
+    opacity: 0.35;
+  }
+  .bg-grid-pattern {
+    background-image: none;
+  }
+}
+
 /* ========== Reduced Motion ========== */
 @media (prefers-reduced-motion: reduce) {
   .particle,

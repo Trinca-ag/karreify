@@ -198,29 +198,17 @@ export default function ResumeAnalysisPage() {
         />
         <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
         <div className="relative p-8 md:p-12 animate-fade-in-up">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-medium text-primary-300 mb-4">
-                <FileSearch className="w-3 h-3" />
-                Análise de Currículo
-              </div>
-              <h1 className="text-3xl md:text-5xl font-bold text-white font-heading leading-[1.1] tracking-tight">
-                Receba feedback inteligente da{" "}
-                <span className="gradient-text">IA</span>
-              </h1>
-              <p className="text-gray-400 mt-4 text-base md:text-lg max-w-xl leading-relaxed">
-                Envie seu currículo e receba uma análise completa com pontuação, pontos fortes, fraquezas e sugestões personalizadas.
-              </p>
-            </div>
-            {result && (
-              <button
-                onClick={handleReset}
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition-colors text-sm flex-shrink-0 mt-2"
-              >
-                <RefreshCw className="w-4 h-4" /> Nova análise
-              </button>
-            )}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-medium text-primary-300 mb-4">
+            <FileSearch className="w-3 h-3" />
+            Análise de Currículo
           </div>
+          <h1 className="text-3xl md:text-5xl font-bold text-white font-heading leading-[1.1] tracking-tight">
+            Receba feedback inteligente da{" "}
+            <span className="gradient-text">IA</span>
+          </h1>
+          <p className="text-gray-400 mt-4 text-base md:text-lg max-w-xl leading-relaxed">
+            Envie seu currículo e receba uma análise completa com pontuação, pontos fortes, fraquezas e sugestões personalizadas.
+          </p>
         </div>
       </section>
 
@@ -251,6 +239,13 @@ export default function ResumeAnalysisPage() {
         </div>
       ) : (
         <div className="space-y-6">
+          <button
+            onClick={handleReset}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition-colors text-sm"
+          >
+            <RefreshCw className="w-4 h-4" /> Nova análise
+          </button>
+
           {/* Overall Score */}
           <div className="relative group bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] hover:border-primary-500/30 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden animate-fade-in-up animation-delay-200">
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500/10 group-hover:bg-primary-500/20 rounded-full blur-3xl transition-all duration-500 pointer-events-none" />

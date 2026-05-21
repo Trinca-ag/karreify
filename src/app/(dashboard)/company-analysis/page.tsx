@@ -498,32 +498,20 @@ export default function CompanyAnalysisPage() {
         />
         <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
         <div className="relative p-8 md:p-12 animate-fade-in-up">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-medium text-primary-300 mb-4">
-                <Building2 className="w-3 h-3" />
-                Empresa
-              </div>
-              <h1 className="text-3xl md:text-5xl font-bold text-white font-heading leading-[1.1] tracking-tight">
-                Pesquise antes da{" "}
-                <span className="gradient-text">entrevista</span>
-              </h1>
-              <p className="text-gray-400 mt-4 text-base md:text-lg max-w-xl leading-relaxed">
-                Descubra cultura, salários, processo seletivo e dicas personalizadas sobre qualquer empresa com IA.
-              </p>
-              <span className="inline-block mt-4 bg-primary-500/10 text-primary-400 text-xs rounded-lg px-2.5 py-1 border border-primary-500/20">
-                1 crédito por análise
-              </span>
-            </div>
-            {result && (
-              <button
-                onClick={handleReset}
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition-colors text-sm flex-shrink-0"
-              >
-                <RefreshCw className="w-4 h-4" /> Nova análise
-              </button>
-            )}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-medium text-primary-300 mb-4">
+            <Building2 className="w-3 h-3" />
+            Empresa
           </div>
+          <h1 className="text-3xl md:text-5xl font-bold text-white font-heading leading-[1.1] tracking-tight">
+            Pesquise antes da{" "}
+            <span className="gradient-text">entrevista</span>
+          </h1>
+          <p className="text-gray-400 mt-4 text-base md:text-lg max-w-xl leading-relaxed">
+            Descubra cultura, salários, processo seletivo e dicas personalizadas sobre qualquer empresa com IA.
+          </p>
+          <span className="inline-block mt-4 bg-primary-500/10 text-primary-400 text-xs rounded-lg px-2.5 py-1 border border-primary-500/20">
+            1 crédito por análise
+          </span>
         </div>
       </section>
 
@@ -587,9 +575,9 @@ export default function CompanyAnalysisPage() {
         </fieldset>
       ) : (
         <div className="space-y-4 animate-fade-in-up animation-delay-200">
-          <ResultView result={result} />
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button onClick={handleDownloadPDF} disabled={pdfLoading} loading={pdfLoading} className="px-8 glow-blue">
+          {/* Desktop only: buttons above the analysis, left-aligned */}
+          <div className="hidden lg:flex flex-wrap items-center justify-start gap-3">
+            <Button onClick={handleDownloadPDF} disabled={pdfLoading} loading={pdfLoading} className="px-6 glow-blue">
               <Download className="w-4 h-4 mr-2" />
               Baixar PDF
             </Button>
@@ -599,6 +587,36 @@ export default function CompanyAnalysisPage() {
               onClick={handleManualSave}
               className="px-6"
             />
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] border border-white/[0.10] text-gray-300 rounded-xl hover:bg-white/[0.10] hover:border-white/20 transition-all duration-200 text-sm flex-shrink-0"
+            >
+              <RefreshCw className="w-4 h-4" /> Nova análise
+            </button>
+          </div>
+
+          <ResultView result={result} />
+
+          {/* Mobile/tablet only: buttons below the analysis (like other features) */}
+          <div className="lg:hidden flex flex-col gap-3">
+            <div className="flex gap-3">
+              <Button onClick={handleDownloadPDF} disabled={pdfLoading} loading={pdfLoading} className="flex-1 glow-blue">
+                <Download className="w-4 h-4 mr-2" />
+                Baixar PDF
+              </Button>
+              <SaveButton
+                status={saver.status}
+                saving={saver.saving}
+                onClick={handleManualSave}
+                className="flex-1"
+              />
+            </div>
+            <button
+              onClick={handleReset}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/[0.05] border border-white/[0.10] text-gray-300 rounded-xl hover:bg-white/[0.10] hover:border-white/20 transition-all duration-200 text-sm"
+            >
+              <RefreshCw className="w-4 h-4" /> Nova análise
+            </button>
           </div>
         </div>
       )}
