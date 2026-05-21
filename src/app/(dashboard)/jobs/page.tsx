@@ -590,12 +590,16 @@ function JobCard({
 
       {/* Actions */}
       <div className="relative pt-3 mt-auto border-t border-white/[0.06] space-y-2">
-        {/* Primary CTA */}
+        {/* Primary CTA — link direto pra redirect_url da Adzuna pra preservar
+            o tracking de clique (receita por clique). O proxy server-side em
+            /api/jobs/redirect (route.ts) está mantido caso queira voltar pra
+            uma UX sem interstitial — basta trocar o href de volta pra
+            `/api/jobs/redirect?url=${encodeURIComponent(job.link)}`. */}
         {job.link && (
           <a
-            href={`/api/jobs/redirect?url=${encodeURIComponent(job.link)}`}
+            href={job.link}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="noopener noreferrer sponsored"
             className="flex items-center justify-center gap-2 w-full px-3 py-2.5 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white font-semibold rounded-xl text-sm transition-all shadow-lg shadow-primary-600/20 hover:shadow-primary-500/30 glow-blue"
           >
             Ver vaga
