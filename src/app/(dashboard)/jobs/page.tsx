@@ -474,7 +474,7 @@ export default function JobsPage() {
           <div className="flex items-start gap-2.5 px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl mt-6">
             <Clock className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-gray-500 leading-relaxed">
-              Dados fornecidos pela Adzuna. Vagas com até 30 dias de publicação.
+              Vagas agregadas via Adzuna e Jooble, com até 30 dias de publicação.
               Pode haver vagas já preenchidas — verifique o anúncio original
               antes de se candidatar.
             </p>

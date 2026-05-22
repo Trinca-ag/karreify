@@ -11,12 +11,21 @@ import {
   Search,
   TrendingUp,
   Zap,
+  Shuffle,
 } from "lucide-react";
+
+type JobProvider = "adzuna" | "jooble";
 
 interface BucketStats {
   apiCalls: number;
   apiErrors: number;
   cacheHits: number;
+  billable: number;
+}
+
+interface ProviderStats {
+  apiCalls: number;
+  apiErrors: number;
   billable: number;
 }
 
@@ -27,16 +36,20 @@ interface AdzunaUsageData {
     perWeek: number;
     perMonth: number;
   };
+  threshold: number;
+  adzunaDisabled: boolean;
   counts: {
     lastMinute: BucketStats;
     daily: BucketStats;
     weekly: BucketStats;
     monthly: BucketStats;
   };
+  jooble: ProviderStats;
   topQueries: { keyword: string; count: number }[];
   recentCalls: {
     ts: string;
     status: "cache_hit" | "api_call" | "api_error";
+    provider: JobProvider;
     keyword: string;
     uf: string;
     city: string;
@@ -92,7 +105,10 @@ function pctTone(pct: number): {
   };
 }
 
-function statusPill(status: "cache_hit" | "api_call" | "api_error") {
+function statusPill(
+  status: "cache_hit" | "api_call" | "api_error",
+  provider: JobProvider
+) {
   if (status === "cache_hit") {
     return {
       label: "Cache",
@@ -100,15 +116,25 @@ function statusPill(status: "cache_hit" | "api_call" | "api_error") {
     };
   }
   if (status === "api_call") {
-    return {
-      label: "Adzuna",
-      className: "bg-blue-500/10 text-blue-300 border-blue-500/20",
-    };
+    return provider === "jooble"
+      ? {
+          label: "Jooble",
+          className: "bg-violet-500/10 text-violet-300 border-violet-500/20",
+        }
+      : {
+          label: "Adzuna",
+          className: "bg-blue-500/10 text-blue-300 border-blue-500/20",
+        };
   }
-  return {
-    label: "Erro",
-    className: "bg-red-500/10 text-red-300 border-red-500/20",
-  };
+  return provider === "jooble"
+    ? {
+        label: "Erro Jooble",
+        className: "bg-red-500/10 text-red-300 border-red-500/20",
+      }
+    : {
+        label: "Erro Adzuna",
+        className: "bg-red-500/10 text-red-300 border-red-500/20",
+      };
 }
 
 function formatTime(iso: string): string {
@@ -164,10 +190,11 @@ export default function AdminAdzunaPage() {
         <div>
           <h1 className="text-2xl font-bold font-heading text-white flex items-center gap-3">
             <Activity className="w-7 h-7 text-blue-400" />
-            Consumo Adzuna
+            Consumo de vagas
           </h1>
           <p className="text-gray-400 mt-1 text-sm">
-            Monitoramento de chamadas à API de vagas (limites do free tier).
+            Adzuna (primário) + Jooble (fallback acima de{" "}
+            {data?.threshold?.toLocaleString("pt-BR") ?? "—"} chamadas/mês).
           </p>
         </div>
         <button
@@ -198,6 +225,21 @@ export default function AdminAdzunaPage() {
         </div>
       ) : (
         <>
+          {data.adzunaDisabled && (
+            <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+              <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm leading-relaxed">
+                <p className="text-amber-200 font-semibold">
+                  Adzuna desabilitado via ADZUNA_DISABLED=true
+                </p>
+                <p className="text-amber-200/80 text-xs mt-0.5">
+                  Todas as buscas estão indo direto pra Jooble. Remova a flag
+                  do .env.local pra reativar a Adzuna.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Quota cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {QUOTA_CARDS.map((card) => {
@@ -264,7 +306,14 @@ export default function AdminAdzunaPage() {
           </div>
 
           {/* Secondary stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatBlock
+              icon={<Shuffle className="w-5 h-5 text-violet-400" />}
+              label="Jooble no mês"
+              value={data.jooble.billable.toLocaleString("pt-BR")}
+              hint={`${data.jooble.apiCalls} chamadas · ${data.jooble.apiErrors} erros`}
+              tone="violet"
+            />
             <StatBlock
               icon={<Database className="w-5 h-5 text-emerald-400" />}
               label="Taxa de cache"
@@ -283,7 +332,7 @@ export default function AdminAdzunaPage() {
             />
             <StatBlock
               icon={<AlertTriangle className="w-5 h-5 text-red-400" />}
-              label="Erros (30d)"
+              label="Erros Adzuna (30d)"
               value={data.counts.monthly.apiErrors.toLocaleString("pt-BR")}
               hint="HTTP 4xx/5xx da Adzuna"
               tone="red"
@@ -368,7 +417,7 @@ export default function AdminAdzunaPage() {
                     </thead>
                     <tbody className="divide-y divide-white/[0.04]">
                       {data.recentCalls.map((call, idx) => {
-                        const pill = statusPill(call.status);
+                        const pill = statusPill(call.status, call.provider);
                         const local = [call.city, call.uf]
                           .filter(Boolean)
                           .join(", ");
@@ -411,10 +460,12 @@ export default function AdminAdzunaPage() {
           <div className="flex items-start gap-2.5 px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
             <Search className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-gray-500 leading-relaxed">
-              Limites do free tier Adzuna conforme Terms of Service: 25/min,
-              250/dia, 1.000/sem, 2.500/mês. Apenas chamadas reais (API/erro) contam
-              para o quota — cache hits são gratuitos. Atualizado em{" "}
-              {formatTime(data.generatedAt)}.
+              Limites do free tier Adzuna: 25/min, 250/dia, 1.000/sem,
+              2.500/mês. Acima de{" "}
+              {data.threshold?.toLocaleString("pt-BR") ?? "—"} chamadas no mês
+              o sistema usa Jooble como fonte alternativa; também há fallback
+              automático em caso de HTTP 429 da Adzuna. Cache hits não consomem
+              quota. Atualizado em {formatTime(data.generatedAt)}.
             </p>
           </div>
         </>
@@ -434,13 +485,15 @@ function StatBlock({
   label: string;
   value: string;
   hint: string;
-  tone: "emerald" | "blue" | "red";
+  tone: "emerald" | "blue" | "red" | "violet";
 }) {
   const borderClass =
     tone === "emerald"
       ? "border-emerald-500/10"
       : tone === "blue"
       ? "border-blue-500/10"
+      : tone === "violet"
+      ? "border-violet-500/10"
       : "border-red-500/10";
 
   return (

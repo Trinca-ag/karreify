@@ -9,89 +9,104 @@ import {
   setCached,
   makeCacheKey,
   recordCall,
+  getAdzunaMonthlyBillable,
+  bumpAdzunaCount,
+  ADZUNA_MONTHLY_THRESHOLD,
   type CachedJob,
+  type JobProvider,
 } from "@/lib/adzuna-usage";
+import { callAdzuna, AdzunaApiError } from "@/lib/adzuna";
+import { callJooble, JoobleApiError } from "@/lib/jooble";
 
 const JOBS_SEARCH_FEATURE = "jobs-search";
 
-const ADZUNA_API_BASE = "https://api.adzuna.com/v1/api/jobs/br/search";
-
-interface AdzunaJob {
-  id?: string | number;
-  title?: string;
-  description?: string;
-  company?: { display_name?: string };
-  location?: { display_name?: string; area?: string[] };
-  salary_min?: number;
-  salary_max?: number;
-  salary_is_predicted?: string;
-  contract_type?: string;
-  contract_time?: string;
-  redirect_url?: string;
-  created?: string;
-  category?: { label?: string };
+interface SearchParams {
+  keyword: string;
+  uf?: string;
+  city?: string;
+  period: "today" | "week" | "month";
+  exactMatch: boolean;
+  page: number;
 }
 
-interface AdzunaResponse {
-  count?: number;
-  results?: AdzunaJob[];
+interface ProviderSuccess {
+  ok: true;
+  provider: JobProvider;
+  jobs: CachedJob[];
+  totalCount: number;
+  durationMs: number;
 }
 
-function periodToMaxDays(period: "today" | "week" | "month"): number {
-  if (period === "today") return 1;
-  if (period === "week") return 7;
-  return 30;
+interface ProviderFailure {
+  ok: false;
+  provider: JobProvider;
+  status: number;
+  body: string;
+  durationMs: number;
 }
 
-function buildWhere(uf?: string, city?: string): string {
-  if (city) return city;
-  if (uf) return uf;
-  return "";
+async function searchViaAdzuna(
+  params: SearchParams
+): Promise<ProviderSuccess | ProviderFailure> {
+  try {
+    const result = await callAdzuna(params);
+    return {
+      ok: true,
+      provider: "adzuna",
+      jobs: result.jobs,
+      totalCount: result.totalCount,
+      durationMs: result.durationMs,
+    };
+  } catch (err) {
+    if (err instanceof AdzunaApiError) {
+      return {
+        ok: false,
+        provider: "adzuna",
+        status: err.status,
+        body: err.body,
+        durationMs: err.durationMs,
+      };
+    }
+    throw err;
+  }
 }
 
-function stripHtml(input?: string): string {
-  if (!input) return "";
-  return input
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, " ")
-    .trim();
+async function searchViaJooble(
+  params: SearchParams
+): Promise<ProviderSuccess | ProviderFailure> {
+  try {
+    const result = await callJooble(params);
+    return {
+      ok: true,
+      provider: "jooble",
+      jobs: result.jobs,
+      totalCount: result.totalCount,
+      durationMs: result.durationMs,
+    };
+  } catch (err) {
+    if (err instanceof JoobleApiError) {
+      return {
+        ok: false,
+        provider: "jooble",
+        status: err.status,
+        body: err.body,
+        durationMs: err.durationMs,
+      };
+    }
+    throw err;
+  }
 }
 
-/** Adzuna returns the literal string "Unknown" when a field is missing
- *  (company, category, etc.) instead of omitting it. Treat those as empty. */
-function cleanText(input?: string): string {
-  const s = stripHtml(input);
-  return s.toLowerCase() === "unknown" ? "" : s;
-}
-
-function formatSalary(min?: number, max?: number, predicted?: string): string {
-  if (!min && !max) return "";
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      maximumFractionDigits: 0,
-    }).format(n);
-  let str = "";
-  if (min && max) str = min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`;
-  else if (min) str = `A partir de ${fmt(min)}`;
-  else if (max) str = `Até ${fmt(max)}`;
-  if (predicted === "1" && str) str += " (est.)";
-  return str;
-}
-
-function formatContractType(contractType?: string, contractTime?: string): string {
-  const parts: string[] = [];
-  if (contractTime === "full_time") parts.push("Tempo integral");
-  else if (contractTime === "part_time") parts.push("Meio período");
-  if (contractType === "permanent") parts.push("CLT/Efetivo");
-  else if (contractType === "contract") parts.push("Contrato/PJ");
-  return parts.join(" · ");
+function errorHint(provider: JobProvider, status: number): string {
+  if (status === 401 || status === 403) {
+    return provider === "adzuna"
+      ? "Credenciais Adzuna inválidas. Verifique ADZUNA_APP_ID e ADZUNA_APP_KEY no .env.local e reinicie o servidor."
+      : "Credenciais Jooble inválidas. Verifique JOOBLE_API_KEY no .env.local e reinicie o servidor.";
+  }
+  if (status === 429) {
+    return "Limite de chamadas da fonte de vagas atingido. Tente novamente em alguns minutos.";
+  }
+  return "Erro ao consultar fonte de vagas. Tente novamente em instantes.";
 }
 
 export async function POST(request: NextRequest) {
@@ -123,21 +138,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const appId = process.env.ADZUNA_APP_ID;
-    const appKey = process.env.ADZUNA_APP_KEY;
-    if (!appId || !appKey) {
-      return NextResponse.json(
-        {
-          error:
-            "Integração com Adzuna não configurada. Configure ADZUNA_APP_ID e ADZUNA_APP_KEY no .env.local.",
-        },
-        { status: 500 }
-      );
-    }
-
     const safePeriod = period === "today" || period === "week" ? period : "month";
     const targetPage = Math.max(1, Math.min(20, page || 1));
-    const trimmedKeywordEarly = keyword.trim().slice(0, 200);
+    const trimmedKeyword = keyword.trim().slice(0, 200);
+    const searchParams: SearchParams = {
+      keyword: trimmedKeyword,
+      uf,
+      city,
+      period: safePeriod,
+      exactMatch: !!exactMatch,
+      page: targetPage,
+    };
 
     // Pagination of an already-paid search doesn't charge. Charging only on
     // page=1 keeps the cost predictable for users (1 moeda per "Buscar" click)
@@ -190,20 +201,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const cacheKey = makeCacheKey({
-      keyword: trimmedKeywordEarly,
-      uf,
-      city,
-      period: safePeriod,
-      exactMatch: !!exactMatch,
-      page: targetPage,
-    });
-
+    const cacheKey = makeCacheKey(searchParams);
     const cached = await getCached(cacheKey);
     if (cached) {
       recordCall({
         status: "cache_hit",
-        keyword: trimmedKeywordEarly,
+        provider: "adzuna", // Cache hits don't actually call any provider — keeping "adzuna" for legacy chart continuity.
+        keyword: trimmedKeyword,
         uf: uf ?? "",
         city: city ?? "",
         period: safePeriod,
@@ -218,112 +222,100 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // sort_by=date makes the Adzuna BR API surface jobs from a feed that
-    // strips company.display_name (verified empirically — same query without
-    // sort_by returns 100% jobs with company names, with sort_by=date returns
-    // 0%). max_days_old already bounds the time window, so relevance sort is
-    // the better trade.
-    const params = new URLSearchParams({
-      app_id: appId,
-      app_key: appKey,
-      results_per_page: "20",
-      max_days_old: String(periodToMaxDays(safePeriod)),
-      "content-type": "application/json",
-    });
+    // Provider selection: stay on Adzuna while monthly usage is under the
+    // soft threshold; switch to Jooble preventively above it. The actual
+    // Adzuna 2500/month ceiling is the hard backstop — see the 429 handler.
+    // ADZUNA_DISABLED=true forces all traffic to Jooble (useful for testing
+    // or as a kill-switch during an Adzuna incident).
+    const adzunaDisabled = process.env.ADZUNA_DISABLED === "true";
+    let preferAdzuna = false;
+    if (!adzunaDisabled) {
+      const adzunaUsage = await getAdzunaMonthlyBillable();
+      preferAdzuna = adzunaUsage < ADZUNA_MONTHLY_THRESHOLD;
+    } else {
+      console.log("[search-jobs] ADZUNA_DISABLED=true, routing to Jooble");
+    }
 
-    if (exactMatch) params.set("what_phrase", trimmedKeywordEarly);
-    else params.set("what", trimmedKeywordEarly);
+    let result = preferAdzuna
+      ? await searchViaAdzuna(searchParams)
+      : await searchViaJooble(searchParams);
 
-    const where = buildWhere(uf, city);
-    if (where) params.set("where", where);
-
-    const url = `${ADZUNA_API_BASE}/${targetPage}?${params.toString()}`;
-    const sanitized = url
-      .replace(encodeURIComponent(appId), "***")
-      .replace(encodeURIComponent(appKey), "***")
-      .replace(appId, "***")
-      .replace(appKey, "***");
-    console.log("[Adzuna] GET", sanitized);
-
-    const startedAt = Date.now();
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    });
-    const durationMs = Date.now() - startedAt;
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      console.error(
-        "[Adzuna] HTTP",
-        response.status,
-        response.statusText,
-        "body:",
-        text
-      );
+    // Reactive failover: if Adzuna refused with 429 (rate limit), retry via
+    // Jooble for this single request. Other 4xx/5xx aren't worth retrying —
+    // auth errors mean the credentials need fixing, 5xx is usually transient.
+    // Record the 429 as a billable Adzuna error so the threshold check and
+    // admin panel see the failed attempt.
+    if (!result.ok && result.provider === "adzuna" && result.status === 429) {
+      console.warn("[search-jobs] Adzuna 429, falling back to Jooble");
       recordCall({
         status: "api_error",
-        keyword: trimmedKeywordEarly,
+        provider: "adzuna",
+        keyword: trimmedKeyword,
         uf: uf ?? "",
         city: city ?? "",
         period: safePeriod,
         page: targetPage,
         exactMatch: !!exactMatch,
         userId: ctx.uid,
-        httpStatus: response.status,
-        durationMs,
+        httpStatus: 429,
+        durationMs: result.durationMs,
       });
+      bumpAdzunaCount();
+      result = await searchViaJooble(searchParams);
+    }
+
+    if (!result.ok) {
+      recordCall({
+        status: "api_error",
+        provider: result.provider,
+        keyword: trimmedKeyword,
+        uf: uf ?? "",
+        city: city ?? "",
+        period: safePeriod,
+        page: targetPage,
+        exactMatch: !!exactMatch,
+        userId: ctx.uid,
+        httpStatus: result.status,
+        durationMs: result.durationMs,
+      });
+      if (result.provider === "adzuna") bumpAdzunaCount();
+
       const isDev = process.env.NODE_ENV !== "production";
-      const hint =
-        response.status === 401 || response.status === 403
-          ? "Credenciais Adzuna inválidas. Verifique ADZUNA_APP_ID e ADZUNA_APP_KEY no .env.local e reinicie o servidor."
-          : response.status === 429
-          ? "Limite de chamadas Adzuna atingido. Tente novamente em alguns minutos."
-          : "Erro ao consultar fonte de vagas. Tente novamente em instantes.";
       return NextResponse.json(
         {
-          error: hint,
+          error: errorHint(result.provider, result.status),
           ...(isDev && {
-            debug: { status: response.status, body: text.slice(0, 500) },
+            debug: {
+              provider: result.provider,
+              status: result.status,
+              body: result.body.slice(0, 500),
+            },
           }),
         },
         { status: 502 }
       );
     }
 
-    const data = (await response.json()) as AdzunaResponse;
-    const jobs: CachedJob[] = (data.results || []).map((j, idx) => ({
-      id: String(j.id || `${idx}-${Date.now()}`),
-      title: cleanText(j.title) || "Vaga sem título",
-      company: cleanText(j.company?.display_name),
-      location: cleanText(j.location?.display_name),
-      snippet: stripHtml(j.description),
-      salary: formatSalary(j.salary_min, j.salary_max, j.salary_is_predicted),
-      source: cleanText(j.category?.label),
-      type: formatContractType(j.contract_type, j.contract_time),
-      link: j.redirect_url || "",
-      updated: j.created || "",
-    }));
-    const totalCount = data.count || 0;
-
     recordCall({
       status: "api_call",
-      keyword: trimmedKeywordEarly,
+      provider: result.provider,
+      keyword: trimmedKeyword,
       uf: uf ?? "",
       city: city ?? "",
       period: safePeriod,
       page: targetPage,
       exactMatch: !!exactMatch,
       userId: ctx.uid,
-      httpStatus: response.status,
-      durationMs,
+      httpStatus: 200,
+      durationMs: result.durationMs,
     });
+    if (result.provider === "adzuna") bumpAdzunaCount();
 
     setCached(
       cacheKey,
-      { jobs, totalCount, page: targetPage },
+      { jobs: result.jobs, totalCount: result.totalCount, page: targetPage },
       {
-        keyword: trimmedKeywordEarly,
+        keyword: trimmedKeyword,
         uf: uf ?? "",
         city: city ?? "",
         period: safePeriod,
@@ -332,8 +324,8 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json({
-      jobs,
-      totalCount,
+      jobs: result.jobs,
+      totalCount: result.totalCount,
       page: targetPage,
     });
   } catch (err) {

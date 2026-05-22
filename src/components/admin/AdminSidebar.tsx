@@ -14,7 +14,7 @@ const menuItems = [
   { label: "Administradores", href: "/admin/admins", icon: Shield },
   { label: "Suporte", href: "/admin/support", icon: LifeBuoy },
   { label: "Feedbacks", href: "/admin/feedbacks", icon: MessageSquareHeart },
-  { label: "Consumo Adzuna", href: "/admin/adzuna", icon: Activity },
+  { label: "Consumo de vagas", href: "/admin/adzuna", icon: Activity },
 ];
 
 function NavItem({ item, active, onClick }: { item: typeof menuItems[0]; active: boolean; onClick?: () => void }) {

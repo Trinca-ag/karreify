@@ -10,6 +10,12 @@ export const ADZUNA_LIMITS = {
   perMonth: 2500,
 } as const;
 
+/** Switch to Jooble preventively when monthly Adzuna usage hits this number.
+ *  Buffer of 200 absorbs concurrent races and lets manual testing breathe. */
+export const ADZUNA_MONTHLY_THRESHOLD = 2300;
+
+export type JobProvider = "adzuna" | "jooble";
+
 const CACHE_TTL_MS = 30 * 60 * 1000;
 const CACHE_COLLECTION = "adzuna_cache";
 const CALLS_COLLECTION = "adzuna_calls";
@@ -101,6 +107,9 @@ export type CallStatus = "cache_hit" | "api_call" | "api_error";
 
 export interface CallRecord {
   status: CallStatus;
+  /** Which job provider answered the call. Older records without this field
+   *  predate the multi-provider rollout — treat them as "adzuna". */
+  provider: JobProvider;
   keyword: string;
   uf: string;
   city: string;
@@ -121,5 +130,83 @@ export async function recordCall(call: CallRecord): Promise<void> {
     });
   } catch (err) {
     console.error("[adzuna-tracker] write error", err);
+  }
+}
+
+/** In-process memoization of the monthly billable Adzuna count.
+ *  Provider selection happens on every search, but the 2500/month quota
+ *  moves slowly — caching for 60s avoids a Firestore round-trip per request
+ *  without letting the threshold check go meaningfully stale. */
+let adzunaCountCache: { value: number; expiresAt: number } | null = null;
+const ADZUNA_COUNT_CACHE_MS = 60 * 1000;
+
+/** Count of api_call + api_error records for Adzuna in the last 30 days,
+ *  used only to decide when to switch to Jooble preventively.
+ *
+ *  Counts Adzuna explicitly *plus legacy records without a provider field*
+ *  (Firestore equality filter excludes missing fields, so we do this in two
+ *  passes via `total - jooble`). Errors are included because they consume
+ *  the Adzuna free tier too. */
+export async function getAdzunaMonthlyBillable(): Promise<number> {
+  const now = Date.now();
+  if (adzunaCountCache && adzunaCountCache.expiresAt > now) {
+    return adzunaCountCache.value;
+  }
+
+  try {
+    const monthAgo = Timestamp.fromMillis(now - 30 * 24 * 60 * 60 * 1000);
+    const totalCall = adminDb
+      .collection(CALLS_COLLECTION)
+      .where("ts", ">=", monthAgo)
+      .where("status", "==", "api_call")
+      .count()
+      .get();
+    const totalError = adminDb
+      .collection(CALLS_COLLECTION)
+      .where("ts", ">=", monthAgo)
+      .where("status", "==", "api_error")
+      .count()
+      .get();
+    const joobleCall = adminDb
+      .collection(CALLS_COLLECTION)
+      .where("ts", ">=", monthAgo)
+      .where("status", "==", "api_call")
+      .where("provider", "==", "jooble")
+      .count()
+      .get();
+    const joobleError = adminDb
+      .collection(CALLS_COLLECTION)
+      .where("ts", ">=", monthAgo)
+      .where("status", "==", "api_error")
+      .where("provider", "==", "jooble")
+      .count()
+      .get();
+
+    const [tc, te, jc, je] = await Promise.all([
+      totalCall,
+      totalError,
+      joobleCall,
+      joobleError,
+    ]);
+
+    const value =
+      tc.data().count +
+      te.data().count -
+      jc.data().count -
+      je.data().count;
+    adzunaCountCache = { value, expiresAt: now + ADZUNA_COUNT_CACHE_MS };
+    return value;
+  } catch (err) {
+    console.error("[adzuna-tracker] count error", err);
+    // On read failure, return 0 so we don't block Adzuna unnecessarily — the
+    // real 429 from Adzuna itself is the hard backstop.
+    return 0;
+  }
+}
+
+/** Force-invalidate the count cache (e.g. after recording a new api_call). */
+export function bumpAdzunaCount(): void {
+  if (adzunaCountCache) {
+    adzunaCountCache.value += 1;
   }
 }

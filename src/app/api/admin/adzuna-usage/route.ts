@@ -2,13 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { Timestamp } from "firebase-admin/firestore";
 import { verifyAdminRequest } from "@/utils/admin-verify";
 import { adminDb } from "@/lib/firebase-admin";
-import { ADZUNA_LIMITS } from "@/lib/adzuna-usage";
+import {
+  ADZUNA_LIMITS,
+  ADZUNA_MONTHLY_THRESHOLD,
+  type JobProvider,
+} from "@/lib/adzuna-usage";
 
 export const dynamic = "force-dynamic";
 
 interface CallDoc {
   ts?: Timestamp;
   status: "cache_hit" | "api_call" | "api_error";
+  /** Optional for backward compatibility: pre-multi-provider records
+   *  default to "adzuna". */
+  provider?: JobProvider;
   keyword: string;
   uf: string;
   city: string;
@@ -28,19 +35,49 @@ interface BucketStats {
   billable: number;
 }
 
+interface ProviderStats {
+  apiCalls: number;
+  apiErrors: number;
+  billable: number;
+}
+
 function emptyBucket(): BucketStats {
   return { apiCalls: 0, apiErrors: 0, cacheHits: 0, billable: 0 };
 }
 
-function accumulate(bucket: BucketStats, status: CallDoc["status"]) {
+function emptyProvider(): ProviderStats {
+  return { apiCalls: 0, apiErrors: 0, billable: 0 };
+}
+
+/** Accumulate into the Adzuna quota buckets. Cache hits are provider-agnostic
+ *  and always count; api_call/api_error only count when the provider is
+ *  Adzuna (or missing — legacy data predates the multi-provider rollout). */
+function accumulateAdzuna(
+  bucket: BucketStats,
+  status: CallDoc["status"],
+  isAdzuna: boolean
+) {
+  if (status === "cache_hit") {
+    bucket.cacheHits += 1;
+    return;
+  }
+  if (!isAdzuna) return;
   if (status === "api_call") {
     bucket.apiCalls += 1;
     bucket.billable += 1;
   } else if (status === "api_error") {
     bucket.apiErrors += 1;
     bucket.billable += 1;
-  } else if (status === "cache_hit") {
-    bucket.cacheHits += 1;
+  }
+}
+
+function accumulateProvider(bucket: ProviderStats, status: CallDoc["status"]) {
+  if (status === "api_call") {
+    bucket.apiCalls += 1;
+    bucket.billable += 1;
+  } else if (status === "api_error") {
+    bucket.apiErrors += 1;
+    bucket.billable += 1;
   }
 }
 
@@ -67,6 +104,7 @@ export async function GET(request: NextRequest) {
     const daily = emptyBucket();
     const weekly = emptyBucket();
     const monthly = emptyBucket();
+    const joobleMonthly = emptyProvider();
 
     const keywordTally = new Map<string, number>();
     let totalLatencyMs = 0;
@@ -75,6 +113,7 @@ export async function GET(request: NextRequest) {
     const recent: Array<{
       ts: string;
       status: CallDoc["status"];
+      provider: JobProvider;
       keyword: string;
       uf: string;
       city: string;
@@ -89,12 +128,19 @@ export async function GET(request: NextRequest) {
       const tsMs = data.ts?.toMillis() ?? 0;
       if (!tsMs) return;
 
-      accumulate(monthly, data.status);
-      if (tsMs >= weekAgo) accumulate(weekly, data.status);
-      if (tsMs >= dayAgo) accumulate(daily, data.status);
-      if (tsMs >= minuteAgo) accumulate(lastMinute, data.status);
+      const provider: JobProvider = data.provider ?? "adzuna";
+      const isAdzuna = provider === "adzuna";
 
-      if (data.status === "api_call") {
+      accumulateAdzuna(monthly, data.status, isAdzuna);
+      if (tsMs >= weekAgo) accumulateAdzuna(weekly, data.status, isAdzuna);
+      if (tsMs >= dayAgo) accumulateAdzuna(daily, data.status, isAdzuna);
+      if (tsMs >= minuteAgo) accumulateAdzuna(lastMinute, data.status, isAdzuna);
+
+      if (provider === "jooble") {
+        accumulateProvider(joobleMonthly, data.status);
+      }
+
+      if (data.status === "api_call" && isAdzuna) {
         const kw = (data.keyword || "").trim().toLowerCase();
         if (kw) keywordTally.set(kw, (keywordTally.get(kw) ?? 0) + 1);
         if (typeof data.durationMs === "number") {
@@ -107,6 +153,7 @@ export async function GET(request: NextRequest) {
         recent.push({
           ts: new Date(tsMs).toISOString(),
           status: data.status,
+          provider,
           keyword: data.keyword || "",
           uf: data.uf || "",
           city: data.city || "",
@@ -123,7 +170,7 @@ export async function GET(request: NextRequest) {
       .slice(0, 10)
       .map(([keyword, count]) => ({ keyword, count }));
 
-    const totalRequests = monthly.billable + monthly.cacheHits;
+    const totalRequests = monthly.billable + monthly.cacheHits + joobleMonthly.billable;
     const cacheHitRate = totalRequests > 0 ? monthly.cacheHits / totalRequests : 0;
     const avgLatencyMs = latencySamples > 0 ? Math.round(totalLatencyMs / latencySamples) : 0;
 
@@ -131,7 +178,10 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         limits: ADZUNA_LIMITS,
+        threshold: ADZUNA_MONTHLY_THRESHOLD,
+        adzunaDisabled: process.env.ADZUNA_DISABLED === "true",
         counts: { lastMinute, daily, weekly, monthly },
+        jooble: joobleMonthly,
         topQueries,
         recentCalls: recent,
         cacheHitRate,
