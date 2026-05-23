@@ -9,6 +9,7 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
 
@@ -309,28 +310,34 @@ function SubjectSelect({
 }: SubjectSelectProps) {
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+      <label
+        htmlFor="cf-subject-select"
+        className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2"
+      >
         Assunto
       </label>
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => {
-          const active = value === opt;
-          return (
-            <button
+      <div
+        className={`flex items-center gap-2 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/10 ring-1 ring-transparent transition-all duration-300 ${ringClass}`}
+      >
+        <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
+        <select
+          id="cf-subject-select"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="flex-1 bg-transparent outline-none text-sm text-white disabled:cursor-not-allowed appearance-none cursor-pointer pr-2"
+        >
+          {options.map((opt) => (
+            <option
               key={opt}
-              type="button"
-              onClick={() => onChange(opt)}
-              disabled={disabled}
-              className={`px-3.5 py-2 rounded-lg text-xs font-medium border transition-all duration-300 ${
-                active
-                  ? `bg-white/10 border-white/20 text-white ${ringClass}`
-                  : "bg-white/[0.02] border-white/5 text-gray-400 hover:text-white hover:bg-white/[0.05] hover:border-white/10"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              value={opt}
+              style={{ backgroundColor: "#0a0a1a", color: "#fff" }}
             >
               {opt}
-            </button>
-          );
-        })}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0 pointer-events-none" />
       </div>
     </div>
   );

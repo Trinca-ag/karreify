@@ -21,6 +21,8 @@ import {
   Check,
   Clock,
   Globe,
+  ChevronDown,
+  Filter,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -255,44 +257,31 @@ export default function AdminContactPage() {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <FilterChip
-            label={`Todos os tópicos (${counts.total})`}
-            active={topicFilter === "all"}
-            onClick={() => setTopicFilter("all")}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FilterSelect
+            label="Tópico"
+            value={topicFilter}
+            onChange={(v) => setTopicFilter(v as Topic | "all")}
+            options={[
+              { value: "all", label: `Todos os tópicos (${counts.total})` },
+              ...(Object.keys(topicMeta) as Topic[]).map((t) => ({
+                value: t,
+                label: `${topicMeta[t].label} (${counts.byTopic[t]})`,
+              })),
+            ]}
           />
-          {(Object.keys(topicMeta) as Topic[]).map((t) => {
-            const meta = topicMeta[t];
-            return (
-              <FilterChip
-                key={t}
-                label={`${meta.label} (${counts.byTopic[t]})`}
-                icon={meta.icon}
-                active={topicFilter === t}
-                onClick={() => setTopicFilter(t)}
-              />
-            );
-          })}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <FilterChip
-            label="Todos os status"
-            active={statusFilter === "all"}
-            onClick={() => setStatusFilter("all")}
+          <FilterSelect
+            label="Status"
+            value={statusFilter}
+            onChange={(v) => setStatusFilter(v as Status | "all")}
+            options={[
+              { value: "all", label: "Todos os status" },
+              ...(Object.keys(statusMeta) as Status[]).map((s) => ({
+                value: s,
+                label: `${statusMeta[s].label} (${counts.byStatus[s]})`,
+              })),
+            ]}
           />
-          {(Object.keys(statusMeta) as Status[]).map((s) => {
-            const meta = statusMeta[s];
-            return (
-              <FilterChip
-                key={s}
-                label={`${meta.label} (${counts.byStatus[s]})`}
-                icon={meta.icon}
-                active={statusFilter === s}
-                onClick={() => setStatusFilter(s)}
-              />
-            );
-          })}
         </div>
       </div>
 
@@ -317,10 +306,18 @@ export default function AdminContactPage() {
             const s = statusMeta[m.status];
             const isNew = m.status === "new";
             return (
-              <button
+              <div
                 key={m.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => handleOpen(m)}
-                className={`group w-full text-left bg-white/[0.03] border rounded-2xl p-4 hover:bg-white/[0.05] transition-all duration-200 relative ${
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleOpen(m);
+                  }
+                }}
+                className={`group w-full text-left bg-white/[0.03] border rounded-2xl p-4 hover:bg-white/[0.05] transition-all duration-200 relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500/30 ${
                   isNew
                     ? "border-amber-500/25 hover:border-amber-500/40"
                     : "border-white/[0.06] hover:border-white/[0.12]"
@@ -365,11 +362,23 @@ export default function AdminContactPage() {
                           {m.email}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-xs text-gray-600 inline-flex items-center gap-1.5">
                           <Clock className="w-3 h-3" />
                           {formatDate(m.createdAt)}
                         </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(m);
+                          }}
+                          aria-label={`Excluir mensagem de ${m.name}`}
+                          title="Excluir mensagem"
+                          className="p-1.5 rounded-lg text-gray-500 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                     <p
@@ -384,7 +393,7 @@ export default function AdminContactPage() {
                     </p>
                   </div>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -585,29 +594,41 @@ function StatCard({
   );
 }
 
-function FilterChip({
+function FilterSelect({
   label,
-  icon: Icon,
-  active,
-  onClick,
+  value,
+  onChange,
+  options,
 }: {
   label: string;
-  icon?: typeof HelpCircle;
-  active: boolean;
-  onClick: () => void;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200 ${
-        active
-          ? "bg-white/10 border-white/20 text-white"
-          : "bg-white/[0.02] border-white/5 text-gray-400 hover:text-white hover:bg-white/[0.05] hover:border-white/10"
-      }`}
-    >
-      {Icon && <Icon className="w-3.5 h-3.5" />}
-      {label}
-    </button>
+    <div>
+      <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
+        {label}
+      </label>
+      <div className="relative">
+        <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full pl-10 pr-10 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-500/30 appearance-none cursor-pointer transition-all"
+        >
+          {options.map((opt) => (
+            <option
+              key={opt.value}
+              value={opt.value}
+              style={{ backgroundColor: "#0a0a1a", color: "#fff" }}
+            >
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+      </div>
+    </div>
   );
 }

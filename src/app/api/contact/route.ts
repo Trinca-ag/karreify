@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { rateLimit, rateLimitResponse, getClientIp } from "@/lib/rate-limit";
+import { sendTransactionalEmail } from "@/lib/mailer";
+import {
+  contactReceivedEmail,
+  contactReceivedEmailText,
+} from "@/utils/email-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +52,10 @@ export async function POST(request: NextRequest) {
     if (!message || message.length > MAX_MESSAGE) {
       return NextResponse.json({ error: "Mensagem inválida" }, { status: 400 });
     }
-    const safeTopic = ALLOWED_TOPICS.has(topic) ? topic : "help";
+    const safeTopic = (ALLOWED_TOPICS.has(topic) ? topic : "help") as
+      | "help"
+      | "terms"
+      | "privacy";
 
     await adminDb.collection("contact_messages").add({
       name,
@@ -60,6 +68,27 @@ export async function POST(request: NextRequest) {
       status: "new",
       createdAt: FieldValue.serverTimestamp(),
     });
+
+    // Confirmação por e-mail. Falha de SMTP não deve invalidar o envio do
+    // formulário — a mensagem já está salva no Firestore, então só logamos.
+    const subjectsByTopic = {
+      help: "Recebemos seu contato — Karreify",
+      terms: "Recebemos sua mensagem — Karreify",
+      privacy: "Solicitação LGPD recebida — Karreify",
+    } as const;
+    try {
+      const result = await sendTransactionalEmail({
+        to: email,
+        subject: subjectsByTopic[safeTopic],
+        html: contactReceivedEmail(name, safeTopic, subject),
+        text: contactReceivedEmailText(name, safeTopic, subject),
+      });
+      if (result.fallback) {
+        console.warn("[contact POST] SMTP não configurado — confirmação não enviada.");
+      }
+    } catch (mailError) {
+      console.error("[contact POST] Falha ao enviar confirmação:", mailError);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -90,7 +90,9 @@
       "Bash(vercel ls *)",
       "Bash(git config *)",
       "Bash(xxd)",
-      "PowerShell(Get-ChildItem *)"
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 50)",
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 30)"
     ]
   }
 }

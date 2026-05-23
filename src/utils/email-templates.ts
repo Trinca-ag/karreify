@@ -514,6 +514,120 @@ Caso a questão não tenha sido resolvida, abra um novo chamado a qualquer momen
 Acesse: ${url}/support/${ticketId}${textFooter()}`;
 }
 
+// ── Contact form ────────────────────────────────────────
+
+type ContactTopic = "help" | "terms" | "privacy";
+
+interface ContactCopy {
+  subject: string;
+  preview: string;
+  heading: string;
+  intro: (name: string) => string;
+  team: string;
+  sla: string;
+}
+
+const contactCopy: Record<ContactTopic, ContactCopy> = {
+  help: {
+    subject: "Recebemos seu contato — Karreify",
+    preview: "Recebemos sua mensagem e respondemos em breve.",
+    heading: "Recebemos seu contato",
+    intro: (name) =>
+      `Ol&aacute;, <strong style="color:#0f172a;">${name}</strong>. Recebemos sua mensagem e nosso time de suporte j&aacute; foi notificado. Em breve entramos em contato pelo seu e-mail.`,
+    team: "Suporte Karreify",
+    sla: "Respondemos em at&eacute; 24h em dias &uacute;teis.",
+  },
+  terms: {
+    subject: "Recebemos sua mensagem — Karreify",
+    preview: "Recebemos sua mensagem sobre os Termos de Uso.",
+    heading: "Recebemos sua mensagem",
+    intro: (name) =>
+      `Ol&aacute;, <strong style="color:#0f172a;">${name}</strong>. Recebemos sua mensagem relacionada aos nossos Termos de Uso. Nosso time jur&iacute;dico j&aacute; foi notificado e em breve entramos em contato pelo seu e-mail.`,
+    team: "Time jur&iacute;dico Karreify",
+    sla: "Respondemos em breve por e-mail.",
+  },
+  privacy: {
+    subject: "Solicitação LGPD recebida — Karreify",
+    preview: "Sua solicitação de privacidade foi registrada.",
+    heading: "Solicita&ccedil;&atilde;o registrada",
+    intro: (name) =>
+      `Ol&aacute;, <strong style="color:#0f172a;">${name}</strong>. Recebemos sua solicita&ccedil;&atilde;o relacionada &agrave; prote&ccedil;&atilde;o dos seus dados. Nosso Encarregado de Prote&ccedil;&atilde;o de Dados (DPO) j&aacute; foi notificado e em breve entramos em contato pelo seu e-mail.`,
+    team: "DPO Karreify",
+    sla: "Conforme a LGPD, respondemos em at&eacute; 15 dias.",
+  },
+};
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export function contactReceivedEmail(
+  name: string,
+  topic: ContactTopic,
+  messageSubject: string
+): string {
+  const copy = contactCopy[topic];
+  const safeName = escapeHtml(name);
+  const safeSubject = escapeHtml(messageSubject);
+  return baseLayout(
+    `
+    ${heading(copy.heading)}
+    ${paragraph(copy.intro(safeName))}
+    ${infoCard([
+      { label: "Assunto", value: safeSubject, accent: true },
+      { label: "Respons&aacute;vel", value: copy.team },
+    ])}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 22px;">
+      <tr>
+        <td style="background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 18px;">
+          <span style="font-size:13px;color:#1e3a8a;font-weight:600;">${copy.sla}</span>
+        </td>
+      </tr>
+    </table>
+    ${smallText(
+      "Voc&ecirc; n&atilde;o precisa fazer mais nada agora — basta aguardar nosso retorno por e-mail. Se precisar complementar sua mensagem, envie um novo contato pelo mesmo canal."
+    )}
+  `,
+    copy.preview
+  );
+}
+
+export function contactReceivedEmailText(
+  name: string,
+  topic: ContactTopic,
+  messageSubject: string
+): string {
+  const titles: Record<ContactTopic, string> = {
+    help: "Recebemos seu contato",
+    terms: "Recebemos sua mensagem",
+    privacy: "Solicitação registrada",
+  };
+  const intros: Record<ContactTopic, string> = {
+    help: `Olá ${name},\n\nRecebemos sua mensagem e nosso time de suporte já foi notificado. Em breve entramos em contato pelo seu e-mail.`,
+    terms: `Olá ${name},\n\nRecebemos sua mensagem relacionada aos nossos Termos de Uso. Nosso time jurídico já foi notificado e em breve entramos em contato pelo seu e-mail.`,
+    privacy: `Olá ${name},\n\nRecebemos sua solicitação relacionada à proteção dos seus dados. Nosso Encarregado de Proteção de Dados (DPO) já foi notificado e em breve entramos em contato pelo seu e-mail.`,
+  };
+  const slas: Record<ContactTopic, string> = {
+    help: "Respondemos em até 24h em dias úteis.",
+    terms: "Respondemos em breve por e-mail.",
+    privacy: "Conforme a LGPD, respondemos em até 15 dias.",
+  };
+  return `Karreify — ${titles[topic]}
+
+${intros[topic]}
+
+Assunto: ${messageSubject}
+
+${slas[topic]}
+
+Você não precisa fazer mais nada agora — basta aguardar nosso retorno por e-mail. Se precisar complementar sua mensagem, envie um novo contato pelo mesmo canal.${textFooter()}`;
+}
+
 // ── Feedback ────────────────────────────────────────────
 
 export function feedbackThanksEmail(userName: string, rating: number): string {
