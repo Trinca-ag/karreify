@@ -14,6 +14,8 @@ import {
   Building2,
   FilePlus,
   AlertTriangle,
+  Filter,
+  ChevronDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
@@ -196,35 +198,62 @@ export default function MyFilesPage() {
         </div>
       </section>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2 animate-fade-in-up animation-delay-200">
-        <button
-          onClick={() => setTab("all")}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-            tab === "all"
-              ? "bg-white/10 text-white border-white/15"
-              : "bg-white/[0.03] text-gray-400 border-white/[0.06] hover:text-gray-200"
-          }`}
-        >
-          Todos ({items.length})
-        </button>
-        {TYPE_ORDER.map((t) => {
-          const Icon = TYPE_ICON[t];
-          return (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                tab === t
-                  ? "bg-white/10 text-white border-white/15"
-                  : "bg-white/[0.03] text-gray-400 border-white/[0.06] hover:text-gray-200"
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {SAVED_ITEM_LABELS[t]} ({counts[t]}/{SAVED_ITEM_MAX_PER_TYPE})
-            </button>
-          );
-        })}
+      {/* Filters — select em mobile/tablet, chips em desktop */}
+      <div className="animate-fade-in-up animation-delay-200">
+        {/* Mobile + tablet (< lg): select */}
+        <div className="lg:hidden relative">
+          <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+          <select
+            value={tab}
+            onChange={(e) => setTab(e.target.value as "all" | SavedItemType)}
+            className="w-full pl-10 pr-10 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-500/30 appearance-none cursor-pointer transition-all"
+          >
+            <option value="all" style={{ backgroundColor: "#0a0a1a", color: "#fff" }}>
+              Todos ({items.length})
+            </option>
+            {TYPE_ORDER.map((t) => (
+              <option
+                key={t}
+                value={t}
+                style={{ backgroundColor: "#0a0a1a", color: "#fff" }}
+              >
+                {SAVED_ITEM_LABELS[t]} ({counts[t]}/{SAVED_ITEM_MAX_PER_TYPE})
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+        </div>
+
+        {/* Desktop (lg+): chips */}
+        <div className="hidden lg:flex flex-wrap gap-2">
+          <button
+            onClick={() => setTab("all")}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+              tab === "all"
+                ? "bg-white/10 text-white border-white/15"
+                : "bg-white/[0.03] text-gray-400 border-white/[0.06] hover:text-gray-200"
+            }`}
+          >
+            Todos ({items.length})
+          </button>
+          {TYPE_ORDER.map((t) => {
+            const Icon = TYPE_ICON[t];
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  tab === t
+                    ? "bg-white/10 text-white border-white/15"
+                    : "bg-white/[0.03] text-gray-400 border-white/[0.06] hover:text-gray-200"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {SAVED_ITEM_LABELS[t]} ({counts[t]}/{SAVED_ITEM_MAX_PER_TYPE})
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {loading ? (

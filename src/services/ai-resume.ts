@@ -110,10 +110,16 @@ Regras de análise:
 - Responda APENAS com o JSON, sem markdown, sem backticks, sem texto adicional.`;
 
 export async function analyzeResume(resumeText: string): Promise<CompletionWithCache> {
+  // O JSON de saída inclui extração completa (experiências, formação, projetos,
+  // skills, idiomas, certificações) MAIS a análise detalhada (estrutura,
+  // conteúdo, linguagem, strengths, weaknesses, suggestions, rewriteSuggestions).
+  // Em currículos densos com 5+ experiências, o default de 4096 tokens trunca
+  // o JSON no meio e o parser cai em AI_PARSE_ERROR. 8000 já é o teto usado
+  // por createResumeFromData; alinhar evita o estouro silencioso.
   return generateWithCache(
     RESUME_ANALYSIS_SYSTEM_PROMPT,
     `Analise o seguinte currículo:\n\n${resumeText}`,
-    { temperature: 0.2 }
+    { maxTokens: 8000, temperature: 0.2 }
   );
 }
 
