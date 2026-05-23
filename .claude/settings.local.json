@@ -89,7 +89,8 @@
       "Bash(vercel inspect *)",
       "Bash(vercel ls *)",
       "Bash(git config *)",
-      "Bash(xxd)"
+      "Bash(xxd)",
+      "PowerShell(Get-ChildItem *)"
     ]
   }
 }

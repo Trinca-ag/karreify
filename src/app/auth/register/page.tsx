@@ -7,7 +7,7 @@ import { registerUser, loginWithGoogle } from "@/services/firebase-auth";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Image from "next/image";
-import { Gift, CreditCard, Sparkles } from "lucide-react";
+import { Gift, CreditCard, Sparkles, Check } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function RegisterPage() {
@@ -15,11 +15,17 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!acceptTerms) {
+      toast.error("Você precisa aceitar os Termos de Uso e a Política de Privacidade.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       toast.error("As senhas nao coincidem.");
@@ -49,6 +55,10 @@ export default function RegisterPage() {
   };
 
   const handleGoogleLogin = async () => {
+    if (!acceptTerms) {
+      toast.error("Você precisa aceitar os Termos de Uso e a Política de Privacidade.");
+      return;
+    }
     setLoading(true);
     try {
       await loginWithGoogle();
@@ -223,7 +233,61 @@ export default function RegisterPage() {
                 placeholder="Repita a senha"
                 required
               />
-              <Button type="submit" loading={loading} className="w-full" size="lg">
+
+              {/* Terms acceptance */}
+              <label
+                htmlFor="accept-terms"
+                className="flex items-start gap-3 cursor-pointer group select-none pt-1"
+              >
+                <input
+                  id="accept-terms"
+                  type="checkbox"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <span
+                  className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                    acceptTerms
+                      ? "bg-gradient-to-br from-primary-500 to-accent-violet border-transparent shadow-lg shadow-primary-500/30"
+                      : "bg-white/[0.04] border-white/15 group-hover:border-primary-400/50"
+                  }`}
+                  aria-hidden
+                >
+                  <Check
+                    className={`w-3.5 h-3.5 text-white transition-all duration-300 ${
+                      acceptTerms ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                    }`}
+                  />
+                </span>
+                <span className="text-xs text-gray-400 leading-relaxed">
+                  Li e concordo com os{" "}
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    className="text-primary-400 hover:text-primary-300 font-medium underline-offset-2 hover:underline transition-colors"
+                  >
+                    Termos de Uso
+                  </Link>{" "}
+                  e com a{" "}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    className="text-primary-400 hover:text-primary-300 font-medium underline-offset-2 hover:underline transition-colors"
+                  >
+                    Política de Privacidade
+                  </Link>
+                  .
+                </span>
+              </label>
+
+              <Button
+                type="submit"
+                loading={loading}
+                disabled={!acceptTerms}
+                className="w-full"
+                size="lg"
+              >
                 Criar conta
               </Button>
             </form>

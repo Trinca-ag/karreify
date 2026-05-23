@@ -112,3 +112,40 @@ export async function getCreditsServer(uid: string): Promise<number> {
   if (!snap.exists) return 0;
   return (snap.data()?.credits as number | undefined) ?? 0;
 }
+
+/**
+ * Estorna créditos cobrados por uma feature que acabou falhando depois da
+ * dedução. Restaura o saldo e registra uma transação de tipo "refund" para
+ * manter a auditoria. Sem-op quando `cost` é 0 (uso gratuito) — só registra
+ * a tentativa fica clara no histórico.
+ *
+ * Não estorna o contador de stats global (totalCreditsUsed/featureUsage)
+ * de propósito: a feature foi de fato consumida (mesmo que falhada) e o
+ * desvio é minúsculo perto do ruído do contador.
+ */
+export async function refundCreditsServer(
+  uid: string,
+  feature: string,
+  cost: number,
+  reason: string
+): Promise<void> {
+  if (cost <= 0) return;
+
+  const userRef = adminDb.collection("users").doc(uid);
+  const txRef = userRef.collection("transactions").doc();
+
+  await adminDb.runTransaction(async (tx) => {
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists) return;
+
+    const currentCredits = (userSnap.data()?.credits as number | undefined) ?? 0;
+    tx.update(userRef, { credits: currentCredits + cost, updatedAt: new Date() });
+    tx.set(txRef, {
+      amount: cost,
+      type: "refund",
+      feature,
+      description: `Estorno: ${reason}`,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  });
+}

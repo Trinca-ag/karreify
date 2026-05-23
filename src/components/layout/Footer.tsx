@@ -67,9 +67,9 @@ export default function Footer() {
             </h3>
             <ul className="space-y-3">
               {[
-                { href: "#", label: "Central de Ajuda" },
-                { href: "#", label: "Termos de Uso" },
-                { href: "#", label: "Privacidade" },
+                { href: "/help", label: "Central de Ajuda" },
+                { href: "/terms", label: "Termos de Uso" },
+                { href: "/privacy", label: "Privacidade" },
               ].map((link) => (
                 <li key={link.label}>
                   <Link

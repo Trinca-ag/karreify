@@ -29,6 +29,19 @@ export interface AdminFeedbackRow {
   createdAt: string;
 }
 
+export interface AdminContactMessageRow {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  topic: "help" | "terms" | "privacy";
+  status: "new" | "read" | "resolved";
+  ip: string;
+  userAgent: string;
+  createdAt: string;
+}
+
 export interface AdminTalentRow {
   id: string;
   fullName: string;

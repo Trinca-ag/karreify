@@ -153,6 +153,15 @@ export default function ResumeAnalysisPage() {
     try {
       const resumeText = await extractTextFromFile(file);
 
+      // PDFs escaneados/somente imagens devolvem string vazia ou muito curta.
+      // Bloqueia aqui para o usuário não chegar ao backend (e perder crédito)
+      // por um arquivo do qual não conseguimos ler texto.
+      if (resumeText.trim().length < 50) {
+        throw new Error(
+          "Não conseguimos ler o texto do seu arquivo. Se é um PDF escaneado ou só com imagens, tente exportá-lo novamente como PDF de texto ou envie um arquivo .docx."
+        );
+      }
+
       const response = await authedFetch("/api/analyze-resume", {
         method: "POST",
         body: JSON.stringify({ resumeText }),
@@ -160,7 +169,7 @@ export default function ResumeAnalysisPage() {
 
       const data = await response.json();
 
-      if (!data.success) throw new Error(data.error || "Erro desconhecido na API");
+      if (!data.success) throw new Error(data.error || "Erro ao analisar currículo. Tente novamente.");
 
       stopProgress();
       setResult(data.data);
@@ -169,7 +178,7 @@ export default function ResumeAnalysisPage() {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error("Resume analysis error:", msg);
-      toast.error(msg);
+      toast.error(msg, { duration: 6000 });
     } finally {
       setLoading(false);
     }
