@@ -65,7 +65,7 @@ export default function AdminSupportPage() {
       </div>
 
       {/* Tabs + search */}
-      <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] overflow-hidden">
+      <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-2 py-2 flex-wrap">
           <div className="flex items-center p-1">
             {(

@@ -123,7 +123,7 @@ export default function AdminTicketDetailPage() {
       <BackLink />
 
       {/* Header */}
-      <section className="relative overflow-hidden bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 md:p-8">
+      <section className="relative overflow-hidden bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 md:p-8">
         <div className="absolute -top-16 -right-10 w-72 h-72 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* ID + Status row + close action */}
@@ -229,7 +229,7 @@ export default function AdminTicketDetailPage() {
       )}
 
       {/* Thread */}
-      <section className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 md:p-8">
+      <section className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 md:p-8">
         <MessageThread messages={messages} loading={loadingMessages} />
       </section>
 

@@ -46,7 +46,7 @@ export default function AdminSidebar() {
   return (
     <>
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden lg:flex flex-col w-64 bg-dark-800/50 backdrop-blur-xl border-r border-white/[0.06] min-h-screen sticky top-0">
+      <aside className="hidden lg:flex flex-col w-64 bg-dark-800 border-r border-white/[0.06] min-h-screen sticky top-0">
         {/* Logo */}
         <div className="px-5 py-5 border-b border-white/[0.06]">
           <Link href="/admin" className="flex items-center gap-3">
@@ -88,7 +88,7 @@ export default function AdminSidebar() {
       </aside>
 
       {/* ── Mobile top bar ── */}
-      <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-dark-800/80 backdrop-blur-xl border-b border-white/[0.06] sticky top-0 z-40">
+      <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-dark-800 border-b border-white/[0.06] sticky top-0 z-40">
         <Link href="/admin" className="flex items-center gap-2.5">
           <Image src="/images/logo-karreify.png" alt="Karreify" width={100} height={25} className="h-6 w-auto" />
           <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[9px] font-bold rounded border border-amber-500/20 tracking-widest uppercase">

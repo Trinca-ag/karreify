@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAdminAuth } from "@/components/providers/AdminAuthProvider";
 import { adminFetch, type AdminStats } from "@/services/admin";
 import { Users, Shield, Coins, Zap, TrendingUp, Clock, ArrowRight } from "lucide-react";
@@ -29,21 +29,28 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     adminFetch("/api/admin/stats")
       .then(r => r.json())
-      .then(d => { if (d.success) setStats(d.data); })
-      .finally(() => setLoading(false));
+      .then(d => { if (!cancelled && d.success) setStats(d.data); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
-  const topFeatureEntry = stats
-    ? Object.entries(stats.featureUsage).sort(([, a], [, b]) => b - a)[0]
-    : null;
+  // Sort + total + percentage all derive from featureUsage — compute once per
+  // stats change instead of recalculating inside the render loop.
+  const featureEntries = useMemo(() => {
+    if (!stats) return { sorted: [] as [string, number][], total: 0, top: null as [string, number] | null };
+    const sorted = Object.entries(stats.featureUsage).sort(([, a], [, b]) => b - a);
+    const total = sorted.reduce((acc, [, count]) => acc + count, 0);
+    return { sorted, total, top: sorted[0] ?? null };
+  }, [stats]);
 
   const statValues: Record<string, number | string> = {
     totalUsers: stats?.totalUsers ?? 0,
     totalAdmins: stats?.totalAdmins ?? 0,
     totalCreditsUsed: stats?.totalCreditsUsed ?? 0,
-    topFeature: topFeatureEntry ? (FEATURE_LABELS[topFeatureEntry[0]] ?? topFeatureEntry[0]) : "—",
+    topFeature: featureEntries.top ? (FEATURE_LABELS[featureEntries.top[0]] ?? featureEntries.top[0]) : "—",
   };
 
   return (
@@ -67,7 +74,7 @@ export default function AdminDashboardPage() {
           {/* Stat cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {STAT_CONFIG.map(({ key, label, icon: Icon, gradient, iconColor, border }) => (
-              <div key={key} className={`bg-white/[0.03] border ${border} rounded-2xl p-5 backdrop-blur-sm`}>
+              <div key={key} className={`bg-white/[0.03] border ${border} rounded-2xl p-5`}>
                 <div className="flex items-start gap-4">
                   <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center flex-shrink-0`}>
                     <Icon className={`w-5 h-5 ${iconColor}`} />
@@ -92,29 +99,26 @@ export default function AdminDashboardPage() {
                 <h2 className="font-semibold font-heading text-white">Uso por Funcionalidade</h2>
               </div>
               <div className="p-6 space-y-4">
-                {Object.entries(stats.featureUsage).length === 0 ? (
+                {featureEntries.sorted.length === 0 ? (
                   <p className="text-gray-500 text-sm text-center py-4">Nenhum uso registrado ainda.</p>
                 ) : (
-                  Object.entries(stats.featureUsage)
-                    .sort(([, a], [, b]) => b - a)
-                    .map(([key, count]) => {
-                      const total = Object.values(stats.featureUsage).reduce((a, b) => a + b, 0);
-                      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-                      return (
-                        <div key={key}>
-                          <div className="flex justify-between text-sm mb-1.5">
-                            <span className="text-gray-300">{FEATURE_LABELS[key] ?? key}</span>
-                            <span className="text-gray-500 tabular-nums">{count} <span className="text-gray-600">({pct}%)</span></span>
-                          </div>
-                          <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-primary-500 to-primary-400 rounded-full transition-all duration-500"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
+                  featureEntries.sorted.map(([key, count]) => {
+                    const pct = featureEntries.total > 0 ? Math.round((count / featureEntries.total) * 100) : 0;
+                    return (
+                      <div key={key}>
+                        <div className="flex justify-between text-sm mb-1.5">
+                          <span className="text-gray-300">{FEATURE_LABELS[key] ?? key}</span>
+                          <span className="text-gray-500 tabular-nums">{count} <span className="text-gray-600">({pct}%)</span></span>
                         </div>
-                      );
-                    })
+                        <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-primary-500 to-primary-400 rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>

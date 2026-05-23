@@ -251,7 +251,7 @@ export default function AdminAdzunaPage() {
               return (
                 <div
                   key={card.key}
-                  className={`bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 backdrop-blur-sm`}
+                  className={`bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5`}
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
@@ -406,7 +406,7 @@ export default function AdminAdzunaPage() {
               ) : (
                 <div className="max-h-[480px] overflow-auto">
                   <table className="w-full text-xs">
-                    <thead className="bg-white/[0.02] sticky top-0 backdrop-blur-xl">
+                    <thead className="bg-dark-800 sticky top-0 z-10">
                       <tr className="text-gray-500">
                         <th className="text-left font-medium px-4 py-2.5">Hora</th>
                         <th className="text-left font-medium px-2 py-2.5">Tipo</th>
@@ -498,7 +498,7 @@ function StatBlock({
 
   return (
     <div
-      className={`bg-white/[0.03] border ${borderClass} rounded-2xl p-5 backdrop-blur-sm`}
+      className={`bg-white/[0.03] border ${borderClass} rounded-2xl p-5`}
     >
       <div className="flex items-center gap-3 mb-2">
         {icon}

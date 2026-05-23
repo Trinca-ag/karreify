@@ -100,8 +100,8 @@ export default function AdminTalentsPage() {
         return;
       }
       toast.success("Talento removido.");
+      setTalents(prev => prev.filter(t => t.id !== deleteTarget.id));
       setDeleteTarget(null);
-      fetchTalents();
     } finally {
       setDeleteLoading(false);
     }

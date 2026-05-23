@@ -96,8 +96,8 @@ export default function AdminFeedbacksPage() {
         return;
       }
       toast.success("Feedback excluído.");
+      setFeedbacks(prev => prev.filter(f => f.id !== deleteTarget.id));
       setDeleteTarget(null);
-      fetchFeedbacks();
     } finally {
       setDeleteLoading(false);
     }

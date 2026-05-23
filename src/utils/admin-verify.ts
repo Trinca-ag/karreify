@@ -7,7 +7,14 @@ export interface AdminClaims {
   role: string;
 }
 
-export async function verifyAdminRequest(request: NextRequest): Promise<AdminClaims> {
+export interface AdminClaimsWithData extends AdminClaims {
+  data: FirebaseFirestore.DocumentData;
+}
+
+// Internal — does the actual verification work and returns the full doc data
+// so callers that need it (e.g. /api/admin/me) don't have to re-read the
+// admin document.
+async function verifyAndLoad(request: NextRequest): Promise<AdminClaimsWithData> {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     throw new Error("Não autorizado");
@@ -22,5 +29,16 @@ export async function verifyAdminRequest(request: NextRequest): Promise<AdminCla
   }
 
   const data = adminDoc.data()!;
-  return { uid: decoded.uid, username: data.username, role: data.role };
+  return { uid: decoded.uid, username: data.username, role: data.role, data };
+}
+
+export async function verifyAdminRequest(request: NextRequest): Promise<AdminClaims> {
+  const { uid, username, role } = await verifyAndLoad(request);
+  return { uid, username, role };
+}
+
+export async function verifyAdminRequestWithData(
+  request: NextRequest
+): Promise<AdminClaimsWithData> {
+  return verifyAndLoad(request);
 }

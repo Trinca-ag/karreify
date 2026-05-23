@@ -50,8 +50,8 @@ export default function AdminsPage() {
       const data = await res.json();
       if (!res.ok) { toast.error(data.error || "Erro ao remover administrador."); return; }
       toast.success(`${deleteTarget.name} removido dos administradores.`);
+      setAdmins(prev => prev.filter(a => a.uid !== deleteTarget.uid));
       setDeleteTarget(null);
-      fetchAdmins();
     } finally {
       setDeleteLoading(false);
     }

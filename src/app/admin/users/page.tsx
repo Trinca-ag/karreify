@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { adminFetch, type AdminUserRow } from "@/services/admin";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
@@ -13,7 +13,6 @@ function userInitial(u: AdminUserRow) {
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
-  const [filtered, setFiltered] = useState<AdminUserRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -26,24 +25,26 @@ export default function AdminUsersPage() {
 
   const [roleSaving, setRoleSaving] = useState<string | null>(null);
 
-  async function fetchUsers() {
-    setLoading(true);
-    try {
-      const res = await adminFetch("/api/admin/users");
-      const data = await res.json();
-      if (data.success) { setUsers(data.users); setFiltered(data.users); }
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { fetchUsers(); }, []);
-
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await adminFetch("/api/admin/users");
+        const data = await res.json();
+        if (!cancelled && data.success) setUsers(data.users);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    setFiltered(users.filter(u =>
+    if (!q) return users;
+    return users.filter(u =>
       (u.displayName ?? "").toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
-    ));
+    );
   }, [search, users]);
 
   const handleAddCredits = async () => {
@@ -59,9 +60,11 @@ export default function AdminUsersPage() {
       const data = await res.json();
       if (!res.ok) { toast.error(data.error || "Erro ao adicionar créditos."); return; }
       toast.success(`${amount} créditos adicionados para ${creditsTarget.displayName ?? creditsTarget.email}`);
+      setUsers(prev =>
+        prev.map(u => u.uid === creditsTarget.uid ? { ...u, credits: u.credits + amount } : u)
+      );
       setCreditsTarget(null);
       setCreditsAmount("");
-      fetchUsers();
     } finally {
       setCreditsLoading(false);
     }
@@ -80,14 +83,22 @@ export default function AdminUsersPage() {
         toast.error(data.error || "Erro ao atualizar role.");
         return;
       }
-      if (data.granted > 0) {
-        toast.success(`${u.displayName ?? u.email} virou Tester (+${data.granted} moedas).`);
-      } else if (data.revoked > 0) {
-        toast.success(`${u.displayName ?? u.email} voltou a ser Usuário (-${data.revoked} moedas).`);
+      const granted = typeof data.granted === "number" ? data.granted : 0;
+      const revoked = typeof data.revoked === "number" ? data.revoked : 0;
+      if (granted > 0) {
+        toast.success(`${u.displayName ?? u.email} virou Tester (+${granted} moedas).`);
+      } else if (revoked > 0) {
+        toast.success(`${u.displayName ?? u.email} voltou a ser Usuário (-${revoked} moedas).`);
       } else {
         toast.success(`Role atualizada para ${newRole === "tester" ? "Tester" : "Usuário"}.`);
       }
-      fetchUsers();
+      setUsers(prev =>
+        prev.map(row =>
+          row.uid === u.uid
+            ? { ...row, role: newRole, credits: row.credits + granted - revoked }
+            : row
+        )
+      );
     } finally {
       setRoleSaving(null);
     }
@@ -104,8 +115,8 @@ export default function AdminUsersPage() {
       const data = await res.json();
       if (!res.ok) { toast.error(data.error || "Erro ao excluir conta."); return; }
       toast.success("Conta excluída com sucesso.");
+      setUsers(prev => prev.filter(u => u.uid !== deleteTarget.uid));
       setDeleteTarget(null);
-      fetchUsers();
     } finally {
       setDeleteLoading(false);
     }
@@ -140,82 +151,81 @@ export default function AdminUsersPage() {
         <div className="flex items-center justify-center py-32">
           <div className="w-10 h-10 rounded-full border-2 border-primary-500/30 border-t-primary-400 animate-spin" />
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl py-16 text-center">
+          <Users className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">
+            {users.length === 0 ? "Nenhum usuário cadastrado ainda." : "Nenhum usuário corresponde à busca."}
+          </p>
+        </div>
       ) : (
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/[0.06]">
-                  <th className="text-left px-6 py-3.5 text-xs text-gray-500 font-medium uppercase tracking-wider">Usuário</th>
-                  <th className="text-left px-6 py-3.5 text-xs text-gray-500 font-medium uppercase tracking-wider hidden md:table-cell">Tipo</th>
-                  <th className="text-left px-6 py-3.5 text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:table-cell">Moedas</th>
-                  <th className="text-left px-6 py-3.5 text-xs text-gray-500 font-medium uppercase tracking-wider hidden lg:table-cell">Criado em</th>
-                  <th className="text-right px-6 py-3.5 text-xs text-gray-500 font-medium uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-16 text-gray-500">
-                      Nenhum usuário encontrado.
-                    </td>
-                  </tr>
-                ) : filtered.map(u => (
-                  <tr key={u.uid} className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-white/5 border border-white/[0.08] rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-semibold text-gray-300">{userInitial(u)}</span>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-white truncate">{u.displayName ?? <span className="text-gray-500">—</span>}</p>
-                          <p className="text-xs text-gray-500 truncate">{u.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 hidden md:table-cell">
-                      <select
-                        value={u.role}
-                        disabled={roleSaving === u.uid}
-                        onChange={e => handleRoleChange(u, e.target.value as "user" | "tester")}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-primary-500/40 transition-colors disabled:opacity-50 ${
-                          u.role === "tester"
-                            ? "bg-violet-500/10 text-violet-300 border-violet-500/20"
-                            : "bg-white/[0.04] text-gray-300 border-white/[0.08]"
-                        }`}
-                      >
-                        <option value="user" className="bg-dark-900 text-gray-200">Usuário</option>
-                        <option value="tester" className="bg-dark-900 text-gray-200">Tester</option>
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 hidden sm:table-cell">
-                      <span className="text-emerald-400 font-semibold tabular-nums">{u.credits}</span>
-                    </td>
-                    <td className="px-6 py-4 text-gray-500 text-xs hidden lg:table-cell">
+        <div className="space-y-3">
+          {filtered.map(u => (
+            <div
+              key={u.uid}
+              className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 sm:p-5 hover:bg-white/[0.04] transition-colors"
+            >
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 bg-white/5 border border-white/[0.08] rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-semibold text-gray-300">{userInitial(u)}</span>
+                </div>
+
+                <div className="flex-1 min-w-0 space-y-3">
+                  {/* Identity + delete */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm sm:text-base font-medium text-white truncate">
+                        {u.displayName ?? <span className="text-gray-500">—</span>}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">{u.email}</p>
+                    </div>
+                    <button
+                      onClick={() => setDeleteTarget(u)}
+                      className="flex-shrink-0 p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                      title="Excluir conta"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Meta: credits chip + date */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold tabular-nums">
+                      <Coins className="w-3 h-3" />
+                      {u.credits}
+                    </span>
+                    <span className="text-[11px] text-gray-600">
                       {new Date(u.createdAt).toLocaleDateString("pt-BR")}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 justify-end">
-                        <button
-                          onClick={() => { setCreditsTarget(u); setCreditsAmount(""); }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors text-xs font-medium border border-emerald-500/10"
-                        >
-                          <Coins className="w-3 h-3" /> Créditos
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(u)}
-                          className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                          title="Excluir conta"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </span>
+                  </div>
+
+                  {/* Actions: role select + credits button — stacked on mobile, inline on desktop */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <select
+                      value={u.role}
+                      disabled={roleSaving === u.uid}
+                      onChange={e => handleRoleChange(u, e.target.value as "user" | "tester")}
+                      className={`w-full sm:w-auto px-2.5 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-primary-500/40 transition-colors disabled:opacity-50 cursor-pointer ${
+                        u.role === "tester"
+                          ? "bg-violet-500/10 text-violet-300 border-violet-500/20"
+                          : "bg-white/[0.04] text-gray-300 border-white/[0.08]"
+                      }`}
+                    >
+                      <option value="user" style={{ backgroundColor: "#0a0a1a", color: "#fff" }}>Usuário</option>
+                      <option value="tester" style={{ backgroundColor: "#0a0a1a", color: "#fff" }}>Tester</option>
+                    </select>
+
+                    <button
+                      onClick={() => { setCreditsTarget(u); setCreditsAmount(""); }}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors text-xs font-medium border border-emerald-500/10"
+                    >
+                      <Coins className="w-3 h-3" /> Adicionar créditos
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

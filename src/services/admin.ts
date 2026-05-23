@@ -68,8 +68,12 @@ export async function getMyAdminProfile(uid: string): Promise<AdminProfile | nul
   return { uid, ...snap.data() } as AdminProfile;
 }
 
+// `getIdToken()` (sem o forceRefresh=true) usa o token em cache e só faz
+// roundtrip ao Firebase quando o token está perto de expirar (auto-refresh).
+// Passar `true` aqui paga ~100-500ms a cada chamada admin — fazia o painel
+// inteiro parecer travado em navegações sequenciais.
 export async function adminFetch(url: string, options?: RequestInit): Promise<Response> {
-  const token = await auth.currentUser?.getIdToken(true);
+  const token = await auth.currentUser?.getIdToken();
   return fetch(url, {
     ...options,
     headers: {
