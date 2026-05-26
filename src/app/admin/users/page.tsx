@@ -188,19 +188,18 @@ export default function AdminUsersPage() {
                     </button>
                   </div>
 
-                  {/* Meta: credits chip + date */}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold tabular-nums">
-                      <Coins className="w-3 h-3" />
-                      {u.credits}
-                    </span>
-                    <span className="text-[11px] text-gray-600">
-                      {new Date(u.createdAt).toLocaleDateString("pt-BR")}
-                    </span>
-                  </div>
+                  {/* Meta + actions: stacked on mobile, single line on desktop (credits + role + add credits, date pushed to the end) */}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <div className="flex items-center justify-between gap-2 sm:contents">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold tabular-nums">
+                        <Coins className="w-3 h-3" />
+                        {u.credits}
+                      </span>
+                      <span className="text-[11px] text-gray-600 sm:order-last sm:ml-auto">
+                        {new Date(u.createdAt).toLocaleDateString("pt-BR")}
+                      </span>
+                    </div>
 
-                  {/* Actions: role select + credits button — stacked on mobile, inline on desktop */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <select
                       value={u.role}
                       disabled={roleSaving === u.uid}

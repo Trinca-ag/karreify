@@ -11,7 +11,6 @@ import {
   Search,
   TrendingUp,
   Zap,
-  Shuffle,
 } from "lucide-react";
 import JobsErrorConsole from "@/components/admin/JobsErrorConsole";
 
@@ -24,19 +23,11 @@ interface BucketStats {
   billable: number;
 }
 
-interface ProviderStats {
-  apiCalls: number;
-  apiErrors: number;
-  billable: number;
-}
-
-interface AdzunaUsageData {
-  limits: {
-    perMinute: number;
-    perDay: number;
-    perWeek: number;
-    perMonth: number;
-  };
+interface JoobleUsageData {
+  totalLimit: number;
+  warningThreshold: number;
+  totalBillable: number;
+  remaining: number;
   joobleDisabled: boolean;
   counts: {
     lastMinute: BucketStats;
@@ -44,7 +35,6 @@ interface AdzunaUsageData {
     weekly: BucketStats;
     monthly: BucketStats;
   };
-  jooble: ProviderStats;
   topQueries: { keyword: string; count: number }[];
   recentCalls: {
     ts: string;
@@ -63,25 +53,19 @@ interface AdzunaUsageData {
   generatedAt: string;
 }
 
-const QUOTA_CARDS: {
+const WINDOW_CARDS: {
   key: "lastMinute" | "daily" | "weekly" | "monthly";
-  limitKey: "perMinute" | "perDay" | "perWeek" | "perMonth";
   label: string;
   window: string;
 }[] = [
-  { key: "lastMinute", limitKey: "perMinute", label: "Último minuto", window: "60s" },
-  { key: "daily",      limitKey: "perDay",    label: "Hoje",          window: "24h" },
-  { key: "weekly",     limitKey: "perWeek",   label: "Semana",        window: "7 dias" },
-  { key: "monthly",    limitKey: "perMonth",  label: "Mês",           window: "30 dias" },
+  { key: "lastMinute", label: "Último minuto", window: "60s" },
+  { key: "daily", label: "Hoje", window: "24h" },
+  { key: "weekly", label: "Semana", window: "7 dias" },
+  { key: "monthly", label: "Mês", window: "30 dias" },
 ];
 
-function pctTone(pct: number): {
-  bar: string;
-  text: string;
-  bg: string;
-  border: string;
-} {
-  if (pct >= 85) {
+function totalTone(pct: number) {
+  if (pct >= 80) {
     return {
       bar: "from-red-500 to-red-400",
       text: "text-red-300",
@@ -98,17 +82,14 @@ function pctTone(pct: number): {
     };
   }
   return {
-    bar: "from-emerald-500 to-emerald-400",
-    text: "text-emerald-300",
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/20",
+    bar: "from-violet-500 to-violet-400",
+    text: "text-violet-300",
+    bg: "bg-violet-500/10",
+    border: "border-violet-500/20",
   };
 }
 
-function statusPill(
-  status: "cache_hit" | "api_call" | "api_error",
-  provider: JobProvider
-) {
+function statusPill(status: "cache_hit" | "api_call" | "api_error") {
   if (status === "cache_hit") {
     return {
       label: "Cache",
@@ -116,25 +97,15 @@ function statusPill(
     };
   }
   if (status === "api_call") {
-    return provider === "jooble"
-      ? {
-          label: "Jooble",
-          className: "bg-violet-500/10 text-violet-300 border-violet-500/20",
-        }
-      : {
-          label: "Adzuna",
-          className: "bg-blue-500/10 text-blue-300 border-blue-500/20",
-        };
+    return {
+      label: "Jooble",
+      className: "bg-violet-500/10 text-violet-300 border-violet-500/20",
+    };
   }
-  return provider === "jooble"
-    ? {
-        label: "Erro Jooble",
-        className: "bg-red-500/10 text-red-300 border-red-500/20",
-      }
-    : {
-        label: "Erro Adzuna",
-        className: "bg-red-500/10 text-red-300 border-red-500/20",
-      };
+  return {
+    label: "Erro Jooble",
+    className: "bg-red-500/10 text-red-300 border-red-500/20",
+  };
 }
 
 function formatTime(iso: string): string {
@@ -149,8 +120,8 @@ function formatTime(iso: string): string {
   });
 }
 
-export default function AdminAdzunaPage() {
-  const [data, setData] = useState<AdzunaUsageData | null>(null);
+export default function AdminJooblePage() {
+  const [data, setData] = useState<JoobleUsageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +131,7 @@ export default function AdminAdzunaPage() {
     else setLoading(true);
     setError(null);
     try {
-      const res = await adminFetch("/api/admin/adzuna-usage");
+      const res = await adminFetch("/api/admin/jooble-usage");
       const json = await res.json();
       if (!res.ok || !json.success) {
         throw new Error(json.error || "Erro ao buscar dados.");
@@ -183,18 +154,24 @@ export default function AdminAdzunaPage() {
     return Math.round(data.cacheHitRate * 100);
   }, [data]);
 
+  const totalPct = useMemo(() => {
+    if (!data || data.totalLimit === 0) return 0;
+    return Math.min(100, (data.totalBillable / data.totalLimit) * 100);
+  }, [data]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold font-heading text-white flex items-center gap-3">
-            <Activity className="w-7 h-7 text-blue-400" />
-            Consumo Adzuna
+            <Activity className="w-7 h-7 text-violet-400" />
+            Consumo Jooble
           </h1>
           <p className="text-gray-400 mt-1 text-sm">
-            Fonte de fallback. Recebe tráfego quando a Jooble (primária)
-            esgota a cota ou retorna erro.
+            Fonte principal de vagas. Cota total vitalícia de{" "}
+            {data?.totalLimit?.toLocaleString("pt-BR") ?? "—"} requisições
+            por chave (sem reset).
           </p>
         </div>
         <button
@@ -233,68 +210,100 @@ export default function AdminAdzunaPage() {
                   Jooble desabilitada via JOOBLE_DISABLED=true
                 </p>
                 <p className="text-amber-200/80 text-xs mt-0.5">
-                  Todas as buscas estão vindo pra Adzuna. Remova a flag do
-                  .env.local pra reativar a Jooble como primária.
+                  Todas as buscas estão indo direto pra Adzuna. Remova a flag
+                  do .env.local pra reativar a Jooble.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Quota cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            {QUOTA_CARDS.map((card) => {
+          {/* Cota total (vitalícia) */}
+          {(() => {
+            const tone = totalTone(totalPct);
+            return (
+              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">
+                      Cota total vitalícia da chave
+                    </p>
+                    <p className="text-[10px] text-gray-600 mt-0.5">
+                      Não reseta. Quando esgota, requisições deixam de ser
+                      processadas (sem código de erro garantido).
+                    </p>
+                  </div>
+                  <span
+                    className={`px-2.5 py-1 rounded-md text-xs font-bold border ${tone.bg} ${tone.text} ${tone.border}`}
+                  >
+                    {Math.round(totalPct)}%
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1.5 mb-3">
+                  <span className="text-4xl font-bold text-white font-heading tabular-nums leading-none">
+                    {data.totalBillable.toLocaleString("pt-BR")}
+                  </span>
+                  <span className="text-lg text-gray-500 tabular-nums">
+                    / {data.totalLimit.toLocaleString("pt-BR")}
+                  </span>
+                  <span className="ml-auto text-sm text-gray-400 tabular-nums">
+                    {data.remaining.toLocaleString("pt-BR")} restantes
+                  </span>
+                </div>
+                <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
+                  <div
+                    className={`h-full bg-gradient-to-r ${tone.bar} rounded-full transition-all duration-500`}
+                    style={{ width: `${totalPct}%` }}
+                  />
+                </div>
+                {data.totalBillable >= data.warningThreshold && (
+                  <p className="text-xs text-amber-300 mt-3 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Acima de {data.warningThreshold} chamadas. Acima do limite
+                    de {data.totalLimit} o sistema roteia automaticamente para
+                    Adzuna.
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Buckets por janela (não consomem limite Jooble extra — são só amostras) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {WINDOW_CARDS.map((card) => {
               const bucket = data.counts[card.key];
-              const limit = data.limits[card.limitKey];
-              const used = bucket.billable;
-              const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
-              const tone = pctTone(pct);
               return (
                 <div
                   key={card.key}
-                  className={`bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5`}
+                  className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5"
                 >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <p className="text-xs text-gray-500">{card.label}</p>
-                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mt-0.5">
-                        {card.window}
-                      </p>
-                    </div>
-                    <span
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${tone.bg} ${tone.text} ${tone.border}`}
-                    >
-                      {Math.round(pct)}%
-                    </span>
-                  </div>
-                  <div className="flex items-baseline gap-1.5 mb-2">
-                    <span className="text-2xl font-bold text-white font-heading tabular-nums leading-none">
-                      {used.toLocaleString("pt-BR")}
-                    </span>
-                    <span className="text-sm text-gray-500 tabular-nums">
-                      / {limit.toLocaleString("pt-BR")}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-                    <div
-                      className={`h-full bg-gradient-to-r ${tone.bar} rounded-full transition-all duration-500`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                  <p className="text-xs text-gray-500">{card.label}</p>
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mt-0.5">
+                    {card.window}
+                  </p>
+                  <p className="text-2xl font-bold text-white font-heading tabular-nums leading-none mt-3">
+                    {bucket.billable.toLocaleString("pt-BR")}
+                  </p>
                   <div className="grid grid-cols-3 gap-2 mt-3 text-[10px]">
                     <div>
-                      <p className="text-gray-600 uppercase tracking-wider">Cache</p>
+                      <p className="text-gray-600 uppercase tracking-wider">
+                        Cache
+                      </p>
                       <p className="text-emerald-300 font-semibold tabular-nums mt-0.5">
                         {bucket.cacheHits}
                       </p>
                     </div>
                     <div>
-                      <p className="text-gray-600 uppercase tracking-wider">API</p>
-                      <p className="text-blue-300 font-semibold tabular-nums mt-0.5">
+                      <p className="text-gray-600 uppercase tracking-wider">
+                        API
+                      </p>
+                      <p className="text-violet-300 font-semibold tabular-nums mt-0.5">
                         {bucket.apiCalls}
                       </p>
                     </div>
                     <div>
-                      <p className="text-gray-600 uppercase tracking-wider">Erros</p>
+                      <p className="text-gray-600 uppercase tracking-wider">
+                        Erros
+                      </p>
                       <p className="text-red-300 font-semibold tabular-nums mt-0.5">
                         {bucket.apiErrors}
                       </p>
@@ -306,20 +315,13 @@ export default function AdminAdzunaPage() {
           </div>
 
           {/* Console de erros em tempo real */}
-          <JobsErrorConsole provider="adzuna" />
+          <JobsErrorConsole provider="jooble" />
 
-          {/* Secondary stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatBlock
-              icon={<Shuffle className="w-5 h-5 text-violet-400" />}
-              label="Jooble no mês"
-              value={data.jooble.billable.toLocaleString("pt-BR")}
-              hint={`${data.jooble.apiCalls} chamadas · ${data.jooble.apiErrors} erros`}
-              tone="violet"
-            />
+          {/* Estatísticas secundárias */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <StatBlock
               icon={<Database className="w-5 h-5 text-emerald-400" />}
-              label="Taxa de cache"
+              label="Taxa de cache (30d)"
               value={`${cacheHitRatePct}%`}
               hint={`${data.counts.monthly.cacheHits.toLocaleString(
                 "pt-BR"
@@ -327,24 +329,23 @@ export default function AdminAdzunaPage() {
               tone="emerald"
             />
             <StatBlock
-              icon={<Zap className="w-5 h-5 text-blue-400" />}
+              icon={<Zap className="w-5 h-5 text-violet-400" />}
               label="Latência média"
               value={`${data.avgLatencyMs} ms`}
-              hint="apenas chamadas reais à Adzuna"
-              tone="blue"
+              hint="apenas chamadas reais à Jooble"
+              tone="violet"
             />
             <StatBlock
               icon={<AlertTriangle className="w-5 h-5 text-red-400" />}
-              label="Erros Adzuna (30d)"
+              label="Erros Jooble (30d)"
               value={data.counts.monthly.apiErrors.toLocaleString("pt-BR")}
-              hint="HTTP 4xx/5xx da Adzuna"
+              hint="HTTP 4xx/5xx da Jooble"
               tone="red"
             />
           </div>
 
           {/* Top queries + Recent calls */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            {/* Top queries */}
             <div className="lg:col-span-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
               <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06]">
                 <TrendingUp className="w-5 h-5 text-primary-400" />
@@ -379,7 +380,7 @@ export default function AdminAdzunaPage() {
                           </div>
                           <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden ml-7">
                             <div
-                              className="h-full bg-gradient-to-r from-primary-500 to-primary-400 rounded-full transition-all duration-500"
+                              className="h-full bg-gradient-to-r from-violet-500 to-violet-400 rounded-full transition-all duration-500"
                               style={{ width: `${pct}%` }}
                             />
                           </div>
@@ -391,7 +392,6 @@ export default function AdminAdzunaPage() {
               </div>
             </div>
 
-            {/* Recent calls */}
             <div className="lg:col-span-3 bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
               <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06]">
                 <Gauge className="w-5 h-5 text-primary-400" />
@@ -411,16 +411,26 @@ export default function AdminAdzunaPage() {
                   <table className="w-full text-xs">
                     <thead className="bg-dark-800 sticky top-0 z-10">
                       <tr className="text-gray-500">
-                        <th className="text-left font-medium px-4 py-2.5">Hora</th>
-                        <th className="text-left font-medium px-2 py-2.5">Tipo</th>
-                        <th className="text-left font-medium px-2 py-2.5">Busca</th>
-                        <th className="text-left font-medium px-2 py-2.5">Local</th>
-                        <th className="text-right font-medium px-4 py-2.5">ms</th>
+                        <th className="text-left font-medium px-4 py-2.5">
+                          Hora
+                        </th>
+                        <th className="text-left font-medium px-2 py-2.5">
+                          Tipo
+                        </th>
+                        <th className="text-left font-medium px-2 py-2.5">
+                          Busca
+                        </th>
+                        <th className="text-left font-medium px-2 py-2.5">
+                          Local
+                        </th>
+                        <th className="text-right font-medium px-4 py-2.5">
+                          ms
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.04]">
                       {data.recentCalls.map((call, idx) => {
-                        const pill = statusPill(call.status, call.provider);
+                        const pill = statusPill(call.status);
                         const local = [call.city, call.uf]
                           .filter(Boolean)
                           .join(", ");
@@ -463,10 +473,11 @@ export default function AdminAdzunaPage() {
           <div className="flex items-start gap-2.5 px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
             <Search className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-gray-500 leading-relaxed">
-              Limites do free tier Adzuna: 25/min, 250/dia, 1.000/sem,
-              2.500/mês. Como a Adzuna passou a ser fallback, só recebe
-              tráfego quando a Jooble esgota a cota vitalícia ou retorna
-              erro. Cache hits não consomem quota. Atualizado em{" "}
+              Cota Jooble: {data.totalLimit} requisições no total da vida útil
+              da chave. Quando ultrapassa esse limite, o sistema cai
+              automaticamente na Adzuna. A Jooble não fornece headers de
+              rate-limit nem código padronizado quando a cota esgota — por
+              isso qualquer falha cai pra Adzuna. Atualizado em{" "}
               {formatTime(data.generatedAt)}.
             </p>
           </div>
@@ -487,21 +498,17 @@ function StatBlock({
   label: string;
   value: string;
   hint: string;
-  tone: "emerald" | "blue" | "red" | "violet";
+  tone: "emerald" | "violet" | "red";
 }) {
   const borderClass =
     tone === "emerald"
       ? "border-emerald-500/10"
-      : tone === "blue"
-      ? "border-blue-500/10"
       : tone === "violet"
-      ? "border-violet-500/10"
-      : "border-red-500/10";
+        ? "border-violet-500/10"
+        : "border-red-500/10";
 
   return (
-    <div
-      className={`bg-white/[0.03] border ${borderClass} rounded-2xl p-5`}
-    >
+    <div className={`bg-white/[0.03] border ${borderClass} rounded-2xl p-5`}>
       <div className="flex items-center gap-3 mb-2">
         {icon}
         <p className="text-xs text-gray-500">{label}</p>

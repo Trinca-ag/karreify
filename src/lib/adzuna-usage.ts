@@ -10,9 +10,15 @@ export const ADZUNA_LIMITS = {
   perMonth: 2500,
 } as const;
 
-/** Switch to Jooble preventively when monthly Adzuna usage hits this number.
- *  Buffer of 200 absorbs concurrent races and lets manual testing breathe. */
-export const ADZUNA_MONTHLY_THRESHOLD = 2300;
+/** Jooble REST API: por confirmação oficial do time Jooble (e-mail 2026-05),
+ *  o limite é de 500 requisições no total para a chave (não por mês). Quando
+ *  esgota, requisições novas simplesmente deixam de ser processadas. Não há
+ *  headers de rate-limit. */
+export const JOOBLE_TOTAL_LIMIT = 500;
+
+/** Limite acima do qual ligamos um alerta visual no admin. Buffer pequeno
+ *  porque a cota da Jooble é vitalícia. */
+export const JOOBLE_WARNING_THRESHOLD = 400;
 
 export type JobProvider = "adzuna" | "jooble";
 
@@ -133,80 +139,45 @@ export async function recordCall(call: CallRecord): Promise<void> {
   }
 }
 
-/** In-process memoization of the monthly billable Adzuna count.
- *  Provider selection happens on every search, but the 2500/month quota
- *  moves slowly — caching for 60s avoids a Firestore round-trip per request
- *  without letting the threshold check go meaningfully stale. */
-let adzunaCountCache: { value: number; expiresAt: number } | null = null;
-const ADZUNA_COUNT_CACHE_MS = 60 * 1000;
-
-/** Count of api_call + api_error records for Adzuna in the last 30 days,
- *  used only to decide when to switch to Jooble preventively.
+/** Total vitalício consumido pela chave Jooble (api_call + api_error).
+ *  Cacheado por 60s pra não ler Firestore a cada busca — a cota de 500
+ *  vitalícia se move devagar e cache_hit não conta.
  *
- *  Counts Adzuna explicitly *plus legacy records without a provider field*
- *  (Firestore equality filter excludes missing fields, so we do this in two
- *  passes via `total - jooble`). Errors are included because they consume
- *  the Adzuna free tier too. */
-export async function getAdzunaMonthlyBillable(): Promise<number> {
+ *  Implementação: 1 query `where("provider", "==", "jooble").get()` + filtro
+ *  in-memory. Evita índice composto (provider+status). Para 500 chamadas
+ *  vitalícias + cache_hits, o read é pequeno o suficiente. */
+let joobleCountCache: { value: number; expiresAt: number } | null = null;
+const JOOBLE_COUNT_CACHE_MS = 60 * 1000;
+
+export async function getJoobleTotalBillable(): Promise<number> {
   const now = Date.now();
-  if (adzunaCountCache && adzunaCountCache.expiresAt > now) {
-    return adzunaCountCache.value;
+  if (joobleCountCache && joobleCountCache.expiresAt > now) {
+    return joobleCountCache.value;
   }
 
   try {
-    const monthAgo = Timestamp.fromMillis(now - 30 * 24 * 60 * 60 * 1000);
-    const totalCall = adminDb
+    const snap = await adminDb
       .collection(CALLS_COLLECTION)
-      .where("ts", ">=", monthAgo)
-      .where("status", "==", "api_call")
-      .count()
-      .get();
-    const totalError = adminDb
-      .collection(CALLS_COLLECTION)
-      .where("ts", ">=", monthAgo)
-      .where("status", "==", "api_error")
-      .count()
-      .get();
-    const joobleCall = adminDb
-      .collection(CALLS_COLLECTION)
-      .where("ts", ">=", monthAgo)
-      .where("status", "==", "api_call")
       .where("provider", "==", "jooble")
-      .count()
-      .get();
-    const joobleError = adminDb
-      .collection(CALLS_COLLECTION)
-      .where("ts", ">=", monthAgo)
-      .where("status", "==", "api_error")
-      .where("provider", "==", "jooble")
-      .count()
+      .limit(20000)
       .get();
 
-    const [tc, te, jc, je] = await Promise.all([
-      totalCall,
-      totalError,
-      joobleCall,
-      joobleError,
-    ]);
+    let value = 0;
+    snap.docs.forEach((d) => {
+      const status = (d.data() as { status?: string }).status;
+      if (status === "api_call" || status === "api_error") value += 1;
+    });
 
-    const value =
-      tc.data().count +
-      te.data().count -
-      jc.data().count -
-      je.data().count;
-    adzunaCountCache = { value, expiresAt: now + ADZUNA_COUNT_CACHE_MS };
+    joobleCountCache = { value, expiresAt: now + JOOBLE_COUNT_CACHE_MS };
     return value;
   } catch (err) {
-    console.error("[adzuna-tracker] count error", err);
-    // On read failure, return 0 so we don't block Adzuna unnecessarily — the
-    // real 429 from Adzuna itself is the hard backstop.
+    console.error("[jooble-tracker] count error", err);
     return 0;
   }
 }
 
-/** Force-invalidate the count cache (e.g. after recording a new api_call). */
-export function bumpAdzunaCount(): void {
-  if (adzunaCountCache) {
-    adzunaCountCache.value += 1;
+export function bumpJoobleCount(): void {
+  if (joobleCountCache) {
+    joobleCountCache.value += 1;
   }
 }

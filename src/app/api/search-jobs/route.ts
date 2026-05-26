@@ -9,9 +9,9 @@ import {
   setCached,
   makeCacheKey,
   recordCall,
-  getAdzunaMonthlyBillable,
-  bumpAdzunaCount,
-  ADZUNA_MONTHLY_THRESHOLD,
+  getJoobleTotalBillable,
+  bumpJoobleCount,
+  JOOBLE_TOTAL_LIMIT,
   type CachedJob,
   type JobProvider,
 } from "@/lib/adzuna-usage";
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
     if (cached) {
       recordCall({
         status: "cache_hit",
-        provider: "adzuna", // Cache hits don't actually call any provider — keeping "adzuna" for legacy chart continuity.
+        provider: "jooble", // Cache hits don't call any provider; rotulado como "jooble" porque é o primário.
         keyword: trimmedKeyword,
         uf: uf ?? "",
         city: city ?? "",
@@ -222,34 +222,40 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Provider selection: stay on Adzuna while monthly usage is under the
-    // soft threshold; switch to Jooble preventively above it. The actual
-    // Adzuna 2500/month ceiling is the hard backstop — see the 429 handler.
-    // ADZUNA_DISABLED=true forces all traffic to Jooble (useful for testing
-    // or as a kill-switch during an Adzuna incident).
-    const adzunaDisabled = process.env.ADZUNA_DISABLED === "true";
-    let preferAdzuna = false;
-    if (!adzunaDisabled) {
-      const adzunaUsage = await getAdzunaMonthlyBillable();
-      preferAdzuna = adzunaUsage < ADZUNA_MONTHLY_THRESHOLD;
+    // Provider selection: Jooble é primária (resposta oficial confirmou cota
+    // vitalícia de 500 por chave; usamos enquanto há crédito). Se já passou
+    // do limite, rota direto pra Adzuna. JOOBLE_DISABLED=true força tudo
+    // para Adzuna (kill-switch durante incidente).
+    const joobleDisabled = process.env.JOOBLE_DISABLED === "true";
+    let preferJooble = false;
+    if (!joobleDisabled) {
+      const joobleUsage = await getJoobleTotalBillable();
+      preferJooble = joobleUsage < JOOBLE_TOTAL_LIMIT;
+      if (!preferJooble) {
+        console.warn(
+          `[search-jobs] cota Jooble esgotada (${joobleUsage}/${JOOBLE_TOTAL_LIMIT}), roteando para Adzuna`
+        );
+      }
     } else {
-      console.log("[search-jobs] ADZUNA_DISABLED=true, routing to Jooble");
+      console.log("[search-jobs] JOOBLE_DISABLED=true, routing to Adzuna");
     }
 
-    let result = preferAdzuna
-      ? await searchViaAdzuna(searchParams)
-      : await searchViaJooble(searchParams);
+    let result = preferJooble
+      ? await searchViaJooble(searchParams)
+      : await searchViaAdzuna(searchParams);
 
-    // Reactive failover: if Adzuna refused with 429 (rate limit), retry via
-    // Jooble for this single request. Other 4xx/5xx aren't worth retrying —
-    // auth errors mean the credentials need fixing, 5xx is usually transient.
-    // Record the 429 as a billable Adzuna error so the threshold check and
-    // admin panel see the failed attempt.
-    if (!result.ok && result.provider === "adzuna" && result.status === 429) {
-      console.warn("[search-jobs] Adzuna 429, falling back to Jooble");
+    // Reactive failover: se a Jooble falhou (qualquer status), tentamos
+    // Adzuna. A documentação Jooble não garante código de erro consistente
+    // quando a cota esgota — pode ser 403 (chave inválida) ou simplesmente
+    // parar de responder. Tratamos qualquer erro como motivo pra cair na
+    // Adzuna. Registramos o erro Jooble pra aparecer no console de erros.
+    if (!result.ok && result.provider === "jooble") {
+      console.warn(
+        `[search-jobs] Jooble falhou (${result.status}), fallback Adzuna`
+      );
       recordCall({
         status: "api_error",
-        provider: "adzuna",
+        provider: "jooble",
         keyword: trimmedKeyword,
         uf: uf ?? "",
         city: city ?? "",
@@ -257,11 +263,11 @@ export async function POST(request: NextRequest) {
         page: targetPage,
         exactMatch: !!exactMatch,
         userId: ctx.uid,
-        httpStatus: 429,
+        httpStatus: result.status,
         durationMs: result.durationMs,
       });
-      bumpAdzunaCount();
-      result = await searchViaJooble(searchParams);
+      bumpJoobleCount();
+      result = await searchViaAdzuna(searchParams);
     }
 
     if (!result.ok) {
@@ -278,7 +284,7 @@ export async function POST(request: NextRequest) {
         httpStatus: result.status,
         durationMs: result.durationMs,
       });
-      if (result.provider === "adzuna") bumpAdzunaCount();
+      if (result.provider === "jooble") bumpJoobleCount();
 
       const isDev = process.env.NODE_ENV !== "production";
       return NextResponse.json(
@@ -309,7 +315,7 @@ export async function POST(request: NextRequest) {
       httpStatus: 200,
       durationMs: result.durationMs,
     });
-    if (result.provider === "adzuna") bumpAdzunaCount();
+    if (result.provider === "jooble") bumpJoobleCount();
 
     setCached(
       cacheKey,

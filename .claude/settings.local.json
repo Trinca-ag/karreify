@@ -95,7 +95,8 @@
       "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 30)",
       "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 40)",
       "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 20)",
-      "PowerShell(Get-ChildItem \"C:\\\\Karreify\\\\Leonardo-de-Oliveira-CV-pt \\(1\\).pdf\" | Select-Object Name, Length, @{Name=\"MB\";Expression={[math]::Round\\($_.Length/1MB,2\\)}})"
+      "PowerShell(Get-ChildItem \"C:\\\\Karreify\\\\Leonardo-de-Oliveira-CV-pt \\(1\\).pdf\" | Select-Object Name, Length, @{Name=\"MB\";Expression={[math]::Round\\($_.Length/1MB,2\\)}})",
+      "Bash(xargs grep -l \"ADZUNA_DISABLED\\\\|ADZUNA_MONTHLY_THRESHOLD\\\\|getAdzunaMonthlyBillable\\\\|bumpAdzunaCount\")"
     ]
   }
 }

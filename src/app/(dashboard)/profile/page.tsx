@@ -534,7 +534,7 @@ export default function ProfilePage() {
                   )}
                 </div>
                 {usesPasswordProvider && (
-                  <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-xl border border-white/[0.06] bg-white/[0.02]">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 bg-primary-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
                         <Lock className="w-4 h-4 text-primary-400" />
@@ -552,6 +552,7 @@ export default function ProfilePage() {
                         setConfirmPassword("");
                         setShowPasswordModal(true);
                       }}
+                      className="w-full sm:w-auto"
                     >
                       Alterar senha
                     </Button>
@@ -616,12 +617,12 @@ export default function ProfilePage() {
           </h2>
         </div>
         <div className="p-6">
-          <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-white/[0.06] bg-white/[0.02]">
-            <div className="flex-1 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-4 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+            <div className="contents sm:flex sm:flex-1 sm:flex-col sm:gap-1 sm:min-w-0">
               <p className="text-sm font-medium text-white">
                 Salvar documentos automaticamente
               </p>
-              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+              <p className="order-last sm:order-none text-xs text-gray-400 leading-relaxed">
                 Quando ativado, os documentos gerados são salvos automaticamente em
                 &quot;Meus Arquivos&quot; (respeitando o limite de cada categoria).
                 Quando desativado, você precisa clicar em &quot;Salvar&quot; para
@@ -634,7 +635,7 @@ export default function ProfilePage() {
               aria-checked={autoSaveDocuments}
               onClick={() => handleToggleAutoSave(!autoSaveDocuments)}
               disabled={savingAutoSave}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-900 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`self-start sm:self-auto relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-900 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed ${
                 autoSaveDocuments
                   ? "bg-primary-500/80 border-primary-400/50"
                   : "bg-white/10 border-white/10"
