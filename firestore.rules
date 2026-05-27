@@ -105,6 +105,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Pending payments — fluxo Abacate Pay. Criação/atualização é 100%
+    // server-side via Admin SDK (/api/payments/checkout e
+    // /api/webhooks/abacatepay). Usuário pode ler os próprios pra
+    // acompanhar status; admins podem ler tudo. Sem write do client.
+    match /pendingPayments/{paymentId} {
+      allow read: if isAuthenticated()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create, update, delete: if false;
+    }
+
     // Support tickets — created via /api/support/tickets (privileged server
     // generates the 5-digit id with collision retry). Once created, the owner
     // can update only the activity counters when sending a message; the admin

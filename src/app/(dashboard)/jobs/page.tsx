@@ -21,10 +21,13 @@ import {
   Sparkles,
   Lock,
   Coins,
+  CalendarClock,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   searchJobs,
+  buyJobsPass,
   formatRelativeDate,
   JobsSearchError,
   type Job,
@@ -33,6 +36,7 @@ import {
 import { BRAZILIAN_STATES, fetchCitiesByUF } from "@/lib/ibge";
 import { useJobsCache } from "@/components/providers/JobsCacheProvider";
 import { useAuthContext } from "@/components/providers/AuthProvider";
+import { JOBS_PASSES, type JobsPassId } from "@/types";
 
 const PERIOD_OPTIONS: { value: DatePeriod; label: string }[] = [
   { value: "today", label: "Hoje" },
@@ -69,13 +73,21 @@ export default function JobsPage() {
     cachePage,
   } = useJobsCache();
 
-  const { userData } = useAuthContext();
+  const { userData, refreshUserData } = useAuthContext();
   const isTester = userData?.role === "tester";
+
+  const passExpiresAt = userData?.jobsPassExpiresAt ?? 0;
+  const hasActivePass = !isTester && passExpiresAt > Date.now();
+  const passDaysLeft = hasActivePass
+    ? Math.max(1, Math.ceil((passExpiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
+    : 0;
 
   const [cities, setCities] = useState<string[]>([]);
   const [citiesLoading, setCitiesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [testerLimitOpen, setTesterLimitOpen] = useState(false);
+  const [passModalOpen, setPassModalOpen] = useState(false);
+  const [buyingPass, setBuyingPass] = useState<JobsPassId | null>(null);
 
   useEffect(() => {
     if (!uf) {
@@ -91,6 +103,25 @@ export default function JobsPage() {
   useEffect(() => {
     if (isTester) setTesterLimitOpen(true);
   }, [isTester]);
+
+  async function handleBuyPass(passId: JobsPassId) {
+    setBuyingPass(passId);
+    try {
+      await buyJobsPass(passId);
+      await refreshUserData();
+      const pass = JOBS_PASSES.find((p) => p.id === passId);
+      toast.success(`${pass?.name ?? "Passe"} ativado!`);
+      setPassModalOpen(false);
+    } catch (err) {
+      if (err instanceof JobsSearchError && err.code === "INSUFFICIENT_CREDITS") {
+        toast.error("Moedas insuficientes para comprar este passe.");
+      } else {
+        toast.error(err instanceof Error ? err.message : "Erro ao comprar passe.");
+      }
+    } finally {
+      setBuyingPass(null);
+    }
+  }
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(totalCount / PAGE_SIZE)),
@@ -153,9 +184,8 @@ export default function JobsPage() {
         setTesterLimitOpen(true);
         return;
       }
-      if (err instanceof JobsSearchError && err.code === "INSUFFICIENT_CREDITS") {
-        toast.error("Você não tem moedas suficientes para buscar vagas.");
-        setError("Saldo de moedas insuficiente. Recarregue em Pacotes para continuar buscando.");
+      if (err instanceof JobsSearchError && err.code === "NO_ACTIVE_PASS") {
+        setPassModalOpen(true);
         setJobs([]);
         setTotalCount(0);
         return;
@@ -361,14 +391,40 @@ export default function JobsPage() {
                 navegação entre páginas.
               </span>
             </div>
+          ) : hasActivePass ? (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg text-[11px] text-emerald-200 leading-relaxed">
+              <div className="flex items-start gap-2">
+                <CalendarClock className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0 mt-0.5" />
+                <span>
+                  Passe ativo · expira em{" "}
+                  <span className="font-semibold text-white">
+                    {passDaysLeft} {passDaysLeft === 1 ? "dia" : "dias"}
+                  </span>{" "}
+                  · buscas ilimitadas
+                </span>
+              </div>
+              <button
+                onClick={() => setPassModalOpen(true)}
+                className="text-[11px] font-medium text-emerald-300 hover:text-white transition-colors underline-offset-2 hover:underline"
+              >
+                Estender
+              </button>
+            </div>
           ) : (
-            <div className="flex items-start gap-2 px-3 py-2 bg-yellow-500/5 border border-yellow-500/15 rounded-lg text-[11px] text-yellow-200 leading-relaxed">
-              <Coins className="w-3.5 h-3.5 text-yellow-300 flex-shrink-0 mt-0.5" />
-              <span>
-                Cada nova busca custa{" "}
-                <span className="font-semibold text-white">1 moeda</span>.
-                Navegar entre páginas dos resultados é gratuito.
-              </span>
+            <div className="flex items-center justify-between gap-2 px-3 py-2 bg-yellow-500/5 border border-yellow-500/15 rounded-lg text-[11px] text-yellow-200 leading-relaxed">
+              <div className="flex items-start gap-2">
+                <Coins className="w-3.5 h-3.5 text-yellow-300 flex-shrink-0 mt-0.5" />
+                <span>
+                  Você precisa de um passe ativo para buscar vagas. Passes
+                  semanal (60 moedas) ou mensal (100 moedas).
+                </span>
+              </div>
+              <button
+                onClick={() => setPassModalOpen(true)}
+                className="text-[11px] font-semibold text-white bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 px-2 py-0.5 rounded-md transition-colors"
+              >
+                Comprar passe
+              </button>
             </div>
           )}
         </div>
@@ -505,6 +561,87 @@ export default function JobsPage() {
           >
             Entendi
           </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={passModalOpen}
+        onClose={() => !buyingPass && setPassModalOpen(false)}
+        title={hasActivePass ? "Estender passe de vagas" : "Comprar passe de vagas"}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-400 leading-relaxed">
+            {hasActivePass
+              ? `Seu passe atual expira em ${passDaysLeft} ${passDaysLeft === 1 ? "dia" : "dias"}. Comprar um novo passe estende a partir da data atual de expiração.`
+              : "Compre um passe para fazer buscas ilimitadas em /jobs durante o período escolhido. Compra única — sem renovação automática."}
+          </p>
+
+          <div className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg text-xs text-gray-300">
+            <Coins className="w-3.5 h-3.5 text-yellow-300" />
+            Saldo: <span className="font-semibold text-white">{userData?.credits ?? 0}</span> moedas
+          </div>
+
+          <div className="space-y-3">
+            {JOBS_PASSES.map((pass) => {
+              const canAfford = (userData?.credits ?? 0) >= pass.cost;
+              const isBuying = buyingPass === pass.id;
+              return (
+                <div
+                  key={pass.id}
+                  className={`relative rounded-xl border p-4 transition-colors ${
+                    canAfford
+                      ? "bg-white/[0.03] border-white/[0.06] hover:border-primary-500/30"
+                      : "bg-white/[0.02] border-white/[0.04] opacity-70"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-white font-heading">
+                        {pass.name}
+                      </h3>
+                      <p className="text-xs text-gray-400 mt-0.5">{pass.description}</p>
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <Coins className="w-3.5 h-3.5 text-primary-400" />
+                        <span className="text-sm font-bold text-primary-400">
+                          {pass.cost} moedas
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleBuyPass(pass.id)}
+                      disabled={!canAfford || !!buyingPass}
+                      className="px-3 py-2 bg-gradient-to-r from-primary-600 to-primary-500 text-white text-xs font-semibold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:from-primary-500 hover:to-primary-400 transition-all flex items-center gap-1.5 flex-shrink-0"
+                    >
+                      {isBuying ? (
+                        <>
+                          <div className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                          Ativando...
+                        </>
+                      ) : !canAfford ? (
+                        "Sem saldo"
+                      ) : (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          {hasActivePass ? "Estender" : "Ativar"}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-start gap-2 text-[11px] text-gray-500 leading-relaxed">
+            <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <span>
+              Sem moedas suficientes?{" "}
+              <Link href="/plans" className="text-primary-400 hover:text-primary-300 underline-offset-2 hover:underline">
+                Recarregue em Pacotes
+              </Link>
+              .
+            </span>
+          </div>
         </div>
       </Modal>
     </div>

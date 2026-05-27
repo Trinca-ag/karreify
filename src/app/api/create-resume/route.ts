@@ -7,7 +7,7 @@ import { deductCreditsServer, InsufficientCreditsError } from "@/lib/credits-ser
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { createDocumentNotification } from "@/lib/notifications-server";
 
-const ALLOWED_FEATURES = new Set(["resume-creation", "resume-editor", "resume-adaptation"]);
+const ALLOWED_FEATURES = new Set(["resume-creation", "resume-adaptation"]);
 const MAX_PAYLOAD_LENGTH = 200_000;
 
 export async function POST(request: NextRequest) {
@@ -36,11 +36,9 @@ export async function POST(request: NextRequest) {
     }
 
     const description =
-      feature === "resume-editor"
-        ? "Melhoria de seção do currículo"
-        : feature === "resume-adaptation"
-          ? "Adaptação de currículo"
-          : "Criação de currículo com IA";
+      feature === "resume-adaptation"
+        ? "Adaptação de currículo"
+        : "Criação de currículo com IA";
 
     let deduction;
     try {
@@ -66,38 +64,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Section-improver flow uses /api/create-resume but doesn't produce a
-    // savedItem — skip the notification in that case.
-    let notificationId: string | null = null;
-    if (feature !== "resume-editor") {
-      const candidateName =
-        (parsed?.resumeData?.personalInfo?.name as string | undefined) ||
-        (parsed?.personalInfo?.name as string | undefined) ||
-        "Currículo";
-      const baseTitle = candidateName;
-      const candidateLevel = parsed?.generationNotes?.candidateLevel as string | undefined;
-      const isAdaptation = feature === "resume-adaptation";
-      notificationId = await createDocumentNotification({
-        uid: ctx.uid,
-        title: isAdaptation ? "Currículo adaptado" : "Currículo criado",
-        message: isAdaptation
-          ? "Seu currículo adaptado está pronto. Salve em Meus Arquivos nos próximos 10 minutos."
-          : "Seu novo currículo está pronto. Salve em Meus Arquivos nos próximos 10 minutos.",
-        documentType: "resume",
-        documentTitle: baseTitle,
-        pendingPayload: {
-          kind: "resume",
-          resumeData: parsed?.resumeData ?? parsed,
-          template: "classic",
-          candidateLevel,
-          title: baseTitle,
-          subtitle: isAdaptation ? "Adaptado para vaga" : "Criado com IA",
-        },
-      }).catch((e) => {
-        console.error("createDocumentNotification (resume) failed:", e);
-        return null;
-      });
-    }
+    const candidateName =
+      (parsed?.resumeData?.personalInfo?.name as string | undefined) ||
+      (parsed?.personalInfo?.name as string | undefined) ||
+      "Currículo";
+    const baseTitle = candidateName;
+    const candidateLevel = parsed?.generationNotes?.candidateLevel as string | undefined;
+    const isAdaptation = feature === "resume-adaptation";
+    const notificationId = await createDocumentNotification({
+      uid: ctx.uid,
+      title: isAdaptation ? "Currículo adaptado" : "Currículo criado",
+      message: isAdaptation
+        ? "Seu currículo adaptado está pronto. Salve em Meus Arquivos nos próximos 10 minutos."
+        : "Seu novo currículo está pronto. Salve em Meus Arquivos nos próximos 10 minutos.",
+      documentType: "resume",
+      documentTitle: baseTitle,
+      pendingPayload: {
+        kind: "resume",
+        resumeData: parsed?.resumeData ?? parsed,
+        template: "classic",
+        candidateLevel,
+        title: baseTitle,
+        subtitle: isAdaptation ? "Adaptado para vaga" : "Criado com IA",
+      },
+    }).catch((e) => {
+      console.error("createDocumentNotification (resume) failed:", e);
+      return null;
+    });
 
     return NextResponse.json({
       success: true,

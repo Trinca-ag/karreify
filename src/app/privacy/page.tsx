@@ -74,7 +74,7 @@ const sections: Section[] = [
         icon: FileCheck,
         title: "Conteúdo enviado",
         description:
-          "Currículos em PDF/DOC/DOCX, descrições de vagas, perfis do LinkedIn e textos digitados nas ferramentas.",
+          "Currículos em PDF/DOC/DOCX, descrições de vagas e textos digitados nas ferramentas.",
       },
       {
         icon: Server,

@@ -9,6 +9,9 @@ export interface User {
   credits: number;
   role: UserRole;
   autoSaveDocuments?: boolean;
+  /** Epoch ms; while greater than Date.now(), the user can search jobs freely. */
+  jobsPassExpiresAt?: number | null;
+  jobsPassType?: JobsPassId | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -118,64 +121,6 @@ export interface RewriteSuggestion {
   original: string;
   suggested: string;
   reason: string;
-}
-
-// ==================== LinkedIn Types ====================
-export interface LinkedInAnalysis {
-  profileUrl: string;
-  overallScore: number;
-  profileStructure: {
-    clarity: string;
-    organization: string;
-    professionalConsistency: string;
-  };
-  seo: {
-    score: number;
-    relevantKeywords: string[];
-    headlineOptimization: string;
-    aboutOptimization: string;
-  };
-  suggestedHeadline: string;
-  suggestedAbout: string;
-  recommendedKeywords: string[];
-  improvements: string[];
-  strengths: string[];
-}
-
-// ==================== Career Roadmap Types ====================
-export interface CareerRoadmap {
-  id: string;
-  userId: string;
-  currentRole: string;
-  currentArea: string;
-  experienceLevel: string;
-  targetRole: string;
-  timeline: string;
-  roadmap: RoadmapPhase[];
-  progress: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface RoadmapPhase {
-  level: number;
-  title: string;
-  description: string;
-  duration: string;
-  tasks: RoadmapTask[];
-  courses: string[];
-  certifications: string[];
-  skills: string[];
-  projects: string[];
-  networking: string[];
-}
-
-export interface RoadmapTask {
-  id: string;
-  title: string;
-  description: string;
-  completed: boolean;
-  points: number;
 }
 
 // ==================== Adapted Resume Types ====================
@@ -387,66 +332,139 @@ export interface CreditTransaction {
 }
 
 export const FEATURE_COSTS: Record<string, number> = {
-  "resume-analysis": 1,
-  "resume-creation": 1,
-  "resume-adaptation": 1,
-  "resume-editor": 1,
-  "career-roadmap": 20,
-  "cover-letter": 1,
-  "company-analysis": 1,
-  "jobs-search": 1,
+  "resume-analysis": 5,
+  "resume-creation": 10,
+  "resume-adaptation": 15,
+  "cover-letter": 10,
+  "company-analysis": 5,
 };
 
 // ==================== Credit Packs ====================
-export type CreditPackId = "starter" | "plus" | "pro";
+export type CreditPackId = "test" | "basic" | "intermediary" | "plus";
 
 export interface CreditPack {
   id: CreditPackId;
   name: string;
+  /** R$ value */
   price: number;
   baseCredits: number;
   bonusCredits: number;
   totalCredits: number;
+  /** AbacatePay product id (prod_*). Source of truth for the actual price charged. */
+  abacateProductId: string;
+  /** Hide from the regular UI unless dev/test mode. */
+  isTest?: boolean;
   features: string[];
 }
 
 export const CREDIT_PACKS: CreditPack[] = [
   {
-    id: "starter",
-    name: "Pacote Inicial",
-    price: 10,
-    baseCredits: 5,
+    id: "test",
+    name: "Karreify Teste",
+    price: 1,
+    baseCredits: 1,
     bonusCredits: 0,
-    totalCredits: 5,
+    totalCredits: 1,
+    abacateProductId: "prod_YNBckch4wYfDQRmH3mrRDAQp",
+    isTest: true,
     features: [
-      "5 moedas",
+      "1 moeda",
+      "Apenas para validar fluxo de pagamento",
+    ],
+  },
+  {
+    id: "basic",
+    name: "Básico",
+    price: 14.9,
+    baseCredits: 50,
+    bonusCredits: 0,
+    totalCredits: 50,
+    abacateProductId: "prod_BXejKjLYMM13ppK5LQC02UbP",
+    features: [
+      "50 moedas",
+      "Acesso a todas as funcionalidades",
+    ],
+  },
+  {
+    id: "intermediary",
+    name: "Intermediário",
+    price: 29.9,
+    baseCredits: 100,
+    bonusCredits: 20,
+    totalCredits: 120,
+    abacateProductId: "prod_ef5KjBbRZr1Kq1WdNk0WHqLj",
+    features: [
+      "100 moedas + 20 bônus",
+      "Total de 120 moedas",
       "Acesso a todas as funcionalidades",
     ],
   },
   {
     id: "plus",
-    name: "Pacote Plus",
-    price: 30,
-    baseCredits: 15,
-    bonusCredits: 5,
-    totalCredits: 20,
+    name: "Plus",
+    price: 59.9,
+    baseCredits: 150,
+    bonusCredits: 40,
+    totalCredits: 190,
+    abacateProductId: "prod_c6SruhB2k4qd0AgKM24uwJpp",
     features: [
-      "15 moedas + 5 bônus",
-      "Total de 20 moedas",
-      "Acesso a todas as funcionalidades",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pacote Pro",
-    price: 50,
-    baseCredits: 25,
-    bonusCredits: 15,
-    totalCredits: 40,
-    features: [
-      "25 moedas + 15 bônus",
-      "Total de 40 moedas",
+      "150 moedas + 40 bônus",
+      "Total de 190 moedas",
       "Acesso a todas as funcionalidades",
     ],
   },
 ];
+
+// ==================== Jobs Passes ====================
+/**
+ * Passe pago em moedas que libera buscas ilimitadas na /jobs por um período.
+ * Sem cobrança recorrente — o usuário compra de novo quando expirar.
+ */
+export type JobsPassId = "weekly" | "monthly";
+
+export interface JobsPass {
+  id: JobsPassId;
+  name: string;
+  /** Cost in Karreify credits (moedas). */
+  cost: number;
+  /** Duration in milliseconds added to expiry when the pass is purchased. */
+  durationMs: number;
+  description: string;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export const JOBS_PASSES: JobsPass[] = [
+  {
+    id: "weekly",
+    name: "Passe semanal",
+    cost: 60,
+    durationMs: 7 * DAY_MS,
+    description: "7 dias de buscas ilimitadas",
+  },
+  {
+    id: "monthly",
+    name: "Passe mensal",
+    cost: 100,
+    durationMs: 30 * DAY_MS,
+    description: "30 dias de buscas ilimitadas",
+  },
+];
+
+// ==================== Pending Payments ====================
+export type PendingPaymentStatus = "pending" | "completed" | "refunded" | "disputed" | "failed";
+
+export interface PendingPayment {
+  id: string;
+  userId: string;
+  packId: CreditPackId;
+  abacateCheckoutId: string;
+  abacateProductId: string;
+  amount: number;
+  creditsToAdd: number;
+  status: PendingPaymentStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  completedAt?: Date | null;
+  refundedAt?: Date | null;
+}

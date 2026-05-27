@@ -10,10 +10,9 @@ const FEATURE_LABELS: Record<string, string> = {
   "resume-analysis": "Análise de Currículo",
   "resume-creation": "Criação de Currículo",
   "resume-adaptation": "Adaptação para Vaga",
-  "resume-editor": "Editor de Currículo",
-  "career-roadmap": "Roadmap de Carreira",
   "cover-letter": "Carta de Apresentação",
   "company-analysis": "Análise de Empresa",
+  "jobs-pass": "Passe de Vagas",
 };
 
 const STAT_CONFIG = [

@@ -3,7 +3,6 @@ import { requireUser, authErrorResponse } from "@/lib/auth-server";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
-import { deductCreditsServer, InsufficientCreditsError } from "@/lib/credits-server";
 import {
   getCached,
   setCached,
@@ -150,12 +149,13 @@ export async function POST(request: NextRequest) {
       page: targetPage,
     };
 
-    // Pagination of an already-paid search doesn't charge. Charging only on
-    // page=1 keeps the cost predictable for users (1 moeda per "Buscar" click)
-    // and gives testers a single search that they can paginate through freely.
+    // Modo de cobrança agora é por passe (semanal/mensal). Testers continuam
+    // com 1 busca grátis. Para users, basta ter um passe ativo — a busca em si
+    // não desconta nada.
     if (targetPage === 1) {
       const userSnap = await adminDb.collection("users").doc(ctx.uid).get();
-      const role = userSnap.data()?.role === "tester" ? "tester" : "user";
+      const userData = userSnap.data() ?? {};
+      const role = userData.role === "tester" ? "tester" : "user";
 
       if (role === "tester") {
         const prior = await adminDb
@@ -187,16 +187,15 @@ export async function POST(request: NextRequest) {
             createdAt: FieldValue.serverTimestamp(),
           });
       } else {
-        try {
-          await deductCreditsServer(ctx.uid, JOBS_SEARCH_FEATURE, "Busca de vagas");
-        } catch (e) {
-          if (e instanceof InsufficientCreditsError) {
-            return NextResponse.json(
-              { error: e.message, code: "INSUFFICIENT_CREDITS" },
-              { status: 402 }
-            );
-          }
-          throw e;
+        const passExpiresAt = (userData.jobsPassExpiresAt as number | undefined) ?? 0;
+        if (passExpiresAt <= Date.now()) {
+          return NextResponse.json(
+            {
+              error: "Você não tem um passe ativo. Compre um passe semanal ou mensal para buscar vagas.",
+              code: "NO_ACTIVE_PASS",
+            },
+            { status: 402 }
+          );
         }
       }
     }

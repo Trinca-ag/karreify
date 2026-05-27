@@ -23,8 +23,8 @@ export default function Footer() {
             </div>
             <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
               Plataforma inteligente para impulsionar sua carreira. Use IA para
-              criar currículos profissionais, otimizar seu LinkedIn e planejar
-              sua trajetória.
+              criar e adaptar currículos, gerar cartas de apresentação e
+              analisar empresas.
             </p>
             <div className="flex items-center gap-3 mt-6">
               <a

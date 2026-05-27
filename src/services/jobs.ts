@@ -64,6 +64,29 @@ export async function searchJobs(filters: JobSearchFilters): Promise<JobSearchRe
   return response.json();
 }
 
+export interface BuyJobsPassResult {
+  success: true;
+  jobsPassExpiresAt: number;
+  jobsPassType: "weekly" | "monthly";
+  credits: number;
+}
+
+export async function buyJobsPass(passId: "weekly" | "monthly"): Promise<BuyJobsPassResult> {
+  const res = await authedFetch("/api/jobs/buy-pass", {
+    method: "POST",
+    body: JSON.stringify({ passId }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new JobsSearchError(
+      data?.error || "Erro ao comprar passe.",
+      res.status,
+      data?.code
+    );
+  }
+  return data;
+}
+
 export function formatRelativeDate(iso: string): string {
   if (!iso) return "";
   const date = new Date(iso);

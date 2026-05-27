@@ -17,8 +17,8 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Karreify - Impulsione sua carreira com IA",
   description:
-    "Plataforma inteligente para criar currículos, otimizar perfis do LinkedIn e planejar sua carreira com inteligência artificial.",
-  keywords: ["currículo", "IA", "carreira", "LinkedIn", "ATS", "resume builder"],
+    "Plataforma inteligente para criar, adaptar e analisar currículos, gerar cartas de apresentação e analisar empresas com inteligência artificial.",
+  keywords: ["currículo", "IA", "carreira", "ATS", "resume builder", "carta de apresentação"],
 };
 
 export default function RootLayout({

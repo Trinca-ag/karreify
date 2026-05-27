@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Link from "next/link";
 import { listSavedItems } from "@/services/saved-items";
@@ -19,6 +20,7 @@ import {
   Briefcase,
   Sparkles,
   Zap,
+  CheckCircle2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -118,12 +120,26 @@ function getGreeting() {
 
 export default function DashboardPage() {
   const { user, userData } = useAuthContext();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [savedCounts, setSavedCounts] = useState({ analyses: 0, resumes: 0 });
   const [greeting, setGreeting] = useState("Olá");
+  const [paymentBanner, setPaymentBanner] = useState(false);
 
   useEffect(() => {
     setGreeting(getGreeting());
   }, []);
+
+  // Banner pós-pagamento (Abacate Pay redireciona pra /dashboard?payment=success).
+  // O webhook é a fonte da verdade — quando ele creditar, o snapshot do Firestore
+  // vai bumpar `userData.credits` automaticamente. Aqui só damos feedback e
+  // limpamos o query param pra não persistir no histórico.
+  useEffect(() => {
+    if (searchParams.get("payment") === "success") {
+      setPaymentBanner(true);
+      router.replace("/dashboard");
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -167,6 +183,20 @@ export default function DashboardPage() {
           </p>
         </div>
       </section>
+
+      {paymentBanner && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl text-sm text-emerald-200 animate-fade-in-up">
+          <CheckCircle2 className="w-5 h-5 text-emerald-300 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-white">Pagamento recebido!</p>
+            <p className="text-emerald-200/80 text-xs mt-0.5 leading-relaxed">
+              Estamos confirmando seu pagamento com o Abacate Pay. As moedas
+              caem automaticamente na sua conta em alguns segundos — você não
+              precisa atualizar a página.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fade-in-up animation-delay-200">
