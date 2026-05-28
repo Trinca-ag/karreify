@@ -104,6 +104,17 @@ export default function JobsPage() {
     if (isTester) setTesterLimitOpen(true);
   }, [isTester]);
 
+  // Abre o modal de passes ao entrar na página caso o user não tenha passe
+  // ativo e não seja tester. Mostrar uma vez por sessão é UX agressivo demais
+  // (toda navegação reabre); mas o usuário pediu explicitamente "toda vez que
+  // o usuário acesse a /jobs" → reabrir a cada mount é o comportamento certo.
+  useEffect(() => {
+    if (userData === null) return; // aguarda userData carregar
+    if (isTester) return;
+    if (hasActivePass) return;
+    setPassModalOpen(true);
+  }, [userData, isTester, hasActivePass]);
+
   async function handleBuyPass(passId: JobsPassId) {
     setBuyingPass(passId);
     try {
@@ -351,24 +362,26 @@ export default function JobsPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={exactMatch}
-                onChange={(e) => setExactMatch(e.target.checked)}
-                className="w-4 h-4 rounded bg-white/5 border-white/10 accent-primary-500"
-              />
-              Apenas correspondências exatas
-              <span className="text-xs text-gray-500">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 pt-2">
+            <label className="flex flex-col sm:flex-row sm:items-center sm:gap-2 gap-1 text-sm text-gray-300 cursor-pointer select-none">
+              <span className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={exactMatch}
+                  onChange={(e) => setExactMatch(e.target.checked)}
+                  className="w-4 h-4 rounded bg-white/5 border-white/10 accent-primary-500"
+                />
+                Apenas correspondências exatas
+              </span>
+              <span className="text-xs text-gray-500 sm:inline pl-6 sm:pl-0">
                 (desligado: inclui vagas semelhantes)
               </span>
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               {searched && (
                 <button
                   onClick={clearFilters}
-                  className="px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-lg hover:bg-white/10 text-sm flex items-center gap-1.5"
+                  className="px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-lg hover:bg-white/10 text-sm flex items-center justify-center gap-1.5"
                 >
                   <X className="w-3.5 h-3.5" /> Limpar
                 </button>
@@ -377,6 +390,7 @@ export default function JobsPage() {
                 onClick={() => runSearch()}
                 disabled={loading}
                 loading={loading}
+                className="w-full sm:w-auto"
               >
                 <Search className="w-4 h-4 mr-1.5" /> Buscar vagas
               </Button>
@@ -411,7 +425,7 @@ export default function JobsPage() {
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-between gap-2 px-3 py-2 bg-yellow-500/5 border border-yellow-500/15 rounded-lg text-[11px] text-yellow-200 leading-relaxed">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 bg-yellow-500/5 border border-yellow-500/15 rounded-lg text-[11px] text-yellow-200 leading-relaxed">
               <div className="flex items-start gap-2">
                 <Coins className="w-3.5 h-3.5 text-yellow-300 flex-shrink-0 mt-0.5" />
                 <span>
@@ -421,7 +435,7 @@ export default function JobsPage() {
               </div>
               <button
                 onClick={() => setPassModalOpen(true)}
-                className="text-[11px] font-semibold text-white bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 px-2 py-0.5 rounded-md transition-colors"
+                className="text-[11px] font-semibold text-white bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 px-2 py-1.5 rounded-md transition-colors w-full sm:w-auto sm:py-0.5 sm:px-2"
               >
                 Comprar passe
               </button>
@@ -567,79 +581,170 @@ export default function JobsPage() {
       <Modal
         isOpen={passModalOpen}
         onClose={() => !buyingPass && setPassModalOpen(false)}
-        title={hasActivePass ? "Estender passe de vagas" : "Comprar passe de vagas"}
+        size="lg"
       >
-        <div className="space-y-4">
-          <p className="text-sm text-gray-400 leading-relaxed">
-            {hasActivePass
-              ? `Seu passe atual expira em ${passDaysLeft} ${passDaysLeft === 1 ? "dia" : "dias"}. Comprar um novo passe estende a partir da data atual de expiração.`
-              : "Compre um passe para fazer buscas ilimitadas em /jobs durante o período escolhido. Compra única — sem renovação automática."}
-          </p>
-
-          <div className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg text-xs text-gray-300">
-            <Coins className="w-3.5 h-3.5 text-yellow-300" />
-            Saldo: <span className="font-semibold text-white">{userData?.credits ?? 0}</span> moedas
+        <div className="-m-6">
+          {/* Hero header com gradiente */}
+          <div className="relative overflow-hidden rounded-t-2xl bg-gradient-to-br from-primary-600 via-primary-700 to-accent-violet p-6 md:p-8">
+            <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-accent-violet/40 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none" />
+            <button
+              onClick={() => !buyingPass && setPassModalOpen(false)}
+              disabled={!!buyingPass}
+              aria-label="Fechar"
+              className="absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="relative">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur border border-white/20 text-[10px] font-bold text-white uppercase tracking-wider mb-3">
+                <Briefcase className="w-3 h-3" />
+                Passes de vagas
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold text-white font-heading leading-tight pr-12">
+                {hasActivePass ? "Estenda seu acesso" : "Libere buscas ilimitadas"}
+              </h2>
+              <p className="text-white/80 text-sm mt-2 max-w-md leading-relaxed">
+                {hasActivePass
+                  ? `Seu passe atual expira em ${passDaysLeft} ${passDaysLeft === 1 ? "dia" : "dias"}. Comprar um novo passe estende a partir da data atual de expiração.`
+                  : "Escolha entre semanal ou mensal e tenha buscas ilimitadas. Sem cobrança recorrente."}
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-3">
+          {/* Saldo */}
+          <div className="px-6 md:px-8 pt-5">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-500/20 flex items-center justify-center">
+                  <Coins className="w-4 h-4 text-yellow-300" />
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-500 uppercase tracking-wider">Seu saldo</p>
+                  <p className="text-sm font-bold text-white">
+                    {userData?.credits ?? 0} <span className="text-gray-400 font-normal">moedas</span>
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/plans"
+                className="text-xs text-primary-400 hover:text-primary-300 transition-colors font-medium"
+              >
+                Recarregar →
+              </Link>
+            </div>
+          </div>
+
+          {/* Passes */}
+          <div className="px-6 md:px-8 py-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {JOBS_PASSES.map((pass) => {
               const canAfford = (userData?.credits ?? 0) >= pass.cost;
               const isBuying = buyingPass === pass.id;
+              const isPopular = pass.id === "monthly";
+              const days = Math.round(pass.durationMs / (24 * 60 * 60 * 1000));
+              const perDay = (pass.cost / days).toFixed(1);
               return (
                 <div
                   key={pass.id}
-                  className={`relative rounded-xl border p-4 transition-colors ${
-                    canAfford
-                      ? "bg-white/[0.03] border-white/[0.06] hover:border-primary-500/30"
-                      : "bg-white/[0.02] border-white/[0.04] opacity-70"
-                  }`}
+                  className={`relative rounded-2xl p-5 transition-all duration-300 flex flex-col min-w-0 ${
+                    isPopular
+                      ? "bg-gradient-to-br from-primary-500/10 via-primary-500/5 to-accent-violet/10 border-2 border-primary-500/40 hover:border-primary-500/60"
+                      : "bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.15]"
+                  } ${!canAfford ? "opacity-60" : ""}`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold text-white font-heading">
-                        {pass.name}
-                      </h3>
-                      <p className="text-xs text-gray-400 mt-0.5">{pass.description}</p>
-                      <div className="mt-2 flex items-center gap-1.5">
-                        <Coins className="w-3.5 h-3.5 text-primary-400" />
-                        <span className="text-sm font-bold text-primary-400">
-                          {pass.cost} moedas
-                        </span>
-                      </div>
+                  {isPopular && (
+                    <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
+                      <span className="px-2.5 py-0.5 bg-gradient-to-r from-primary-500 to-accent-violet text-white text-[10px] font-bold rounded-full whitespace-nowrap shadow-lg shadow-primary-600/40">
+                        MELHOR VALOR
+                      </span>
                     </div>
-                    <button
-                      onClick={() => handleBuyPass(pass.id)}
-                      disabled={!canAfford || !!buyingPass}
-                      className="px-3 py-2 bg-gradient-to-r from-primary-600 to-primary-500 text-white text-xs font-semibold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:from-primary-500 hover:to-primary-400 transition-all flex items-center gap-1.5 flex-shrink-0"
+                  )}
+
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        isPopular
+                          ? "bg-gradient-to-br from-primary-500 to-accent-violet shadow-lg shadow-primary-600/30"
+                          : "bg-white/[0.05] border border-white/[0.1]"
+                      }`}
                     >
-                      {isBuying ? (
-                        <>
-                          <div className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                          Ativando...
-                        </>
-                      ) : !canAfford ? (
-                        "Sem saldo"
-                      ) : (
-                        <>
-                          <Check className="w-3.5 h-3.5" />
-                          {hasActivePass ? "Estender" : "Ativar"}
-                        </>
-                      )}
-                    </button>
+                      <CalendarClock className={`w-5 h-5 ${isPopular ? "text-white" : "text-gray-300"}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-base font-bold text-white font-heading">{pass.name}</h3>
+                      <p className="text-[11px] text-gray-500">{days} dias de acesso</p>
+                    </div>
                   </div>
+
+                  <div className="flex items-baseline gap-1.5 mb-1">
+                    <span className="text-3xl font-bold gradient-text font-heading leading-none">
+                      {pass.cost}
+                    </span>
+                    <span className="text-xs text-gray-400">moedas</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mb-4">
+                    ≈ {perDay} moedas por dia
+                  </p>
+
+                  <ul className="space-y-1.5 mb-4 text-xs text-gray-300 flex-1">
+                    <li className="flex items-start gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <span>Buscas ilimitadas</span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <span>Sem renovação automática</span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <span>Paginação livre</span>
+                    </li>
+                  </ul>
+
+                  <button
+                    onClick={() => handleBuyPass(pass.id)}
+                    disabled={!canAfford || !!buyingPass}
+                    className={`w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                      isPopular
+                        ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white hover:from-primary-500 hover:to-primary-400 glow-blue"
+                        : "bg-white/[0.06] text-white border border-white/[0.1] hover:bg-white/[0.12]"
+                    }`}
+                  >
+                    {isBuying ? (
+                      <>
+                        <div className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                        Ativando...
+                      </>
+                    ) : !canAfford ? (
+                      <>
+                        <Lock className="w-3.5 h-3.5" />
+                        Sem saldo
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        {hasActivePass ? "Estender" : "Ativar passe"}
+                      </>
+                    )}
+                  </button>
                 </div>
               );
             })}
           </div>
 
-          <div className="flex items-start gap-2 text-[11px] text-gray-500 leading-relaxed">
+          {/* Footer */}
+          <div className="px-6 md:px-8 pb-6 flex items-start gap-2 text-[11px] text-gray-500 leading-relaxed border-t border-white/[0.06] pt-4">
             <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
             <span>
               Sem moedas suficientes?{" "}
-              <Link href="/plans" className="text-primary-400 hover:text-primary-300 underline-offset-2 hover:underline">
+              <Link
+                href="/plans#pacotes"
+                className="text-primary-400 hover:text-primary-300 underline-offset-2 hover:underline font-medium"
+              >
                 Recarregue em Pacotes
               </Link>
-              .
+              . Você pode fechar este aviso a qualquer momento.
             </span>
           </div>
         </div>

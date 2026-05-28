@@ -103,9 +103,12 @@ export default function PacksPage() {
   };
 
   return (
-    <div className="relative space-y-8 pb-8">
+    // flex+gap (em vez de space-y) pra que a reordenação via `order-*` em mobile
+    // funcione sem quebrar o espaçamento — space-y aplica margin no source order,
+    // gap aplica no visual order.
+    <div className="relative flex flex-col gap-8 pb-8">
       {/* Hero Header */}
-      <section className="relative overflow-hidden rounded-3xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-xl">
+      <section className="relative overflow-hidden rounded-3xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-xl order-1">
         <div className="absolute -top-24 -left-16 w-80 h-80 bg-primary-500/20 rounded-full blur-[120px] animate-pulse-glow pointer-events-none" />
         <div
           className="absolute -bottom-32 -right-10 w-96 h-96 bg-accent-violet/20 rounded-full blur-[140px] animate-pulse-glow pointer-events-none"
@@ -128,7 +131,7 @@ export default function PacksPage() {
       </section>
 
       {/* Current balance */}
-      <div className="animate-fade-in-up animation-delay-200">
+      <div className="animate-fade-in-up animation-delay-200 order-2">
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-primary-700 to-accent-violet glow-blue">
           <div className="absolute inset-0 bg-grid-pattern opacity-15 pointer-events-none" />
           <div className="absolute -top-20 -right-10 w-72 h-72 bg-white/10 rounded-full blur-[100px] pointer-events-none" />
@@ -152,7 +155,9 @@ export default function PacksPage() {
       </div>
 
       {/* Credit costs */}
-      <div className="animate-fade-in-up animation-delay-300">
+      {/* Em mobile aparece DEPOIS dos cards de pacote (order-4); em md+ volta
+          pra ordem natural (entre saldo e packs → order-3). */}
+      <div className="animate-fade-in-up animation-delay-300 order-4 md:order-3">
         <div className="relative group bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] overflow-hidden">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative p-6 md:p-8">
@@ -175,16 +180,16 @@ export default function PacksPage() {
               ))}
             </div>
             <div className="mt-4 px-3 py-2 bg-white/[0.02] border border-white/[0.04] rounded-lg text-[11px] text-gray-500">
-              Passes da página <span className="text-gray-300">/vagas</span>:
-              {" "}<span className="text-gray-300 font-medium">60 moedas</span> (1 semana) ou
-              {" "}<span className="text-gray-300 font-medium">100 moedas</span> (1 mês).
+              <span className="text-gray-300 font-medium">Vagas</span>: valor a consultar.
             </div>
           </div>
         </div>
       </div>
 
       {/* Packs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch animate-fade-in-up animation-delay-400">
+      {/* Em mobile sobe pra antes do "Custo por funcionalidade" (order-3);
+          em md+ volta pra ordem natural (depois do Custo → order-4). */}
+      <div id="pacotes" className="scroll-mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch animate-fade-in-up animation-delay-400 order-3 md:order-4">
         {CREDIT_PACKS.map((pack) => (
           <PackCard
             key={pack.id}
@@ -195,7 +200,7 @@ export default function PacksPage() {
         ))}
       </div>
 
-      <p className="text-center text-sm text-gray-500 animate-fade-in-up animation-delay-500">
+      <p className="text-center text-sm text-gray-500 animate-fade-in-up animation-delay-500 order-5">
         Pagamento via PIX ou cartão (Abacate Pay). As moedas são creditadas
         automaticamente após a confirmação do pagamento.
       </p>

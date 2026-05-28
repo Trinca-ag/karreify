@@ -45,6 +45,7 @@ const DRAWER_FEATURES = [
 ];
 
 const DRAWER_BOTTOM = [
+  { label: "Pacotes", href: "/plans#pacotes", icon: Coins },
   { label: "Configurações", href: "/profile", icon: Settings },
   { label: "Suporte", href: "/support", icon: LifeBuoy },
 ];

@@ -68,7 +68,7 @@ const menuItems = [
 ];
 
 const bottomItems = [
-  { label: "Pacotes", href: "/plans", icon: Coins },
+  { label: "Pacotes", href: "/plans#pacotes", icon: Coins },
   { label: "Configurações", href: "/profile", icon: Settings },
   { label: "Suporte", href: "/support", icon: LifeBuoy },
 ];
@@ -76,13 +76,18 @@ const bottomItems = [
 export default function Sidebar() {
   const pathname = usePathname();
 
+  // Hrefs com `#hash` (ex: /plans#pacotes) — comparamos só o path antes do hash
+  // porque usePathname() não inclui hash. Sem isso o item nunca ficava ativo.
+  const hrefPath = (href: string) => href.split("#")[0];
+
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-dark-800/50 backdrop-blur-xl border-r border-white/[0.06] sticky top-16 self-start h-[calc(100vh-4rem)]">
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
-          const isActive = item.href === "/dashboard"
-            ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(item.href + "/");
+          const path = hrefPath(item.href);
+          const isActive = path === "/dashboard"
+            ? pathname === path
+            : pathname === path || pathname.startsWith(path + "/");
           return (
             <Link
               key={item.href}
@@ -106,9 +111,10 @@ export default function Sidebar() {
       </nav>
       <div className="px-3 py-4 border-t border-white/[0.06] space-y-1">
         {bottomItems.map((item) => {
-          const isActive = item.href === "/dashboard"
-            ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(item.href + "/");
+          const path = hrefPath(item.href);
+          const isActive = path === "/dashboard"
+            ? pathname === path
+            : pathname === path || pathname.startsWith(path + "/");
           return (
             <Link
               key={item.href}
