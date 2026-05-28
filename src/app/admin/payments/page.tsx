@@ -16,7 +16,11 @@ import {
   Copy,
   Coins,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
+import Modal from "@/components/ui/Modal";
+import Button from "@/components/ui/Button";
+import toast from "react-hot-toast";
 
 type StatusFilter = "all" | AdminPaymentRow["status"];
 
@@ -104,6 +108,28 @@ export default function AdminPaymentsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<AdminPaymentRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await adminFetch(`/api/admin/payments/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.error || "Erro ao excluir pagamento.");
+        return;
+      }
+      toast.success("Pagamento removido do painel.");
+      setPayments((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const load = async () => {
     setRefreshing(true);
@@ -416,6 +442,17 @@ export default function AdminPaymentsPage() {
                         Nenhum erro registrado nesse pagamento.
                       </div>
                     )}
+
+                    {/* Danger zone */}
+                    <div className="pt-3 border-t border-white/[0.06] flex justify-end">
+                      <button
+                        onClick={() => setDeleteTarget(p)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Excluir registro
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -423,6 +460,51 @@ export default function AdminPaymentsPage() {
           })}
         </div>
       )}
+
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        title="Excluir pagamento"
+        size="sm"
+      >
+        {deleteTarget && (
+          <div className="space-y-5">
+            <div className="flex items-start gap-3 p-4 bg-red-500/5 border border-red-500/15 rounded-xl">
+              <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-gray-300 leading-relaxed">
+                Esta ação é <span className="text-red-400 font-medium">irreversível</span>. O registro será removido do painel mas{" "}
+                <span className="text-white font-medium">não afeta moedas já creditadas</span> nem cancela cobranças no Abacate Pay.
+              </div>
+            </div>
+            <div className="text-xs text-gray-400 space-y-1">
+              <div>
+                <span className="text-gray-500">Cliente:</span>{" "}
+                <span className="text-white">{deleteTarget.user?.displayName ?? deleteTarget.user?.email ?? deleteTarget.userId}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Valor:</span>{" "}
+                <span className="text-white">{fmtBRL(deleteTarget.amount)}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Status:</span>{" "}
+                <span className="text-white">{deleteTarget.status}</span>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+                Cancelar
+              </Button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-colors text-sm font-medium disabled:opacity-50"
+              >
+                {deleting ? "Excluindo..." : "Excluir registro"}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

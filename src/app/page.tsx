@@ -3,6 +3,7 @@ import Footer from "@/components/layout/Footer";
 import Link from "next/link";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import TiltCard from "@/components/ui/TiltCard";
+import VideoMockup from "@/components/ui/VideoMockup";
 import { CREDIT_PACKS } from "@/types";
 import {
   FileSearch,
@@ -22,8 +23,6 @@ import {
   Cpu,
   Brain,
   TrendingUp,
-  Star,
-  MapPin,
   Coins,
   Clock,
   Award,
@@ -54,7 +53,10 @@ type Spotlight = {
   ctaLabel: string;
   gradient: string;
   glowColor: string;
-  mockup: "analysis" | "create" | "adapt" | "letter" | "jobs" | "company" | "market";
+  /** Nome do arquivo em /public/videos (com extensão). */
+  videoFile: string;
+  /** Texto que aparece na "URL bar" do mockup. */
+  videoUrl: string;
 };
 
 const spotlights: Spotlight[] = [
@@ -76,7 +78,8 @@ const spotlights: Spotlight[] = [
     ctaLabel: "Analisar agora",
     gradient: "from-primary-500 to-accent-cyan",
     glowColor: "rgba(59, 130, 246, 0.4)",
-    mockup: "analysis",
+    videoFile: "Análise de currículo.mp4",
+    videoUrl: "karreify.app/resume-analysis",
   },
   {
     id: "criacao-curriculo",
@@ -96,7 +99,8 @@ const spotlights: Spotlight[] = [
     ctaLabel: "Criar meu currículo",
     gradient: "from-emerald-500 to-teal-500",
     glowColor: "rgba(16, 185, 129, 0.4)",
-    mockup: "create",
+    videoFile: "criação de currículo.mp4",
+    videoUrl: "karreify.app/create-resume",
   },
   {
     id: "adaptacao-vagas",
@@ -116,7 +120,8 @@ const spotlights: Spotlight[] = [
     ctaLabel: "Adaptar para vaga",
     gradient: "from-orange-500 to-amber-500",
     glowColor: "rgba(249, 115, 22, 0.4)",
-    mockup: "adapt",
+    videoFile: "currículo para vaga.mp4",
+    videoUrl: "karreify.app/adapt-resume",
   },
   {
     id: "carta-apresentacao",
@@ -136,7 +141,8 @@ const spotlights: Spotlight[] = [
     ctaLabel: "Gerar minha carta",
     gradient: "from-teal-500 to-cyan-500",
     glowColor: "rgba(20, 184, 166, 0.4)",
-    mockup: "letter",
+    videoFile: "Carta de apresentação.mp4",
+    videoUrl: "karreify.app/cover-letter",
   },
   {
     id: "busca-vagas",
@@ -156,7 +162,8 @@ const spotlights: Spotlight[] = [
     ctaLabel: "Buscar vagas",
     gradient: "from-amber-500 to-yellow-500",
     glowColor: "rgba(245, 158, 11, 0.4)",
-    mockup: "jobs",
+    videoFile: "vagas.mp4",
+    videoUrl: "karreify.app/jobs",
   },
   {
     id: "analise-empresa",
@@ -176,7 +183,8 @@ const spotlights: Spotlight[] = [
     ctaLabel: "Analisar empresa",
     gradient: "from-sky-500 to-blue-500",
     glowColor: "rgba(14, 165, 233, 0.4)",
-    mockup: "company",
+    videoFile: "análise de empresa.mp4",
+    videoUrl: "karreify.app/company-analysis",
   },
   {
     id: "mercado-tendencias",
@@ -196,7 +204,8 @@ const spotlights: Spotlight[] = [
     ctaLabel: "Explorar mercado",
     gradient: "from-accent-violet to-accent-pink",
     glowColor: "rgba(139, 92, 246, 0.4)",
-    mockup: "market",
+    videoFile: "mercado.mp4",
+    videoUrl: "karreify.app/market",
   },
 ];
 
@@ -366,413 +375,6 @@ function Particles({ count = 6, className = "" }: { count?: number; className?: 
   );
 }
 
-/* =========================================================================
-   MOCKUPS — um para cada spotlight
-   ========================================================================= */
-
-function MockupShell({
-  children,
-  url,
-  className = "",
-}: {
-  children: React.ReactNode;
-  url: string;
-  className?: string;
-}) {
-  return (
-    <div className={`glass-card mockup-shadow overflow-hidden ${className}`}>
-      <div className="flex items-center gap-2 px-5 py-3 border-b border-white/5">
-        <div className="flex gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-red-500/70" />
-          <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
-          <div className="w-3 h-3 rounded-full bg-green-500/70" />
-        </div>
-        <div className="flex-1 flex justify-center">
-          <div className="px-4 py-1 rounded-lg bg-white/5 text-[11px] text-gray-500 font-mono">
-            {url}
-          </div>
-        </div>
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
-  );
-}
-
-function AnalysisMockup() {
-  return (
-    <MockupShell url="karreify.app/resume-analysis">
-      <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-xs text-gray-500">Resultado da análise</div>
-            <div className="text-lg font-heading font-semibold text-white mt-0.5">
-              Currículo · Tech
-            </div>
-          </div>
-          <div className="relative w-20 h-20">
-            <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
-              <circle
-                cx="40"
-                cy="40"
-                r="34"
-                fill="none"
-                stroke="url(#scoreGradAnalysis)"
-                strokeWidth="6"
-                strokeLinecap="round"
-                strokeDasharray={`${(92 / 100) * 213.6} 213.6`}
-              />
-              <defs>
-                <linearGradient id="scoreGradAnalysis" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#06b6d4" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-xl font-heading font-bold text-white">92</span>
-            </div>
-          </div>
-        </div>
-        <div className="space-y-3">
-          {[
-            { label: "Estrutura", value: 95, color: "from-primary-500 to-accent-cyan" },
-            { label: "Conteúdo", value: 88, color: "from-accent-violet to-accent-pink" },
-            { label: "Linguagem", value: 90, color: "from-accent-cyan to-primary-500" },
-          ].map((b) => (
-            <div key={b.label}>
-              <div className="flex justify-between text-xs mb-1.5">
-                <span className="text-gray-400">{b.label}</span>
-                <span className="text-gray-300 font-medium">{b.value}%</span>
-              </div>
-              <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                <div
-                  className={`h-full rounded-full bg-gradient-to-r ${b.color}`}
-                  style={{ width: `${b.value}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {["ATS Otimizado", "5 melhorias", "Score A+"].map((t) => (
-            <span
-              key={t}
-              className="px-3 py-1 rounded-lg bg-primary-500/10 border border-primary-500/20 text-xs text-primary-300 font-medium"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-      </div>
-    </MockupShell>
-  );
-}
-
-function CreateMockup() {
-  return (
-    <MockupShell url="karreify.app/create-resume">
-      <div className="space-y-4">
-        <div className="flex items-center gap-3 pb-3 border-b border-white/5">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold">
-            JS
-          </div>
-          <div className="flex-1">
-            <div className="h-3 w-32 rounded bg-white/15" />
-            <div className="h-2 w-24 rounded bg-white/10 mt-2" />
-          </div>
-          <Sparkles className="w-5 h-5 text-emerald-400" />
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-2">
-            Experiência
-          </div>
-          <div className="space-y-2">
-            <div className="h-2 rounded bg-white/15 w-full" />
-            <div className="h-2 rounded bg-white/10 w-5/6" />
-            <div className="h-2 rounded bg-white/10 w-4/6" />
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-2">
-            Habilidades
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {["React", "Node.js", "TypeScript", "AWS", "SQL"].map((s) => (
-              <span
-                key={s}
-                className="px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-300 font-medium"
-              >
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 pt-3 border-t border-white/5">
-          <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
-            <div className="h-full w-4/5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" />
-          </div>
-          <span className="text-xs text-emerald-300 font-semibold">80%</span>
-        </div>
-      </div>
-    </MockupShell>
-  );
-}
-
-function AdaptMockup() {
-  return (
-    <MockupShell url="karreify.app/adapt-resume">
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
-              Seu currículo
-            </div>
-            <div className="glass p-3 rounded-lg space-y-1.5">
-              <div className="h-1.5 rounded bg-white/15 w-full" />
-              <div className="h-1.5 rounded bg-white/10 w-4/5" />
-              <div className="h-1.5 rounded bg-white/10 w-3/5" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold">
-              Vaga alvo
-            </div>
-            <div className="glass p-3 rounded-lg space-y-1.5 border border-orange-500/20">
-              <div className="h-1.5 rounded bg-orange-400/30 w-full" />
-              <div className="h-1.5 rounded bg-white/10 w-3/4" />
-              <div className="h-1.5 rounded bg-orange-400/30 w-2/3" />
-            </div>
-          </div>
-        </div>
-        <div className="text-center">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">
-            Compatibilidade
-          </div>
-          <div className="text-3xl font-heading font-bold gradient-text mt-1">87%</div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
-            Palavras-chave detectadas
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {["TypeScript", "Liderança", "Scrum", "+API REST"].map((kw) => (
-              <span
-                key={kw}
-                className="px-2 py-0.5 rounded bg-orange-500/10 border border-orange-500/20 text-[11px] text-orange-300 font-medium"
-              >
-                {kw}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </MockupShell>
-  );
-}
-
-function LetterMockup() {
-  return (
-    <MockupShell url="karreify.app/cover-letter">
-      <div className="space-y-3">
-        <div className="text-right">
-          <div className="text-[10px] text-gray-500">São Paulo, 13 de Maio</div>
-        </div>
-        <div>
-          <div className="text-sm font-heading font-semibold text-white">
-            Prezado(a) recrutador(a),
-          </div>
-        </div>
-        <div className="space-y-1.5 pt-2">
-          <div className="h-1.5 rounded bg-white/15 w-full" />
-          <div className="h-1.5 rounded bg-white/15 w-11/12" />
-          <div className="h-1.5 rounded bg-teal-400/30 w-9/12" />
-          <div className="h-1.5 rounded bg-white/15 w-full" />
-          <div className="h-1.5 rounded bg-white/15 w-10/12" />
-        </div>
-        <div className="space-y-1.5 pt-2">
-          <div className="h-1.5 rounded bg-white/15 w-full" />
-          <div className="h-1.5 rounded bg-white/15 w-8/12" />
-        </div>
-        <div className="flex items-center justify-between pt-3 border-t border-white/5">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="text-[11px] text-teal-300 font-medium">Gerado por IA</span>
-          </div>
-          <span className="px-2 py-0.5 rounded bg-teal-500/10 border border-teal-500/20 text-[11px] text-teal-300">
-            Formal
-          </span>
-        </div>
-      </div>
-    </MockupShell>
-  );
-}
-
-function JobsMockup() {
-  const jobs = [
-    { title: "Senior Frontend Engineer", company: "TechCorp", location: "Remoto", salary: "R$ 15k-20k", isNew: true },
-    { title: "Product Designer", company: "StartupX", location: "São Paulo · Híbrido", salary: "R$ 10k-14k", isNew: false },
-    { title: "DevOps Engineer", company: "Cloud Inc", location: "Remoto", salary: "R$ 12k-18k", isNew: true },
-  ];
-  return (
-    <MockupShell url="karreify.app/jobs">
-      <div className="space-y-2.5">
-        {jobs.map((j, i) => (
-          <div
-            key={j.title}
-            className={`p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] ${
-              i === 0 ? "ring-1 ring-amber-500/30" : ""
-            }`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-sm font-semibold text-white truncate">{j.title}</span>
-                  {j.isNew && (
-                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-[9px] text-amber-300 font-bold">
-                      NOVA
-                    </span>
-                  )}
-                </div>
-                <div className="text-[11px] text-gray-400">{j.company}</div>
-                <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-500">
-                  <span className="inline-flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> {j.location}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Coins className="w-3 h-3" /> {j.salary}
-                  </span>
-                </div>
-              </div>
-              <Briefcase className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </MockupShell>
-  );
-}
-
-function CompanyMockup() {
-  return (
-    <MockupShell url="karreify.app/company-analysis">
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center">
-            <Building2 className="w-6 h-6 text-white" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-heading font-semibold text-white">TechCorp Brasil</div>
-            <div className="flex items-center gap-1 mt-0.5">
-              {[1, 2, 3, 4].map((s) => (
-                <Star key={s} className="w-3 h-3 text-amber-400 fill-amber-400" />
-              ))}
-              <Star className="w-3 h-3 text-gray-600" />
-              <span className="text-[11px] text-gray-400 ml-1">4.2</span>
-            </div>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-            <div className="text-[10px] uppercase text-gray-500 mb-0.5">Modalidade</div>
-            <div className="text-xs text-white font-medium">Remoto</div>
-          </div>
-          <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-            <div className="text-[10px] uppercase text-gray-500 mb-0.5">Salário</div>
-            <div className="text-xs text-white font-medium">R$ 12-25k</div>
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-sky-400 font-semibold mb-2">
-            Valores da cultura
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {["Inovação", "Diversidade", "Autonomia", "Crescimento"].map((v) => (
-              <span
-                key={v}
-                className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[11px] text-sky-300"
-              >
-                {v}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </MockupShell>
-  );
-}
-
-function MarketMockup() {
-  const bars = [60, 78, 95, 70, 88, 55, 82];
-  return (
-    <MockupShell url="karreify.app/market">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-xs text-gray-500">Tendência salarial</div>
-            <div className="text-lg font-heading font-semibold text-white mt-0.5">
-              Engenharia · Sr
-            </div>
-          </div>
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-violet/10 border border-accent-violet/20">
-            <TrendingUp className="w-3 h-3 text-accent-violet" />
-            <span className="text-[11px] text-accent-violet font-semibold">+18%</span>
-          </div>
-        </div>
-        <div className="h-28 flex items-end justify-between gap-1.5 px-1">
-          {bars.map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-t-md bg-gradient-to-t from-accent-violet/40 to-accent-pink/80 transition-all"
-              style={{ height: `${h}%` }}
-            />
-          ))}
-        </div>
-        <div className="flex justify-between text-[9px] text-gray-500 px-1">
-          {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul"].map((m) => (
-            <span key={m}>{m}</span>
-          ))}
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-accent-violet font-semibold mb-2">
-            Skills em alta
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {["IA Generativa", "Cloud", "TypeScript", "Kubernetes"].map((s) => (
-              <span
-                key={s}
-                className="px-2 py-0.5 rounded bg-accent-violet/10 border border-accent-violet/20 text-[11px] text-accent-violet"
-              >
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </MockupShell>
-  );
-}
-
-function renderMockup(kind: Spotlight["mockup"]) {
-  switch (kind) {
-    case "analysis":
-      return <AnalysisMockup />;
-    case "create":
-      return <CreateMockup />;
-    case "adapt":
-      return <AdaptMockup />;
-    case "letter":
-      return <LetterMockup />;
-    case "jobs":
-      return <JobsMockup />;
-    case "company":
-      return <CompanyMockup />;
-    case "market":
-      return <MarketMockup />;
-  }
-}
 
 /* =========================================================================
    BENEFIT ILLUSTRATIONS — SVG customizados animados via SMIL
@@ -1079,7 +681,10 @@ export default function Home() {
               <div className="lg:hidden mt-8 max-w-md mx-auto animate-fade-in-up animation-delay-300">
                 <div className="relative animate-float-slow">
                   <TiltCard intensity={8}>
-                    <AnalysisMockup />
+                    <VideoMockup
+                      src={`/videos/${encodeURIComponent("Análise de currículo.mp4")}`}
+                      url="karreify.app/resume-analysis"
+                    />
                   </TiltCard>
                   <div className="absolute -top-4 -right-4 float-badge z-10">
                     <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/30">
@@ -1119,7 +724,10 @@ export default function Home() {
             <div className="hidden lg:block animate-fade-in-up animation-delay-400">
               <div className="relative animate-float-slow">
                 <TiltCard intensity={8}>
-                  <AnalysisMockup />
+                  <VideoMockup
+                    src={`/videos/${encodeURIComponent("Análise de currículo.mp4")}`}
+                    url="karreify.app/resume-analysis"
+                  />
                 </TiltCard>
                 {/* Floating badges */}
                 <div className="absolute -top-4 -right-4 float-badge z-10">
@@ -1266,22 +874,23 @@ export default function Home() {
             <section
               key={s.id}
               id={s.id}
-              className="relative py-24 lg:py-32 spotlight-bg"
+              className="relative py-12 sm:py-16 lg:py-20 spotlight-bg"
             >
               <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div
-                  className={`grid lg:grid-cols-2 gap-12 lg:gap-20 items-center ${
-                    reversed ? "lg:[&>*:first-child]:order-2" : ""
-                  }`}
-                >
-                  {/* Mockup */}
+                <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center">
+                  {/* Mockup — mobile: embaixo (order-2). Desktop: alterna lados via order-1/2 baseado em `reversed`. */}
                   <ScrollReveal
                     direction={reversed ? "right" : "left"}
-                    className="relative"
+                    className={`relative order-2 ${reversed ? "lg:order-2" : "lg:order-1"}`}
                     duration={900}
                   >
                     <div className="relative animate-float-slower">
-                      <TiltCard intensity={6}>{renderMockup(s.mockup)}</TiltCard>
+                      <TiltCard intensity={6}>
+                        <VideoMockup
+                          src={`/videos/${encodeURIComponent(s.videoFile)}`}
+                          url={s.videoUrl}
+                        />
+                      </TiltCard>
                       {/* Decorative icon badge */}
                       <div
                         className={`absolute -top-6 ${
@@ -1294,12 +903,12 @@ export default function Home() {
                     </div>
                   </ScrollReveal>
 
-                  {/* Texto */}
+                  {/* Texto — mobile: em cima (order-1). Desktop: alterna lados via order. */}
                   <ScrollReveal
                     direction={reversed ? "left" : "right"}
                     delay={150}
                     duration={900}
-                    className="max-w-xl"
+                    className={`max-w-xl order-1 ${reversed ? "lg:order-1" : "lg:order-2"}`}
                   >
                     <span
                       className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-5 border ${s.badgeColor}`}
