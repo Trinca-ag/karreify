@@ -106,7 +106,10 @@
       "PowerShell(Test-Path C:\\\\Karreify\\\\image.png; if \\(Test-Path C:\\\\Karreify\\\\image.png\\) { \\(Get-Item C:\\\\Karreify\\\\image.png\\).LastWriteTime })",
       "PowerShell(Set-Content *)",
       "PowerShell($content = [System.IO.File]::ReadAllText\\(\"C:\\\\Karreify\\\\src\\\\app\\\\page.tsx\"\\); $content = $content.TrimStart\\([char]0xFEFF\\); $utf8NoBom = New-Object System.Text.UTF8Encoding\\($false\\); [System.IO.File]::WriteAllText\\(\"C:\\\\Karreify\\\\src\\\\app\\\\page.tsx\", $content, $utf8NoBom\\); Write-Output \"BOM removed\")",
-      "PowerShell(powershell -ExecutionPolicy Bypass -File C:\\\\Karreify\\\\scripts\\\\fix-encoding.ps1)"
+      "PowerShell(powershell -ExecutionPolicy Bypass -File C:\\\\Karreify\\\\scripts\\\\fix-encoding.ps1)",
+      "PowerShell(Get-Item \"C:\\\\Karreify\\\\src\\\\components\\\\layout\\\\Navbar.tsx\" | Select-Object Length, LastWriteTime; \\(Get-Content \"C:\\\\Karreify\\\\src\\\\components\\\\layout\\\\Navbar.tsx\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Get-Item *)"
     ]
   }
 }
