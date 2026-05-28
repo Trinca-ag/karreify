@@ -4,12 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Shield, LogOut, Menu, X, MessageSquareHeart, LifeBuoy, Briefcase, Activity, Mail } from "lucide-react";
+import { LayoutDashboard, Users, Shield, LogOut, Menu, X, MessageSquareHeart, LifeBuoy, Briefcase, Activity, Mail, CreditCard } from "lucide-react";
 import { useAdminAuth } from "@/components/providers/AdminAuthProvider";
 
 const menuItems = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Usuários", href: "/admin/users", icon: Users },
+  { label: "Pagamentos", href: "/admin/payments", icon: CreditCard },
   { label: "Banco de Talentos", href: "/admin/talents", icon: Briefcase },
   { label: "Administradores", href: "/admin/admins", icon: Shield },
   { label: "Suporte", href: "/admin/support", icon: LifeBuoy },

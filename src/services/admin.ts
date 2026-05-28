@@ -54,6 +54,35 @@ export interface AdminTalentRow {
   updatedAt: string;
 }
 
+export interface AdminPaymentErrorEntry {
+  source: string;
+  code: string;
+  message: string;
+  timestamp: string;
+  event?: string;
+  httpStatus?: number;
+  body?: string;
+  stack?: string | null;
+}
+
+export interface AdminPaymentRow {
+  id: string;
+  userId: string;
+  user: { uid: string; displayName: string | null; email: string | null } | null;
+  packId: string;
+  amount: number;
+  creditsToAdd: number;
+  status: "pending" | "completed" | "refunded" | "disputed" | "failed";
+  abacateCheckoutId: string | null;
+  abacateProductId: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  completedAt: string | null;
+  refundedAt: string | null;
+  errors: AdminPaymentErrorEntry[];
+  lastError: AdminPaymentErrorEntry | null;
+}
+
 export interface AdminStats {
   totalUsers: number;
   totalAdmins: number;

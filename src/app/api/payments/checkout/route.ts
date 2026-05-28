@@ -103,10 +103,30 @@ export async function POST(request: NextRequest) {
         checkoutId: checkout.id,
       });
     } catch (e) {
+      const errorEntry =
+        e instanceof AbacatePayError
+          ? {
+              source: "checkout-create",
+              code: "ABACATEPAY_ERROR",
+              message: `AbacatePay retornou ${e.status}`,
+              httpStatus: e.status,
+              body: e.body.slice(0, 2000),
+              timestamp: new Date().toISOString(),
+            }
+          : {
+              source: "checkout-create",
+              code: "UNEXPECTED_ERROR",
+              message: e instanceof Error ? e.message : String(e),
+              timestamp: new Date().toISOString(),
+            };
+
       await pendingRef.update({
         status: "failed",
         updatedAt: FieldValue.serverTimestamp(),
+        errors: FieldValue.arrayUnion(errorEntry),
+        lastError: errorEntry,
       });
+
       if (e instanceof AbacatePayError) {
         console.error("[payments/checkout] AbacatePay error:", e.status, e.body);
         return NextResponse.json(

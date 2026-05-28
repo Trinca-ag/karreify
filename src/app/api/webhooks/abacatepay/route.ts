@@ -94,8 +94,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error("[abacate-webhook] handler error:", err);
+    await recordWebhookError(paymentId, event.event, err).catch((e) =>
+      console.error("[abacate-webhook] falha ao registrar erro:", e)
+    );
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
+}
+
+async function recordWebhookError(
+  paymentId: string,
+  eventType: string,
+  err: unknown
+): Promise<void> {
+  const errorEntry = {
+    source: "webhook",
+    event: eventType,
+    code: "WEBHOOK_HANDLER_ERROR",
+    message: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack?.slice(0, 2000) ?? null : null,
+    timestamp: new Date().toISOString(),
+  };
+  await adminDb
+    .collection("pendingPayments")
+    .doc(paymentId)
+    .update({
+      errors: FieldValue.arrayUnion(errorEntry),
+      lastError: errorEntry,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 }
 
 async function handleCompleted(paymentId: string, abacateCheckoutId: string) {

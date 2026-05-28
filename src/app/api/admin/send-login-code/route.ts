@@ -3,10 +3,23 @@ import { adminDb } from "@/lib/firebase-admin";
 import { sendTransactionalEmail } from "@/lib/mailer";
 import { adminVerificationEmail, adminVerificationEmailText } from "@/utils/email-templates";
 import { rateLimit, rateLimitResponse, getClientIp } from "@/lib/rate-limit";
+import {
+  ADMIN_AUTH_LOCKOUTS_MS,
+  DEFAULT_MAX_ATTEMPTS,
+  authRateLimitResponse,
+  checkAuthRateLimit,
+  recordAuthFailure,
+} from "@/lib/auth-rate-limit";
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
+
+const ADMIN_LOGIN_SEND_POLICY = {
+  scope: "admin-login-send",
+  maxAttempts: DEFAULT_MAX_ATTEMPTS,
+  lockoutDurationsMs: ADMIN_AUTH_LOCKOUTS_MS,
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,10 +30,17 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Burst limit em paralelo ao escalonado.
     const ipLimit = rateLimit(getClientIp(request), { scope: "admin-login-code-ip", limit: 10, windowMs: 60_000 });
     if (!ipLimit.allowed) return rateLimitResponse(ipLimit);
-    const emailLimit = rateLimit(normalizedEmail, { scope: "admin-login-code-email", limit: 3, windowMs: 60_000 });
-    if (!emailLimit.allowed) return rateLimitResponse(emailLimit);
+
+    const check = await checkAuthRateLimit(normalizedEmail, ADMIN_LOGIN_SEND_POLICY);
+    if (!check.allowed) return authRateLimitResponse(check);
+
+    // Cada envio conta como tentativa (anti-abuso de SMTP). Login bem-sucedido
+    // em /api/admin/verify-login-code limpa esse contador.
+    const recordResult = await recordAuthFailure(normalizedEmail, ADMIN_LOGIN_SEND_POLICY);
+    if (!recordResult.allowed) return authRateLimitResponse(recordResult);
 
     // Ensure the email belongs to an existing admin
     const adminSnap = await adminDb

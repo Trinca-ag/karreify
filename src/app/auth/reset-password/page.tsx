@@ -5,10 +5,24 @@ import Link from "next/link";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Image from "next/image";
-import { KeyRound, Mail, ArrowLeft, CheckCircle } from "lucide-react";
+import { KeyRound, Mail, ArrowLeft, CheckCircle, Lock } from "lucide-react";
 import toast from "react-hot-toast";
 
 type Step = "email" | "code" | "success";
+
+const RESET_LOCK_STORAGE_KEY = "karreify_reset_lock_until";
+
+function formatRemaining(ms: number): string {
+  if (ms <= 0) return "";
+  const s = Math.ceil(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  if (m < 60) return `${m}m ${sec.toString().padStart(2, "0")}s`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${h}h ${mm.toString().padStart(2, "0")}m`;
+}
 
 export default function ResetPasswordPage() {
   const [step, setStep] = useState<Step>("email");
@@ -18,6 +32,8 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [lockUntil, setLockUntil] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const sendingRef = useRef(false);
 
@@ -28,8 +44,45 @@ export default function ResetPasswordPage() {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
+  // Carrega lock persistido.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RESET_LOCK_STORAGE_KEY);
+      if (!raw) return;
+      const v = parseInt(raw, 10);
+      if (Number.isFinite(v) && v > Date.now()) setLockUntil(v);
+      else localStorage.removeItem(RESET_LOCK_STORAGE_KEY);
+    } catch {}
+  }, []);
+
+  // Tick pra atualizar contador.
+  useEffect(() => {
+    if (lockUntil <= 0) return;
+    const id = setInterval(() => {
+      const cur = Date.now();
+      setNow(cur);
+      if (cur >= lockUntil) {
+        setLockUntil(0);
+        try { localStorage.removeItem(RESET_LOCK_STORAGE_KEY); } catch {}
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lockUntil]);
+
+  const remainingMs = Math.max(0, lockUntil - now);
+  const isLocked = remainingMs > 0;
+
+  const applyLock = (seconds: number | undefined) => {
+    if (!seconds || seconds <= 0) return;
+    const until = Date.now() + seconds * 1000;
+    setLockUntil(until);
+    setNow(Date.now());
+    try { localStorage.setItem(RESET_LOCK_STORAGE_KEY, String(until)); } catch {}
+  };
+
   const sendCode = useCallback(async () => {
     if (!email || sendingRef.current) return;
+    if (isLocked) return;
     sendingRef.current = true;
     setLoading(true);
 
@@ -37,12 +90,16 @@ export default function ResetPasswordPage() {
       const res = await fetch("/api/send-reset-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, context: "user" }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
+        // 429 = rate-limited (escalonado). 404 com code ACCOUNT_NOT_FOUND.
+        if (res.status === 429) {
+          applyLock(data?.retryAfterSeconds);
+        }
         toast.error(data.error || "Erro ao enviar código.");
         return;
       }
@@ -61,7 +118,7 @@ export default function ResetPasswordPage() {
       setLoading(false);
       sendingRef.current = false;
     }
-  }, [email]);
+  }, [email, isLocked]);
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,6 +233,19 @@ export default function ResetPasswordPage() {
                 </p>
               </div>
 
+              {isLocked && (
+                <div className="flex items-start gap-3 px-4 py-3 mb-5 bg-red-500/10 border border-red-500/25 rounded-xl text-sm">
+                  <Lock className="w-4 h-4 text-red-300 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-red-200">Recuperação bloqueada temporariamente</p>
+                    <p className="text-red-200/80 text-xs mt-0.5">
+                      Muitas tentativas com emails inexistentes. Tente novamente em{" "}
+                      <span className="font-mono font-semibold text-white">{formatRemaining(remainingMs)}</span>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <form onSubmit={handleSendCode} action="javascript:void(0)" className="space-y-4">
                 <Input
                   label="Email"
@@ -185,8 +255,14 @@ export default function ResetPasswordPage() {
                   placeholder="seu@email.com"
                   required
                 />
-                <Button type="submit" loading={loading} className="w-full" size="lg">
-                  Enviar código
+                <Button
+                  type="submit"
+                  loading={loading}
+                  disabled={isLocked}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isLocked ? `Bloqueado · ${formatRemaining(remainingMs)}` : "Enviar código"}
                 </Button>
               </form>
 

@@ -340,7 +340,7 @@ export const FEATURE_COSTS: Record<string, number> = {
 };
 
 // ==================== Credit Packs ====================
-export type CreditPackId = "test" | "basic" | "intermediary" | "plus";
+export type CreditPackId = "basic" | "intermediary" | "plus";
 
 export interface CreditPack {
   id: CreditPackId;
@@ -352,26 +352,10 @@ export interface CreditPack {
   totalCredits: number;
   /** AbacatePay product id (prod_*). Source of truth for the actual price charged. */
   abacateProductId: string;
-  /** Hide from the regular UI unless dev/test mode. */
-  isTest?: boolean;
   features: string[];
 }
 
 export const CREDIT_PACKS: CreditPack[] = [
-  {
-    id: "test",
-    name: "Karreify Teste",
-    price: 1,
-    baseCredits: 1,
-    bonusCredits: 0,
-    totalCredits: 1,
-    abacateProductId: "prod_YNBckch4wYfDQRmH3mrRDAQp",
-    isTest: true,
-    features: [
-      "1 moeda",
-      "Apenas para validar fluxo de pagamento",
-    ],
-  },
   {
     id: "basic",
     name: "Básico",
@@ -454,6 +438,21 @@ export const JOBS_PASSES: JobsPass[] = [
 // ==================== Pending Payments ====================
 export type PendingPaymentStatus = "pending" | "completed" | "refunded" | "disputed" | "failed";
 
+export interface PaymentErrorEntry {
+  source: string;
+  code: string;
+  message: string;
+  /** Timestamp em ISO string (gravado pelo servidor). */
+  timestamp: string;
+  /** Identificador do evento do AbacatePay (quando vier do webhook). */
+  event?: string;
+  httpStatus?: number;
+  /** Corpo da resposta do AbacatePay, truncado. */
+  body?: string;
+  /** Stack trace truncado, quando aplicável. */
+  stack?: string | null;
+}
+
 export interface PendingPayment {
   id: string;
   userId: string;
@@ -467,4 +466,6 @@ export interface PendingPayment {
   updatedAt: Date;
   completedAt?: Date | null;
   refundedAt?: Date | null;
+  errors?: PaymentErrorEntry[];
+  lastError?: PaymentErrorEntry | null;
 }

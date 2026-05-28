@@ -99,7 +99,11 @@
       "Bash(xargs grep -l \"ADZUNA_DISABLED\\\\|ADZUNA_MONTHLY_THRESHOLD\\\\|getAdzunaMonthlyBillable\\\\|bumpAdzunaCount\")",
       "Bash(gh auth *)",
       "WebFetch(domain:docs.abacatepay.com)",
-      "PowerShell(Remove-Item *)"
+      "PowerShell(Remove-Item *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Read(//tmp/**)",
+      "PowerShell(Test-Path C:\\\\Karreify\\\\image.png; if \\(Test-Path C:\\\\Karreify\\\\image.png\\) { \\(Get-Item C:\\\\Karreify\\\\image.png\\).LastWriteTime })"
     ]
   }
 }

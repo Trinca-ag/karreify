@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { rateLimit, rateLimitResponse, getClientIp } from "@/lib/rate-limit";
+import {
+  ADMIN_AUTH_LOCKOUTS_MS,
+  DEFAULT_MAX_ATTEMPTS,
+  USER_AUTH_LOCKOUTS_MS,
+  authRateLimitResponse,
+  checkAuthRateLimit,
+  isAdminEmail,
+  recordAuthFailure,
+  recordAuthSuccess,
+} from "@/lib/auth-rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,12 +34,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Burst limit — em paralelo ao lockout escalonado.
     const ipLimit = rateLimit(getClientIp(request), { scope: "reset-password-ip", limit: 10, windowMs: 60_000 });
     if (!ipLimit.allowed) return rateLimitResponse(ipLimit);
-    const emailLimit = rateLimit(email.toLowerCase(), { scope: "reset-password-email", limit: 5, windowMs: 60_000 });
-    if (!emailLimit.allowed) return rateLimitResponse(emailLimit);
 
     const normalizedEmail = email.toLowerCase();
+
+    // Política escalonada por scope `*-reset-verify`. Admin tem regime mais
+    // rígido (começa direto em 30min).
+    const isAdmin = await isAdminEmail(normalizedEmail);
+    const policy = {
+      scope: isAdmin ? "admin-reset-verify" : "user-reset-verify",
+      maxAttempts: DEFAULT_MAX_ATTEMPTS,
+      lockoutDurationsMs: isAdmin ? ADMIN_AUTH_LOCKOUTS_MS : USER_AUTH_LOCKOUTS_MS,
+    };
+
+    const check = await checkAuthRateLimit(normalizedEmail, policy);
+    if (!check.allowed) return authRateLimitResponse(check);
 
     // Verify the reset code via Admin Firestore
     const snapshot = await adminDb
@@ -56,6 +77,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (!codeValid) {
+      const failResult = await recordAuthFailure(normalizedEmail, policy);
+      if (!failResult.allowed) return authRateLimitResponse(failResult);
       return NextResponse.json(
         { error: "Código inválido ou expirado" },
         { status: 400 }
@@ -65,6 +88,13 @@ export async function POST(request: NextRequest) {
     // Update password via Admin SDK
     const userRecord = await adminAuth.getUserByEmail(normalizedEmail);
     await adminAuth.updateUser(userRecord.uid, { password: newPassword });
+
+    // Sucesso — limpa tentativas tanto do verify quanto do send (o usuário
+    // pode ter pedido reset várias vezes antes de acertar).
+    await Promise.all([
+      recordAuthSuccess(normalizedEmail, policy.scope),
+      recordAuthSuccess(normalizedEmail, isAdmin ? "admin-reset-send" : "user-reset-send"),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

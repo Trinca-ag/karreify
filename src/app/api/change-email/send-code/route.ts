@@ -4,12 +4,25 @@ import { sendTransactionalEmail } from "@/lib/mailer";
 import { emailChangeEmail, emailChangeEmailText } from "@/utils/email-templates";
 import { requireUser, authErrorResponse } from "@/lib/auth-server";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import {
+  DEFAULT_MAX_ATTEMPTS,
+  USER_AUTH_LOCKOUTS_MS,
+  authRateLimitResponse,
+  checkAuthRateLimit,
+  recordAuthFailure,
+} from "@/lib/auth-rate-limit";
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const CHANGE_EMAIL_SEND_POLICY = {
+  scope: "change-email-send",
+  maxAttempts: DEFAULT_MAX_ATTEMPTS,
+  lockoutDurationsMs: USER_AUTH_LOCKOUTS_MS,
+};
 
 export async function POST(request: NextRequest) {
   let ctx;
@@ -19,8 +32,17 @@ export async function POST(request: NextRequest) {
     return authErrorResponse(e);
   }
 
+  // Burst limit em paralelo ao escalonado (anti-spam SMTP de uma sessão só).
   const rl = rateLimit(ctx.uid, { scope: "change-email-send", limit: 5, windowMs: 60_000 });
   if (!rl.allowed) return rateLimitResponse(rl);
+
+  // Rate-limit escalonado por uid — caso a conta esteja comprometida, evita
+  // que o atacante dispare emails de verificação em volume.
+  const check = await checkAuthRateLimit(ctx.uid, CHANGE_EMAIL_SEND_POLICY);
+  if (!check.allowed) return authRateLimitResponse(check);
+
+  const recordResult = await recordAuthFailure(ctx.uid, CHANGE_EMAIL_SEND_POLICY);
+  if (!recordResult.allowed) return authRateLimitResponse(recordResult);
 
   try {
     const { newEmail } = await request.json();

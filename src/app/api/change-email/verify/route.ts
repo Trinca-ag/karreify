@@ -5,6 +5,20 @@ import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { createSimpleNotification } from "@/lib/notifications-server";
 import { sendTransactionalEmail } from "@/lib/mailer";
 import { emailChangedEmail, emailChangedEmailText } from "@/utils/email-templates";
+import {
+  DEFAULT_MAX_ATTEMPTS,
+  USER_AUTH_LOCKOUTS_MS,
+  authRateLimitResponse,
+  checkAuthRateLimit,
+  recordAuthFailure,
+  recordAuthSuccess,
+} from "@/lib/auth-rate-limit";
+
+const CHANGE_EMAIL_VERIFY_POLICY = {
+  scope: "change-email-verify",
+  maxAttempts: DEFAULT_MAX_ATTEMPTS,
+  lockoutDurationsMs: USER_AUTH_LOCKOUTS_MS,
+};
 
 export async function POST(request: NextRequest) {
   let ctx;
@@ -14,8 +28,14 @@ export async function POST(request: NextRequest) {
     return authErrorResponse(e);
   }
 
+  // Burst limit anti-bruteforce de 6 dígitos.
   const rl = rateLimit(ctx.uid, { scope: "change-email-verify", limit: 5, windowMs: 60_000 });
   if (!rl.allowed) return rateLimitResponse(rl);
+
+  // Rate-limit escalonado — atacante com sessão comprometida tentando adivinhar
+  // o código de 6 dígitos bate aqui antes de varrer 10⁶ combinações.
+  const check = await checkAuthRateLimit(ctx.uid, CHANGE_EMAIL_VERIFY_POLICY);
+  if (!check.allowed) return authRateLimitResponse(check);
 
   try {
     const { newEmail, code } = await request.json();
@@ -57,6 +77,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (!codeValid) {
+      const failResult = await recordAuthFailure(ctx.uid, CHANGE_EMAIL_VERIFY_POLICY);
+      if (!failResult.allowed) return authRateLimitResponse(failResult);
       throw new AuthError("Código inválido ou expirado", 400);
     }
 
@@ -100,6 +122,13 @@ export async function POST(request: NextRequest) {
         priority: "high",
       }).catch((e) => console.error("email-changed email failed:", e));
     }
+
+    // Sucesso — zera tentativas do verify e do send (cobre o caso do user
+    // legítimo que pediu novo código várias vezes antes de receber por SPAM).
+    await Promise.all([
+      recordAuthSuccess(ctx.uid, CHANGE_EMAIL_VERIFY_POLICY.scope),
+      recordAuthSuccess(ctx.uid, "change-email-send"),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

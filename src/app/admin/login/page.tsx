@@ -1,16 +1,31 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import Image from "next/image";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { ArrowLeft, CheckCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Lock } from "lucide-react";
 import toast from "react-hot-toast";
 
 const TRUST_MS = 30 * 24 * 60 * 60 * 1000;
+
+// Compartilhado com /auth/login — bloqueio em uma página reflete na outra.
+const LOGIN_LOCK_STORAGE_KEY = "karreify_login_lock_until";
+
+function formatRemaining(ms: number): string {
+  if (ms <= 0) return "";
+  const s = Math.ceil(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  if (m < 60) return `${m}m ${sec.toString().padStart(2, "0")}s`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${h}h ${mm.toString().padStart(2, "0")}m`;
+}
 
 function isTrustedDevice(email: string): boolean {
   try {
@@ -47,6 +62,44 @@ export default function AdminLoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetCooldown, setResetCooldown] = useState(0);
 
+  // Lockout visual compartilhado com /auth/login.
+  const [lockUntil, setLockUntil] = useState<number>(0);
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LOGIN_LOCK_STORAGE_KEY);
+      if (!raw) return;
+      const v = parseInt(raw, 10);
+      if (Number.isFinite(v) && v > Date.now()) setLockUntil(v);
+      else localStorage.removeItem(LOGIN_LOCK_STORAGE_KEY);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (lockUntil <= 0) return;
+    const id = setInterval(() => {
+      const cur = Date.now();
+      setNow(cur);
+      if (cur >= lockUntil) {
+        setLockUntil(0);
+        try { localStorage.removeItem(LOGIN_LOCK_STORAGE_KEY); } catch {}
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lockUntil]);
+
+  const remainingMs = Math.max(0, lockUntil - now);
+  const isLocked = remainingMs > 0;
+
+  const applyLock = (seconds: number | undefined) => {
+    if (!seconds || seconds <= 0) return;
+    const until = Date.now() + seconds * 1000;
+    setLockUntil(until);
+    setNow(Date.now());
+    try { localStorage.setItem(LOGIN_LOCK_STORAGE_KEY, String(until)); } catch {}
+  };
+
   const startCooldown = () => {
     setCooldown(60);
     const timer = setInterval(() => setCooldown(c => {
@@ -78,6 +131,7 @@ export default function AdminLoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) return;
     if (!identifier.trim() || !password) return;
     setLoading(true);
     try {
@@ -94,19 +148,51 @@ export default function AdminLoginPage() {
         email = data.email;
       }
 
-      // 2. Check device trust (localStorage only, no Firebase)
+      // 2. Pre-check no rate-limit escalonado da senha (Firebase Auth não passa
+      // pelo nosso server, então fazemos defesa client-side aqui também).
+      const precheck = await fetch("/api/auth/login-rate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, action: "check" }),
+      });
+      const precheckData = await precheck.json();
+      if (!precheck.ok) {
+        applyLock(precheckData?.retryAfterSeconds);
+        toast.error(precheckData?.error || "Muitas tentativas. Aguarde antes de tentar novamente.");
+        return;
+      }
+
+      // 3. Check device trust (localStorage only, no Firebase)
       if (isTrustedDevice(email)) {
         // Trusted device — sign in directly (no signOut needed)
         try {
           await signInWithEmailAndPassword(auth, email, password);
+          // Sucesso — zera contador
+          fetch("/api/auth/login-rate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, action: "success" }),
+          }).catch(() => {});
           // AdminAuthProvider will redirect to /admin
         } catch {
+          // Senha errada em device trusted — incrementa contador
+          const failRes = await fetch("/api/auth/login-rate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, action: "fail" }),
+          }).catch(() => null);
+          if (failRes && !failRes.ok) {
+            const failData = await failRes.json().catch(() => ({}));
+            applyLock(failData?.retryAfterSeconds);
+            toast.error(failData?.error || "Muitas tentativas. Conta bloqueada temporariamente.");
+            return;
+          }
           toast.error("Credenciais inválidas.");
         }
         return;
       }
 
-      // 3. Not trusted — send code WITHOUT signing into Firebase
+      // 4. Not trusted — send code WITHOUT signing into Firebase
       //    We keep password in state for the final sign-in after code verification
       setResolvedEmail(email);
       const sent = await sendCode(email);
@@ -166,8 +252,27 @@ export default function AdminLoginPage() {
       saveTrustedDevice(resolvedEmail);
       try {
         await signInWithEmailAndPassword(auth, resolvedEmail, password);
+        // Sucesso — zera contador do rate-limit da senha
+        fetch("/api/auth/login-rate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: resolvedEmail, action: "success" }),
+        }).catch(() => {});
         // AdminAuthProvider will handle redirect to /admin
       } catch {
+        // Senha errada após 2FA OK — incrementa contador
+        const failRes = await fetch("/api/auth/login-rate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: resolvedEmail, action: "fail" }),
+        }).catch(() => null);
+        if (failRes && !failRes.ok) {
+          const failData = await failRes.json().catch(() => ({}));
+          applyLock(failData?.retryAfterSeconds);
+          toast.error(failData?.error || "Muitas tentativas. Conta bloqueada temporariamente.");
+          setStep("credentials");
+          return;
+        }
         toast.error("Senha incorreta. Volte e tente novamente.");
         setStep("credentials");
       }
@@ -189,15 +294,20 @@ export default function AdminLoginPage() {
   const handleSendResetCode = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!resetEmail.trim()) return;
+    if (isLocked) return;
     setLoading(true);
     try {
       const res = await fetch("/api/send-reset-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: resetEmail.trim().toLowerCase() }),
+        body: JSON.stringify({ email: resetEmail.trim().toLowerCase(), context: "admin" }),
       });
       const data = await res.json();
-      if (!res.ok) { toast.error(data.error || "Erro ao enviar código."); return; }
+      if (!res.ok) {
+        if (res.status === 429) applyLock(data?.retryAfterSeconds);
+        toast.error(data.error || "Erro ao enviar código.");
+        return;
+      }
       if (data.fallback) {
         toast(`Email não configurado. Código: ${data.code}`, { icon: "🔑", duration: 15000 });
       } else {
@@ -212,15 +322,20 @@ export default function AdminLoginPage() {
 
   const handleResendResetCode = async () => {
     if (resetCooldown > 0 || loading) return;
+    if (isLocked) return;
     setLoading(true);
     try {
       const res = await fetch("/api/send-reset-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: resetEmail.trim().toLowerCase() }),
+        body: JSON.stringify({ email: resetEmail.trim().toLowerCase(), context: "admin" }),
       });
       const data = await res.json();
-      if (!res.ok) { toast.error(data.error || "Erro ao reenviar código."); return; }
+      if (!res.ok) {
+        if (res.status === 429) applyLock(data?.retryAfterSeconds);
+        toast.error(data.error || "Erro ao reenviar código.");
+        return;
+      }
       if (data.fallback) {
         toast(`Código: ${data.code}`, { icon: "🔑", duration: 15000 });
       } else {
@@ -309,6 +424,18 @@ export default function AdminLoginPage() {
                 <h1 className="text-xl font-bold text-white font-heading">Bem-vindo de volta</h1>
                 <p className="text-sm text-gray-500 mt-1">Entre com suas credenciais de administrador</p>
               </div>
+              {isLocked && (
+                <div className="flex items-start gap-3 px-4 py-3 mb-5 bg-red-500/10 border border-red-500/25 rounded-xl text-sm">
+                  <Lock className="w-4 h-4 text-red-300 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-red-200">Login bloqueado temporariamente</p>
+                    <p className="text-red-200/80 text-xs mt-0.5">
+                      Muitas tentativas falhadas. Tente novamente em{" "}
+                      <span className="font-mono font-semibold text-white">{formatRemaining(remainingMs)}</span>.
+                    </p>
+                  </div>
+                </div>
+              )}
               <form onSubmit={handleLogin} action="javascript:void(0)" className="space-y-4">
                 <Input
                   label="Usuário ou e-mail"
@@ -326,8 +453,14 @@ export default function AdminLoginPage() {
                   placeholder="Sua senha"
                   required
                 />
-                <Button type="submit" loading={loading || sending} className="w-full" size="lg">
-                  Entrar
+                <Button
+                  type="submit"
+                  loading={loading || sending}
+                  disabled={isLocked}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isLocked ? `Bloqueado · ${formatRemaining(remainingMs)}` : "Entrar"}
                 </Button>
               </form>
               <div className="mt-4 text-center">
@@ -351,6 +484,18 @@ export default function AdminLoginPage() {
                 <h1 className="text-xl font-bold text-white font-heading mb-1">Recuperar senha</h1>
                 <p className="text-sm text-gray-500">Informe seu e-mail para receber o código de recuperação</p>
               </div>
+              {isLocked && (
+                <div className="flex items-start gap-3 px-4 py-3 bg-red-500/10 border border-red-500/25 rounded-xl text-sm">
+                  <Lock className="w-4 h-4 text-red-300 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-red-200">Recuperação bloqueada temporariamente</p>
+                    <p className="text-red-200/80 text-xs mt-0.5">
+                      Muitas tentativas. Tente novamente em{" "}
+                      <span className="font-mono font-semibold text-white">{formatRemaining(remainingMs)}</span>.
+                    </p>
+                  </div>
+                </div>
+              )}
               <form onSubmit={handleSendResetCode} action="javascript:void(0)" className="space-y-4">
                 <Input
                   label="E-mail"
@@ -360,8 +505,14 @@ export default function AdminLoginPage() {
                   placeholder="email@exemplo.com"
                   required
                 />
-                <Button type="submit" loading={loading} className="w-full" size="lg">
-                  Enviar código
+                <Button
+                  type="submit"
+                  loading={loading}
+                  disabled={isLocked}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isLocked ? `Bloqueado · ${formatRemaining(remainingMs)}` : "Enviar código"}
                 </Button>
               </form>
             </div>

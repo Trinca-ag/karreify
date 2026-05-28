@@ -3,6 +3,7 @@ import Footer from "@/components/layout/Footer";
 import Link from "next/link";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import TiltCard from "@/components/ui/TiltCard";
+import { CREDIT_PACKS } from "@/types";
 import {
   FileSearch,
   FilePlus,
@@ -32,6 +33,7 @@ import {
   Gauge,
   Wifi,
   Languages,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 
@@ -1618,6 +1620,103 @@ export default function Home() {
               </div>
             </ScrollReveal>
           </div>
+        </div>
+      </section>
+
+      {/* ========== PRICING ========== */}
+      <section id="pricing" className="relative py-28 bg-dark-800 noise-overlay scroll-mt-20">
+        <div className="absolute inset-0 bg-radial-blue opacity-60" />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal className="text-center max-w-3xl mx-auto mb-16">
+            <span className="inline-block px-4 py-1.5 rounded-full text-xs font-medium bg-accent-cyan/10 border border-accent-cyan/20 text-accent-cyan mb-6">
+              Pacotes de Moedas
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold">
+              Invista na sua <span className="gradient-text">carreira</span>
+            </h2>
+            <p className="mt-5 text-lg text-gray-400">
+              Compra única, sem assinatura. Escolha o pacote ideal para suas necessidades.
+            </p>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 max-w-5xl mx-auto items-stretch">
+            {CREDIT_PACKS.map((pack) => {
+              const popular = pack.id === "intermediary";
+              const hasBonus = pack.bonusCredits > 0;
+              return (
+                <ScrollReveal
+                  key={pack.id}
+                  direction="up"
+                  className={`relative rounded-2xl p-5 lg:p-7 transition-all duration-300 flex flex-col min-w-0 ${
+                    popular
+                      ? "gradient-border pricing-popular glass-card lg:scale-105 !overflow-visible"
+                      : "glass-card"
+                  }`}
+                >
+                  {popular && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                      <span className="px-5 py-1.5 bg-gradient-to-r from-primary-500 to-accent-violet text-white text-xs font-bold rounded-full glow-blue whitespace-nowrap">
+                        MAIS POPULAR
+                      </span>
+                    </div>
+                  )}
+
+                  <h3 className="text-lg font-heading font-semibold text-white whitespace-nowrap">
+                    {pack.name}
+                  </h3>
+
+                  <div className="mt-4 flex items-baseline gap-1 flex-wrap">
+                    <span className="text-3xl lg:text-4xl font-heading font-bold gradient-text leading-none">
+                      R${pack.price.toFixed(2).replace(".", ",")}
+                    </span>
+                    <span className="text-xs text-gray-500">único</span>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <Coins className="w-4 h-4 text-primary-400 flex-shrink-0" />
+                      <p className="text-sm text-primary-400 font-medium whitespace-nowrap">
+                        {pack.totalCredits} moedas
+                      </p>
+                    </div>
+                    {hasBonus && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-1.5 py-0.5 whitespace-nowrap">
+                        <Gift className="w-3 h-3" />
+                        +{pack.bonusCredits} bônus
+                      </span>
+                    )}
+                  </div>
+
+                  <ul className="mt-6 space-y-3 flex-1">
+                    {pack.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2.5 text-sm">
+                        <div className="w-5 h-5 rounded-full bg-primary-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Check className="w-3 h-3 text-primary-400" />
+                        </div>
+                        <span className="text-gray-300 leading-snug">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    href="/auth/login"
+                    className={`mt-6 block text-center py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                      popular
+                        ? "bg-gradient-to-r from-primary-600 to-accent-violet text-white btn-glow"
+                        : "bg-white/5 text-white border border-white/10 hover:bg-white/10 hover:border-white/20"
+                    }`}
+                  >
+                    Começar agora
+                  </Link>
+                </ScrollReveal>
+              );
+            })}
+          </div>
+
+          <p className="mt-10 text-center text-sm text-gray-500">
+            Pagamento via PIX ou cartão (Abacate Pay). Suas moedas caem na conta
+            imediatamente após a confirmação.
+          </p>
         </div>
       </section>
 

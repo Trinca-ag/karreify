@@ -85,6 +85,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Auth attempts — contadores do rate-limit escalonado (lib/auth-rate-limit.ts).
+    // Gravado e lido exclusivamente pelo Admin SDK nos endpoints de auth.
+    // Client-side nunca precisa ver — proibimos acesso direto.
+    match /authAttempts/{attemptId} {
+      allow read, write: if false;
+    }
+
     // Market data - read only for authenticated users
     match /market/{document} {
       allow read: if isAuthenticated();

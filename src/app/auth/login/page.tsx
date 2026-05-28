@@ -1,14 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loginUser, loginWithGoogle } from "@/services/firebase-auth";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Image from "next/image";
-import { Sparkles, Shield, Zap } from "lucide-react";
+import { Sparkles, Shield, Zap, Lock } from "lucide-react";
 import toast from "react-hot-toast";
+
+const LOGIN_LOCK_STORAGE_KEY = "karreify_login_lock_until";
 
 // Firebase Auth pode "pendurar" indefinidamente em conexões instáveis (o SDK
 // não tem timeout interno). Sem isto, o botão ficava preso em loading e só
@@ -25,33 +27,146 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
+interface LoginRateResponse {
+  allowed?: boolean;
+  error?: string;
+  retryAfterSeconds?: number;
+}
+
+async function callLoginRate(email: string, action: "check" | "fail" | "success"): Promise<LoginRateResponse> {
+  try {
+    console.log(`[login-rate] -> ${action} ${email}`);
+    const res = await fetch("/api/auth/login-rate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, action }),
+    });
+    const data = (await res.json()) as LoginRateResponse;
+    console.log(`[login-rate] <- ${res.status}`, data);
+    if (!res.ok) return { allowed: false, error: data?.error, retryAfterSeconds: data?.retryAfterSeconds };
+    return data;
+  } catch (err) {
+    console.warn("[login-rate] network error:", err);
+    // Fail-open: erro de rede no nosso tracking não bloqueia login legítimo.
+    return { allowed: true };
+  }
+}
+
+function formatRemaining(ms: number): string {
+  if (ms <= 0) return "";
+  const s = Math.ceil(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  if (m < 60) return `${m}m ${sec.toString().padStart(2, "0")}s`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${h}h ${mm.toString().padStart(2, "0")}m`;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  // `lockUntil` = epoch ms até quando os botões devem ficar bloqueados. É
+  // persistido em localStorage pra sobreviver a refreshes/troca de aba (o
+  // bloqueio também roda no servidor, isto é só UX).
+  const [lockUntil, setLockUntil] = useState<number>(0);
+  const [now, setNow] = useState<number>(() => Date.now());
   // Guarda síncrona — `loading` (useState) só atualiza no próximo render, então
   // cliques duplos muito rápidos passavam pelo `if (loading) return`.
   const inflightRef = useRef(false);
   const router = useRouter();
 
+  // Carrega lock persistido (caso o user dê F5 ou abra nova aba).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LOGIN_LOCK_STORAGE_KEY);
+      if (!raw) return;
+      const v = parseInt(raw, 10);
+      if (Number.isFinite(v) && v > Date.now()) setLockUntil(v);
+      else localStorage.removeItem(LOGIN_LOCK_STORAGE_KEY);
+    } catch {}
+  }, []);
+
+  // Tick pra atualizar o contador. Só roda enquanto há bloqueio ativo.
+  useEffect(() => {
+    if (lockUntil <= 0) return;
+    const id = setInterval(() => {
+      const cur = Date.now();
+      setNow(cur);
+      if (cur >= lockUntil) {
+        setLockUntil(0);
+        try { localStorage.removeItem(LOGIN_LOCK_STORAGE_KEY); } catch {}
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lockUntil]);
+
+  const remainingMs = Math.max(0, lockUntil - now);
+  const isLocked = remainingMs > 0;
+
+  const applyLock = (seconds: number | undefined) => {
+    if (!seconds || seconds <= 0) return;
+    const until = Date.now() + seconds * 1000;
+    setLockUntil(until);
+    setNow(Date.now());
+    try { localStorage.setItem(LOGIN_LOCK_STORAGE_KEY, String(until)); } catch {}
+  };
+
   const handleLogin = async () => {
     if (inflightRef.current) return;
+    if (isLocked) return;
+    if (!email.trim()) return;
     inflightRef.current = true;
     setLoading(true);
     try {
+      // Pre-check no nosso rate-limit escalonado (Firebase Auth não tem como
+      // ser bloqueado pelo nosso server, então fazemos defesa client-side).
+      const precheck = await callLoginRate(email, "check");
+      if (precheck.allowed === false) {
+        applyLock(precheck.retryAfterSeconds);
+        toast.error(precheck.error || "Muitas tentativas. Aguarde antes de tentar novamente.");
+        return;
+      }
+
       await withTimeout(loginUser(email, password), LOGIN_TIMEOUT_MS);
+      // Sucesso — zera contador pra esse email.
+      void callLoginRate(email, "success");
       toast.success("Login realizado com sucesso!");
       router.push("/dashboard");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro ao fazer login";
+      // Firebase pode retornar `auth/invalid-credential` (mais novo, unificado),
+      // `auth/wrong-password`, `auth/user-not-found`, `auth/invalid-email` ou
+      // `auth/invalid-login-credentials`. Tratamos todos como credencial inválida.
+      const isCredFailure =
+        message.includes("invalid-credential") ||
+        message.includes("invalid-login-credentials") ||
+        message.includes("wrong-password") ||
+        message.includes("user-not-found") ||
+        message.includes("invalid-email") ||
+        message.includes("admin-account-not-allowed");
+      const isNetworkFailure =
+        message.includes("login-timeout") || message.includes("network-request-failed");
+      console.log("[login] error:", message, "credFailure?", isCredFailure);
+
+      // Só conta como tentativa falhada quando o erro foi de credencial.
+      // Falhas de rede/timeout não devem queimar tentativas do user.
+      if (isCredFailure) {
+        const failResult = await callLoginRate(email, "fail");
+        if (failResult.allowed === false) {
+          applyLock(failResult.retryAfterSeconds);
+          toast.error(failResult.error || "Muitas tentativas. Conta bloqueada temporariamente.");
+          return;
+        }
+      }
+
       // admin-account-not-allowed is masked as a generic credential failure to
       // avoid leaking that the email belongs to an admin account.
-      if (
-        message.includes("invalid-credential") ||
-        message.includes("admin-account-not-allowed")
-      ) {
+      if (isCredFailure) {
         toast.error("Email ou senha incorretos.");
-      } else if (message.includes("login-timeout") || message.includes("network-request-failed")) {
+      } else if (isNetworkFailure) {
         toast.error("Conexão instável. Verifique sua internet e tente novamente.");
       } else if (message.includes("too-many-requests")) {
         toast.error("Muitas tentativas. Aguarde alguns minutos.");
@@ -66,6 +181,7 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     if (inflightRef.current) return;
+    if (isLocked) return;
     inflightRef.current = true;
     setLoading(true);
     try {
@@ -191,10 +307,23 @@ export default function LoginPage() {
               </Link>
             </p>
 
+            {isLocked && (
+              <div className="flex items-start gap-3 px-4 py-3 mb-6 bg-red-500/10 border border-red-500/25 rounded-xl text-sm">
+                <Lock className="w-4 h-4 text-red-300 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-red-200">Login bloqueado temporariamente</p>
+                  <p className="text-red-200/80 text-xs mt-0.5">
+                    Muitas tentativas falhadas. Tente novamente em{" "}
+                    <span className="font-mono font-semibold text-white">{formatRemaining(remainingMs)}</span>.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Google OAuth button */}
             <button
               onClick={handleGoogleLogin}
-              disabled={loading}
+              disabled={loading || isLocked}
               className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all duration-200 font-medium text-gray-300 mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -257,8 +386,15 @@ export default function LoginPage() {
                   </Link>
                 </div>
               </div>
-              <Button type="button" onClick={() => handleLogin()} loading={loading} className="w-full" size="lg">
-                Entrar
+              <Button
+                type="button"
+                onClick={() => handleLogin()}
+                loading={loading}
+                disabled={isLocked}
+                className="w-full"
+                size="lg"
+              >
+                {isLocked ? `Bloqueado · ${formatRemaining(remainingMs)}` : "Entrar"}
               </Button>
             </form>
           </div>
