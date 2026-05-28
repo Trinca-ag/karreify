@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { CookieConsentProvider } from "@/components/providers/CookieConsentProvider";
 import { Toaster } from "react-hot-toast";
 
 const inter = Inter({
@@ -30,22 +31,24 @@ export default function RootLayout({
     <html lang="pt-BR" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body className="font-sans antialiased">
         <AuthProvider>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: "#0f1629",
-                color: "#f1f5f9",
-                boxShadow:
-                  "0 4px 12px rgba(0,0,0,0.3), 0 0 20px rgba(59, 130, 246, 0.1)",
-                borderRadius: "0.75rem",
-                padding: "12px 16px",
-                border: "1px solid rgba(255,255,255,0.1)",
-              },
-            }}
-          />
-          {children}
+          <CookieConsentProvider>
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: "#0f1629",
+                  color: "#f1f5f9",
+                  boxShadow:
+                    "0 4px 12px rgba(0,0,0,0.3), 0 0 20px rgba(59, 130, 246, 0.1)",
+                  borderRadius: "0.75rem",
+                  padding: "12px 16px",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                },
+              }}
+            />
+            {children}
+          </CookieConsentProvider>
         </AuthProvider>
       </body>
     </html>

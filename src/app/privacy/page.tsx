@@ -213,12 +213,15 @@ const sections: Section[] = [
     icon: Cookie,
     title: "Cookies e tecnologias similares",
     intro:
-      "Usamos cookies essenciais para o funcionamento e analíticos para entender melhor a experiência.",
+      "Usamos cookies essenciais para o funcionamento e, com seu consentimento, cookies funcionais, analíticos e de marketing.",
+    paragraphs: [
+      "Você decide cada categoria individualmente, com opt-in explícito (nada vem pré-marcado) e pode revogar a qualquer momento pelo botão flutuante de cookies ou pelo link \"Gerenciar Cookies\" no rodapé. Os detalhes completos — incluindo o catálogo de cada cookie utilizado, sua finalidade e duração — estão na nossa Política de Cookies.",
+    ],
     bullets: [
-      "Cookies essenciais: indispensáveis para login, sessão e segurança. Não podem ser desativados.",
-      "Cookies funcionais: lembram preferências como idioma e tema.",
-      "Cookies analíticos: nos ajudam a medir o uso (sempre de forma agregada e anônima).",
-      "Você pode gerenciar cookies a qualquer momento nas configurações do seu navegador.",
+      "Cookies estritamente necessários: indispensáveis para login, sessão e segurança. Sustentados em execução de contrato e legítimo interesse.",
+      "Cookies funcionais: lembram preferências como tema, filtros e estado da interface.",
+      "Cookies analíticos: medem uso de forma anônima e agregada para evoluir o produto.",
+      "Cookies de marketing: atribuem campanhas e medem eficiência publicitária — apenas com seu consentimento explícito.",
     ],
   },
   {
@@ -766,7 +769,14 @@ export default function PrivacyPage() {
                   ]}
                   successMessage="Solicitação registrada. Nosso DPO entrará em contato em até 15 dias, conforme a LGPD."
                 />
-                <div className="mt-6 text-center">
+                <div className="mt-6 flex flex-wrap justify-center gap-4">
+                  <Link
+                    href="/cookies"
+                    className="inline-flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+                  >
+                    Ver Política de Cookies
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
                   <Link
                     href="/terms"
                     className="inline-flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"

@@ -1,6 +1,14 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { Instagram } from "lucide-react";
+import { Instagram, Cookie } from "lucide-react";
+import { OPEN_COOKIE_PREFERENCES_EVENT } from "@/components/providers/CookieConsentProvider";
+
+function openCookiePreferences() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(OPEN_COOKIE_PREFERENCES_EVENT));
+}
 
 export default function Footer() {
   return (
@@ -70,6 +78,7 @@ export default function Footer() {
                 { href: "/help", label: "Central de Ajuda" },
                 { href: "/terms", label: "Termos de Uso" },
                 { href: "/privacy", label: "Privacidade" },
+                { href: "/cookies", label: "Política de Cookies" },
               ].map((link) => (
                 <li key={link.label}>
                   <Link
@@ -80,6 +89,16 @@ export default function Footer() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <button
+                  type="button"
+                  onClick={openCookiePreferences}
+                  className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-400 transition-colors duration-200"
+                >
+                  <Cookie className="w-3.5 h-3.5" />
+                  Gerenciar Cookies
+                </button>
+              </li>
             </ul>
           </div>
 
