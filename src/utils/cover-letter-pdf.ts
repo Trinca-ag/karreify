@@ -1,4 +1,5 @@
 import type { CoverLetterResult } from "@/services/ai-cover-letter";
+import { authedFetch } from "@/lib/api-client";
 
 export interface CoverLetterAdjustments {
   candidateNameFontPx?: number;
@@ -38,9 +39,8 @@ export async function generateCoverLetterPDFBlob(
   data: CoverLetterResult,
   adjustments?: CoverLetterAdjustments
 ): Promise<Blob> {
-  const response = await fetch("/api/generate-cover-letter-pdf", {
+  const response = await authedFetch("/api/generate-cover-letter-pdf", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ data, adjustments }),
   });
 

@@ -1,5 +1,6 @@
 import type { ResumeSchema } from "@/lib/resume-schema";
 import type { TemplateName, SectionName } from "@/lib/resume-templates";
+import { authedFetch } from "@/lib/api-client";
 
 export interface PdfAdjustments {
   fontSizeOffset?: number;
@@ -39,9 +40,8 @@ export async function generateResumePDFBlob(
   candidateLevel?: string,
   adjustments?: PdfAdjustments
 ): Promise<Blob> {
-  const response = await fetch("/api/generate-pdf", {
+  const response = await authedFetch("/api/generate-pdf", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       resumeData: data,
       template,

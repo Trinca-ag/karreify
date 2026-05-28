@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LifeBuoy, Search } from "lucide-react";
+import { LifeBuoy, Search, ChevronDown } from "lucide-react";
 import TicketCard from "@/components/support/TicketCard";
-import { subscribeAllTickets } from "@/services/tickets";
+import { subscribeAllTickets, TICKETS_PAGE_SIZE } from "@/services/tickets";
 import type { Ticket } from "@/types";
 
 type Tab = "open" | "closed";
@@ -13,6 +13,9 @@ export default function AdminSupportPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("open");
   const [search, setSearch] = useState("");
+  // Janela paginada do listener — cresce em múltiplos de TICKETS_PAGE_SIZE.
+  // Evita ler todos os tickets de uma vez (custo + latência).
+  const [pageSize, setPageSize] = useState(TICKETS_PAGE_SIZE);
 
   useEffect(() => {
     setLoading(true);
@@ -21,10 +24,14 @@ export default function AdminSupportPage() {
         setTickets(list);
         setLoading(false);
       },
-      () => setLoading(false)
+      () => setLoading(false),
+      pageSize
     );
     return () => unsub();
-  }, []);
+  }, [pageSize]);
+
+  const reachedLimit = tickets.length >= pageSize;
+  const loadMore = () => setPageSize((n) => n + TICKETS_PAGE_SIZE);
 
   const counts = useMemo(
     () => ({
@@ -124,16 +131,31 @@ export default function AdminSupportPage() {
           <p className="text-gray-400">Nenhum chamado encontrado.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((t) => (
-            <TicketCard
-              key={t.id}
-              ticket={t}
-              href={`/admin/support/${t.id}`}
-              showRequester
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filtered.map((t) => (
+              <TicketCard
+                key={t.id}
+                ticket={t}
+                href={`/admin/support/${t.id}`}
+                showRequester
+              />
+            ))}
+          </div>
+
+          {reachedLimit && (
+            <div className="pt-2 flex justify-center">
+              <button
+                type="button"
+                onClick={loadMore}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-medium text-gray-200 hover:bg-white/10 hover:border-white/20 transition-all"
+              >
+                <ChevronDown className="w-4 h-4" />
+                Carregar mais {TICKETS_PAGE_SIZE}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

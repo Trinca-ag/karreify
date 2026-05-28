@@ -172,16 +172,21 @@ export async function POST(
       savedItemId = docRef.id;
     } else {
       // PDF — regenerate via the corresponding /api/generate-*-pdf route.
-      // Internal fetch is fine because PDF gen routes don't require auth
-      // (they're stateless renderers driven by the body JSON).
+      // As rotas de PDF agora exigem Bearer token (proteção contra abuso),
+      // então encaminhamos o Authorization do request original — que já passou
+      // por requireUser nesta rota e é o mesmo usuário dono do recurso.
       const origin = new URL(request.url).origin;
       const pdfBody = pdfApiBody(pending.docType, pending.sourceJson);
+      const authHeader = request.headers.get("authorization") || "";
 
       let pdfRes: Response;
       try {
         pdfRes = await fetch(`${origin}${pdfApiPath(pending.docType)}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: authHeader,
+          },
           body: JSON.stringify(pdfBody),
         });
       } catch (e) {

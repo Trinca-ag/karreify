@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { CompanyAnalysisResult } from "@/services/ai-company-analysis";
+import { requireUser, authErrorResponse } from "@/lib/auth-server";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -329,6 +331,16 @@ async function renderPdf(html: string): Promise<Buffer> {
 }
 
 export async function POST(request: NextRequest) {
+  let ctx;
+  try {
+    ctx = await requireUser(request);
+  } catch (e) {
+    return authErrorResponse(e);
+  }
+
+  const rl = rateLimit(ctx.uid, { scope: "pdf-company", limit: 5, windowMs: 60_000 });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   try {
     const body = await request.json();
     const data: CompanyAnalysisResult = body.data;

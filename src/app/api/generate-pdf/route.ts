@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { TEMPLATES, type TemplateName, getModernoPdfMargins, MODERNO_ACCENT } from "@/lib/resume-templates";
 import type { ResumeSchema } from "@/lib/resume-schema";
 import { PDFDocument } from "pdf-lib";
+import { requireUser, authErrorResponse } from "@/lib/auth-server";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 function sanitizeFilename(name: string): string {
   return name
@@ -332,6 +334,17 @@ function findLocalChrome(): string {
 }
 
 export async function POST(request: NextRequest) {
+  let ctx;
+  try {
+    ctx = await requireUser(request);
+  } catch (e) {
+    return authErrorResponse(e);
+  }
+
+  // Puppeteer + Chromium ~512MB e até 60s por chamada — abuso derruba budget.
+  const rl = rateLimit(ctx.uid, { scope: "pdf-resume", limit: 5, windowMs: 60_000 });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   try {
     const body = await request.json();
     const resumeData: ResumeSchema = body.resumeData;

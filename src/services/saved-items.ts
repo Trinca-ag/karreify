@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
+import { cache, CK, TTL, invalidateSavedItems } from "@/lib/cache";
 import type {
   SavedItem,
   SavedItemType,
@@ -76,8 +77,13 @@ async function hardDeleteItem(uid: string, item: SavedItem): Promise<void> {
   await deleteDoc(doc(col(uid), item.id));
 }
 
-/** Lists all saved items for a user. Expired items are deleted on read. */
+/** Lists all saved items for a user. Expired items are deleted on read.
+ *  Resultado cacheado por 5 min — invalidado automaticamente por create/update/delete.
+ *  Reduz reads do Firestore em hot paths (/my-files, checkSaveLimit). */
 export async function listSavedItems(uid: string): Promise<SavedItem[]> {
+  const cached = cache.get<SavedItem[]>(CK.savedItems(uid));
+  if (cached) return cached;
+
   const snap = await getDocs(query(col(uid), orderBy("createdAt", "desc")));
   const items = snap.docs.map((d) => rowToSavedItem(d.id, d.data()));
   const now = Date.now();
@@ -91,6 +97,7 @@ export async function listSavedItems(uid: string): Promise<SavedItem[]> {
   if (expired.length > 0) {
     Promise.all(expired.map((e) => hardDeleteItem(uid, e))).catch(() => {});
   }
+  cache.set(CK.savedItems(uid), live, TTL.savedItems);
   return live;
 }
 
@@ -130,10 +137,12 @@ export async function deleteSavedItem(
   const snap = await getDocs(query(col(uid), where("__name__", "==", itemId), fbLimit(1)));
   if (snap.empty) {
     await deleteDoc(doc(col(uid), itemId));
+    invalidateSavedItems(uid);
     return;
   }
   const item = rowToSavedItem(snap.docs[0].id, snap.docs[0].data());
   await hardDeleteItem(uid, item);
+  invalidateSavedItems(uid);
 }
 
 export interface SaveResumePayload {
@@ -162,6 +171,7 @@ export async function createResumeItem(
     createdAt: serverTimestamp(),
     expiresAt: Timestamp.fromDate(expiresAt),
   });
+  invalidateSavedItems(uid);
   return ref.id;
 }
 
@@ -180,6 +190,7 @@ export async function updateResumeItem(
   if ("title" in patch && patch.title !== undefined) update.title = patch.title;
   if ("subtitle" in patch) update.subtitle = patch.subtitle ?? null;
   await updateDoc(ref, update);
+  invalidateSavedItems(uid);
 }
 
 export interface SavePdfPayload {
@@ -224,6 +235,7 @@ export async function createPdfItem(
     createdAt: serverTimestamp(),
     expiresAt: Timestamp.fromDate(expiresAt),
   });
+  invalidateSavedItems(uid);
   return refDoc.id;
 }
 

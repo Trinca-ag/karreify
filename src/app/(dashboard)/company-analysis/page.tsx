@@ -387,9 +387,8 @@ export default function CompanyAnalysisPage() {
     async (data: CompanyAnalysisResult, notificationId?: string) => {
       if (!user) return;
       try {
-        const res = await fetch("/api/generate-company-analysis-pdf", {
+        const res = await authedFetch("/api/generate-company-analysis-pdf", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ data }),
         });
         if (!res.ok) return;
@@ -422,9 +421,8 @@ export default function CompanyAnalysisPage() {
     if (!result) return;
     setPdfLoading(true);
     try {
-      const res = await fetch("/api/generate-company-analysis-pdf", {
+      const res = await authedFetch("/api/generate-company-analysis-pdf", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: result }),
       });
       if (!res.ok) throw new Error("Erro ao gerar PDF");

@@ -46,6 +46,7 @@ export const CK: Record<string, (...args: string[]) => string> = {
   deviceTrust: (uid: string, did: string) => `dtrust:${uid}:${did}`,
   deviceList: (uid: string) => `dlist:${uid}`,
   resume: (hash: string) => `resume:${hash}`,
+  savedItems: (uid: string) => `saved:${uid}`,
 };
 
 // ── TTLs (milliseconds) ──────────────────────────────
@@ -55,6 +56,7 @@ export const TTL: Record<string, number> = {
   deviceTrust: 60 * 60 * 1000, // 1 hour
   deviceList: 2 * 60 * 1000,   // 2 min
   resume: 24 * 60 * 60 * 1000, // 24 hours
+  savedItems: 5 * 60 * 1000,   // 5 min
 };
 
 // ── Invalidation helpers ─────────────────────────────
@@ -66,6 +68,10 @@ export function invalidateUser(uid: string): void {
 export function invalidateDevices(uid: string): void {
   cache.invalidateByPrefix(`dtrust:${uid}:`);
   cache.invalidate(CK.deviceList(uid));
+}
+
+export function invalidateSavedItems(uid: string): void {
+  cache.invalidate(CK.savedItems(uid));
 }
 
 export function invalidateAll(): void {

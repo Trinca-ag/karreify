@@ -8,6 +8,7 @@ import {
   where,
   onSnapshot,
   Timestamp,
+  limit as fbLimit,
   type Unsubscribe,
   type DocumentData,
 } from "firebase/firestore";
@@ -64,15 +65,20 @@ function mapMessageDoc(id: string, data: DocumentData): TicketMessage {
 
 // ── Realtime subscriptions ──────────────────────────────────────────────
 
+/** Padrão de janela do listener — paginação cresce em múltiplos disto. */
+export const TICKETS_PAGE_SIZE = 50;
+
 export function subscribeUserTickets(
   userId: string,
   onChange: (tickets: Ticket[]) => void,
-  onError?: (err: unknown) => void
+  onError?: (err: unknown) => void,
+  max: number = TICKETS_PAGE_SIZE
 ): Unsubscribe {
   const q = query(
     collection(db, "tickets"),
     where("userId", "==", userId),
-    orderBy("lastMessageAt", "desc")
+    orderBy("lastMessageAt", "desc"),
+    fbLimit(max)
   );
   return onSnapshot(
     q,
@@ -86,9 +92,14 @@ export function subscribeUserTickets(
 
 export function subscribeAllTickets(
   onChange: (tickets: Ticket[]) => void,
-  onError?: (err: unknown) => void
+  onError?: (err: unknown) => void,
+  max: number = TICKETS_PAGE_SIZE
 ): Unsubscribe {
-  const q = query(collection(db, "tickets"), orderBy("lastMessageAt", "desc"));
+  const q = query(
+    collection(db, "tickets"),
+    orderBy("lastMessageAt", "desc"),
+    fbLimit(max)
+  );
   return onSnapshot(
     q,
     (snap) => {

@@ -78,9 +78,8 @@ export default function ResumeAnalysisPage() {
   const handleDownloadPDF = useCallback(async () => {
     if (!result) return;
     try {
-      const response = await fetch("/api/generate-analysis-pdf", {
+      const response = await authedFetch("/api/generate-analysis-pdf", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ analysis: result.analysis }),
       });
       if (!response.ok) throw new Error("Erro ao gerar PDF");
@@ -102,9 +101,8 @@ export default function ResumeAnalysisPage() {
     async (analysis: AnalysisResult["analysis"], originalName: string, notificationId?: string) => {
       if (!user) return;
       try {
-        const response = await fetch("/api/generate-analysis-pdf", {
+        const response = await authedFetch("/api/generate-analysis-pdf", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ analysis }),
         });
         if (!response.ok) return;
