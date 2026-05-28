@@ -248,7 +248,9 @@ export async function POST(request: NextRequest) {
     return authErrorResponse(e);
   }
 
-  const rl = rateLimit(ctx.uid, { scope: "pdf-cover", limit: 5, windowMs: 60_000 });
+  // Preview ao vivo no /cover-letter regenera PDF a cada edição (mesmo padrão
+  // de /create-resume) — limite alto para não sufocar uso editorial.
+  const rl = rateLimit(ctx.uid, { scope: "pdf-cover", limit: 60, windowMs: 60_000 });
   if (!rl.allowed) return rateLimitResponse(rl);
 
   try {

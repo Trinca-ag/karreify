@@ -338,7 +338,8 @@ export async function POST(request: NextRequest) {
     return authErrorResponse(e);
   }
 
-  const rl = rateLimit(ctx.uid, { scope: "pdf-company", limit: 5, windowMs: 60_000 });
+  // Sem preview ao vivo — só dispara no download/save. 10/min é suficiente.
+  const rl = rateLimit(ctx.uid, { scope: "pdf-company", limit: 10, windowMs: 60_000 });
   if (!rl.allowed) return rateLimitResponse(rl);
 
   try {

@@ -342,7 +342,12 @@ export async function POST(request: NextRequest) {
   }
 
   // Puppeteer + Chromium ~512MB e até 60s por chamada — abuso derruba budget.
-  const rl = rateLimit(ctx.uid, { scope: "pdf-resume", limit: 5, windowMs: 60_000 });
+  // Limite alto (60/min) porque /create-resume tem preview ao vivo que
+  // regenera o PDF a cada edição (sliders, texto, troca de template) — uso
+  // editorial legítimo facilmente passa de 30 req/min. Como cada chamada bloqueia
+  // o lambda por ~3-5s, na prática o cliente não consegue mandar muito mais
+  // que 12-15/min em série, então 60 dá folga sem abrir DoS prático.
+  const rl = rateLimit(ctx.uid, { scope: "pdf-resume", limit: 60, windowMs: 60_000 });
   if (!rl.allowed) return rateLimitResponse(rl);
 
   try {

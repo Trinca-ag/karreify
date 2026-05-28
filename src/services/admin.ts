@@ -83,6 +83,16 @@ export interface AdminPaymentRow {
   lastError: AdminPaymentErrorEntry | null;
 }
 
+export interface AdminJobsPassRow {
+  id: string;
+  userId: string;
+  user: { uid: string; displayName: string | null; email: string | null } | null;
+  passId: string | null;
+  amount: number;
+  description: string;
+  createdAt: string | null;
+}
+
 export interface AdminStats {
   totalUsers: number;
   totalAdmins: number;

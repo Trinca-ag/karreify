@@ -339,6 +339,13 @@ export const FEATURE_COSTS: Record<string, number> = {
   "company-analysis": 5,
 };
 
+/** Formatado para UI: "5 créditos" / "1 crédito". Use sempre em vez de
+ *  hardcoded — qualquer mudança de preço passa a refletir automaticamente. */
+export function featureCostLabel(feature: string): string {
+  const cost = FEATURE_COSTS[feature] ?? 1;
+  return `${cost} crédito${cost === 1 ? "" : "s"}`;
+}
+
 // ==================== Credit Packs ====================
 export type CreditPackId = "basic" | "intermediary" | "plus";
 
@@ -429,7 +436,7 @@ export const JOBS_PASSES: JobsPass[] = [
   {
     id: "monthly",
     name: "Passe mensal",
-    cost: 100,
+    cost: 150,
     durationMs: 30 * DAY_MS,
     description: "30 dias de buscas ilimitadas",
   },

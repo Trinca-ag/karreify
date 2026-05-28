@@ -14,6 +14,7 @@ const PdfPreview = dynamic(() => import("@/components/ui/PdfPreview"), { ssr: fa
 import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
+import { featureCostLabel } from "@/types";
 import { checkCredits } from "@/services/credits";
 import { authedFetch } from "@/lib/api-client";
 import type { CoverLetterResult } from "@/services/ai-cover-letter";
@@ -345,7 +346,7 @@ export default function CoverLetterPage() {
             Envie seu currículo e a descrição da vaga — a IA redige uma carta sob medida para impressionar o recrutador.
           </p>
           <span className="inline-block mt-4 bg-primary-500/10 text-primary-400 text-xs rounded-lg px-2.5 py-1 border border-primary-500/20">
-            1 crédito por carta
+            {featureCostLabel("cover-letter")} por carta
           </span>
         </div>
       </section>
@@ -810,7 +811,7 @@ export default function CoverLetterPage() {
       <Modal isOpen={showConfirm} onClose={() => setShowConfirm(false)} title="Gerar carta de apresentação" size="sm">
         <div className="space-y-4">
           <p className="text-gray-300 text-sm">
-            A geração da carta custa <span className="text-primary-400 font-semibold">1 crédito</span>. Deseja continuar?
+            A geração da carta custa <span className="text-primary-400 font-semibold">{featureCostLabel("cover-letter")}</span>. Deseja continuar?
           </p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setShowConfirm(false)}>Cancelar</Button>

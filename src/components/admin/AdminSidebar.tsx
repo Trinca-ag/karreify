@@ -11,6 +11,7 @@ const menuItems = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Usuários", href: "/admin/users", icon: Users },
   { label: "Pagamentos", href: "/admin/payments", icon: CreditCard },
+  { label: "Passes /jobs", href: "/admin/jobs-passes", icon: Briefcase },
   { label: "Banco de Talentos", href: "/admin/talents", icon: Briefcase },
   { label: "Administradores", href: "/admin/admins", icon: Shield },
   { label: "Suporte", href: "/admin/support", icon: LifeBuoy },

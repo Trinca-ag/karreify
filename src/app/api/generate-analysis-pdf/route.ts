@@ -402,7 +402,9 @@ export async function POST(request: NextRequest) {
     return authErrorResponse(e);
   }
 
-  const rl = rateLimit(ctx.uid, { scope: "pdf-analysis", limit: 5, windowMs: 60_000 });
+  // Sem preview ao vivo — só dispara no download/save. 10/min cobre múltiplas
+  // tentativas e o background save sem abrir DoS.
+  const rl = rateLimit(ctx.uid, { scope: "pdf-analysis", limit: 10, windowMs: 60_000 });
   if (!rl.allowed) return rateLimitResponse(rl);
 
   try {

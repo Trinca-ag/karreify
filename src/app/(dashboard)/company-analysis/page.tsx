@@ -12,6 +12,7 @@ const SaveLimitModal = dynamic(() => import("@/components/ui/SaveLimitModal"), {
 const SaveSuccessModal = dynamic(() => import("@/components/ui/SaveSuccessModal"), { ssr: false });
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
+import { featureCostLabel } from "@/types";
 import { checkCredits } from "@/services/credits";
 import { authedFetch } from "@/lib/api-client";
 import type { CompanyAnalysisResult } from "@/services/ai-company-analysis";
@@ -508,7 +509,7 @@ export default function CompanyAnalysisPage() {
             Descubra cultura, salários, processo seletivo e dicas personalizadas sobre qualquer empresa com IA.
           </p>
           <span className="inline-block mt-4 bg-primary-500/10 text-primary-400 text-xs rounded-lg px-2.5 py-1 border border-primary-500/20">
-            1 crédito por análise
+            {featureCostLabel("company-analysis")} por análise
           </span>
         </div>
       </section>
@@ -645,7 +646,7 @@ export default function CompanyAnalysisPage() {
         <div className="space-y-4">
           <p className="text-gray-300 text-sm">
             A análise de <span className="text-white font-semibold">{companyName}</span> custa{" "}
-            <span className="text-primary-400 font-semibold">1 crédito</span>. Deseja continuar?
+            <span className="text-primary-400 font-semibold">{featureCostLabel("company-analysis")}</span>. Deseja continuar?
           </p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setShowConfirm(false)}>Cancelar</Button>

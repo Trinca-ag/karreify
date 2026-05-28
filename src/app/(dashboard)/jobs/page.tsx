@@ -46,6 +46,10 @@ const PERIOD_OPTIONS: { value: DatePeriod; label: string }[] = [
 
 const PAGE_SIZE = 20;
 
+/** Janela em que a extensão fica disponível — antes disso, o usuário não pode
+ *  estender (evita acúmulo desnecessário de dias e UX confusa). */
+const EXTENSION_THRESHOLD_DAYS = 5;
+
 export default function JobsPage() {
   const {
     keyword,
@@ -81,6 +85,10 @@ export default function JobsPage() {
   const passDaysLeft = hasActivePass
     ? Math.max(1, Math.ceil((passExpiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
     : 0;
+  // Extensão só liberada quando faltam EXTENSION_THRESHOLD_DAYS ou menos. Sem
+  // passe ativo, sempre pode comprar (é compra, não extensão).
+  const canExtend = hasActivePass && passDaysLeft <= EXTENSION_THRESHOLD_DAYS;
+  const canBuy = !hasActivePass || canExtend;
 
   const [cities, setCities] = useState<string[]>([]);
   const [citiesLoading, setCitiesLoading] = useState(false);
@@ -116,6 +124,12 @@ export default function JobsPage() {
   }, [userData, isTester, hasActivePass]);
 
   async function handleBuyPass(passId: JobsPassId) {
+    if (hasActivePass && !canExtend) {
+      toast.error(
+        `Você só pode estender o passe quando faltar ${EXTENSION_THRESHOLD_DAYS} dias ou menos.`
+      );
+      return;
+    }
     setBuyingPass(passId);
     try {
       await buyJobsPass(passId);
@@ -245,9 +259,23 @@ export default function JobsPage() {
         <div className="relative p-8 md:p-12 animate-fade-in-up">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-medium text-primary-300 mb-4">
-                <Sparkles className="w-3 h-3" />
-                Vagas em tempo real
+              <div className="flex items-center gap-2 flex-wrap mb-4">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-medium text-primary-300">
+                  <Sparkles className="w-3 h-3" />
+                  Vagas em tempo real
+                </div>
+                {hasActivePass && (
+                  <div
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${
+                      canExtend
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                        : "bg-emerald-500/10 border-emerald-500/25 text-emerald-300"
+                    }`}
+                  >
+                    <CalendarClock className="w-3 h-3" />
+                    Passe ativo · {passDaysLeft} {passDaysLeft === 1 ? "dia restante" : "dias restantes"}
+                  </div>
+                )}
               </div>
               <h1 className="text-3xl md:text-5xl font-bold text-white font-heading leading-[1.1] tracking-tight">
                 Encontre sua próxima{" "}
@@ -417,12 +445,18 @@ export default function JobsPage() {
                   · buscas ilimitadas
                 </span>
               </div>
-              <button
-                onClick={() => setPassModalOpen(true)}
-                className="text-[11px] font-medium text-emerald-300 hover:text-white transition-colors underline-offset-2 hover:underline"
-              >
-                Estender
-              </button>
+              {canExtend ? (
+                <button
+                  onClick={() => setPassModalOpen(true)}
+                  className="text-[11px] font-medium text-emerald-300 hover:text-white transition-colors underline-offset-2 hover:underline"
+                >
+                  Estender
+                </button>
+              ) : (
+                <span className="text-[10px] text-emerald-300/70 whitespace-nowrap">
+                  Renovação disponível faltando {EXTENSION_THRESHOLD_DAYS} dias
+                </span>
+              )}
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 bg-yellow-500/5 border border-yellow-500/15 rounded-lg text-[11px] text-yellow-200 leading-relaxed">
@@ -430,7 +464,7 @@ export default function JobsPage() {
                 <Coins className="w-3.5 h-3.5 text-yellow-300 flex-shrink-0 mt-0.5" />
                 <span>
                   Você precisa de um passe ativo para buscar vagas. Passes
-                  semanal (60 moedas) ou mensal (100 moedas).
+                  semanal ({JOBS_PASSES.find(p => p.id === "weekly")?.cost} moedas) ou mensal ({JOBS_PASSES.find(p => p.id === "monthly")?.cost} moedas).
                 </span>
               </div>
               <button
@@ -603,11 +637,17 @@ export default function JobsPage() {
                 Passes de vagas
               </div>
               <h2 className="text-2xl md:text-3xl font-bold text-white font-heading leading-tight pr-12">
-                {hasActivePass ? "Estenda seu acesso" : "Libere buscas ilimitadas"}
+                {hasActivePass
+                  ? canExtend
+                    ? "Estenda seu acesso"
+                    : "Você ainda tem acesso ativo"
+                  : "Libere buscas ilimitadas"}
               </h2>
               <p className="text-white/80 text-sm mt-2 max-w-md leading-relaxed">
                 {hasActivePass
-                  ? `Seu passe atual expira em ${passDaysLeft} ${passDaysLeft === 1 ? "dia" : "dias"}. Comprar um novo passe estende a partir da data atual de expiração.`
+                  ? canExtend
+                    ? `Seu passe atual expira em ${passDaysLeft} ${passDaysLeft === 1 ? "dia" : "dias"}. Comprar um novo passe estende a partir da data atual de expiração.`
+                    : `Seu passe atual ainda tem ${passDaysLeft} ${passDaysLeft === 1 ? "dia" : "dias"}. A renovação fica liberada quando faltar ${EXTENSION_THRESHOLD_DAYS} dias ou menos.`
                   : "Escolha entre semanal ou mensal e tenha buscas ilimitadas. Sem cobrança recorrente."}
               </p>
             </div>
@@ -704,7 +744,7 @@ export default function JobsPage() {
 
                   <button
                     onClick={() => handleBuyPass(pass.id)}
-                    disabled={!canAfford || !!buyingPass}
+                    disabled={!canAfford || !canBuy || !!buyingPass}
                     className={`w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                       isPopular
                         ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white hover:from-primary-500 hover:to-primary-400 glow-blue"
@@ -715,6 +755,11 @@ export default function JobsPage() {
                       <>
                         <div className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                         Ativando...
+                      </>
+                    ) : hasActivePass && !canExtend ? (
+                      <>
+                        <Lock className="w-3.5 h-3.5" />
+                        Disponível faltando {EXTENSION_THRESHOLD_DAYS} dias
                       </>
                     ) : !canAfford ? (
                       <>

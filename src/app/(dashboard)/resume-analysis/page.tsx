@@ -20,6 +20,7 @@ const SaveLimitModal = dynamic(() => import("@/components/ui/SaveLimitModal"), {
 const SaveSuccessModal = dynamic(() => import("@/components/ui/SaveSuccessModal"), { ssr: false });
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
+import { featureCostLabel } from "@/types";
 
 const PROGRESS_MESSAGES = [
   "Enviando seu currículo...",
@@ -235,7 +236,7 @@ export default function ResumeAnalysisPage() {
                   ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
                   : "bg-primary-500/10 border border-primary-500/20 text-primary-400"
               }`}>
-                {isFirstUse ? "Primeira analise gratuita!" : "Custo: 1 credito"}
+                {isFirstUse ? "Primeira analise gratuita!" : `Custo: ${featureCostLabel("resume-analysis")}`}
               </span>
               <Button onClick={() => setShowAnalyzeConfirm(true)} disabled={!file || loading} loading={loading} className="glow-blue">
                 {loading ? "Analisando..." : "Analisar currículo"}
@@ -417,7 +418,7 @@ export default function ResumeAnalysisPage() {
           <p className="text-gray-300 text-sm">
             {isFirstUse
               ? "Sua primeira análise é gratuita! Deseja continuar?"
-              : <>A análise de currículo custa <span className="text-primary-400 font-semibold">1 crédito</span>. Deseja continuar?</>}
+              : <>A análise de currículo custa <span className="text-primary-400 font-semibold">{featureCostLabel("resume-analysis")}</span>. Deseja continuar?</>}
           </p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setShowAnalyzeConfirm(false)}>Cancelar</Button>

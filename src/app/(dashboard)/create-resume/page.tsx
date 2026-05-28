@@ -28,6 +28,7 @@ const SaveSuccessModal = dynamic(() => import("@/components/ui/SaveSuccessModal"
 const PdfPreview = dynamic(() => import("@/components/ui/PdfPreview"), { ssr: false });
 import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
+import { featureCostLabel } from "@/types";
 import { useAIProgress } from "@/hooks/useAIProgress";
 import { listSavedItems, updateResumeItem } from "@/services/saved-items";
 
@@ -1063,7 +1064,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
             Crie um currículo otimizado para ATS com inteligência artificial. Resultado em PDF pronto para enviar.
           </p>
           <span className="inline-block mt-4 bg-primary-500/10 border border-primary-500/20 text-primary-300 text-xs rounded-full px-3 py-1">
-            1 crédito por criação
+            {featureCostLabel("resume-creation")} por criação
           </span>
         </div>
       </section>
@@ -1138,7 +1139,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           <fieldset disabled={loading || validating} className="p-6 space-y-4 border-0 m-0 min-w-0 disabled:opacity-60 disabled:cursor-not-allowed">
             <FileUpload onFileSelect={setFile} selectedFile={file} onClear={() => setFile(null)} disabled={loading || validating} />
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">Custo: 1 crédito</span>
+              <span className="text-sm text-gray-500">Custo: {featureCostLabel("resume-creation")}</span>
               <Button onClick={handleUploadCreate} disabled={!file || loading || validating} loading={loading || validating} className="glow-blue">
                 {validating ? "Validando..." : "Criar currículo"}
               </Button>
@@ -1468,7 +1469,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                 <ChevronLeft className="w-4 h-4" /> Voltar
               </button>
               <div className="flex items-center gap-3">
-                {step === TOTAL_STEPS && <span className="text-sm text-gray-500 hidden sm:inline">Custo: 1 crédito</span>}
+                {step === TOTAL_STEPS && <span className="text-sm text-gray-500 hidden sm:inline">Custo: {featureCostLabel("resume-creation")}</span>}
                 <Button type="submit" loading={loading} disabled={loading || (step === TOTAL_STEPS && !name)} className="glow-blue">
                   {step < TOTAL_STEPS ? (
                     <span className="inline-flex items-center">Avançar <ChevronRight className="w-4 h-4 ml-1" /></span>
@@ -1496,7 +1497,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
       {/* Confirm generate modal */}
       <Modal isOpen={showGenerateConfirm} onClose={() => setShowGenerateConfirm(false)} title="Criar currículo" size="sm">
         <div className="space-y-4">
-          <p className="text-gray-300 text-sm">A criação do currículo custa <span className="text-primary-400 font-semibold">1 crédito</span>. Deseja continuar?</p>
+          <p className="text-gray-300 text-sm">A criação do currículo custa <span className="text-primary-400 font-semibold">{featureCostLabel("resume-creation")}</span>. Deseja continuar?</p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setShowGenerateConfirm(false)}>Cancelar</Button>
             <Button onClick={confirmGenerate}>Confirmar</Button>

@@ -24,6 +24,7 @@ const PdfPreview = dynamic(() => import("@/components/ui/PdfPreview"), { ssr: fa
 import PxControl from "@/components/ui/PxControl";
 import { useSavedItemSaver } from "@/hooks/useSavedItemSaver";
 import { useAIProgress } from "@/hooks/useAIProgress";
+import { featureCostLabel } from "@/types";
 
 const PROGRESS_MESSAGES = [
   "Enviando seus dados...",
@@ -677,7 +678,7 @@ export default function AdaptResumePage() {
           </p>
           <span className="inline-flex items-center gap-1.5 mt-4 bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs rounded-full px-3 py-1">
             <Sparkles className="w-3 h-3" />
-            1 crédito por adaptação
+            {featureCostLabel("resume-adaptation")} por adaptação
           </span>
         </div>
       </section>
@@ -721,7 +722,7 @@ export default function AdaptResumePage() {
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-500">Custo: 1 crédito</span>
+            <span className="text-sm text-gray-500">Custo: {featureCostLabel("resume-adaptation")}</span>
             <Button onClick={() => setShowGenerateConfirm(true)} disabled={!file || !jobDescription.trim() || loading} loading={loading} className="glow-blue">
               Adaptar currículo
             </Button>
@@ -743,7 +744,7 @@ export default function AdaptResumePage() {
       {/* Confirm generate modal */}
       <Modal isOpen={showGenerateConfirm} onClose={() => setShowGenerateConfirm(false)} title="Adaptar currículo" size="sm">
         <div className="space-y-4">
-          <p className="text-gray-300 text-sm">A adaptação do currículo custa <span className="text-primary-400 font-semibold">1 crédito</span>. Deseja continuar?</p>
+          <p className="text-gray-300 text-sm">A adaptação do currículo custa <span className="text-primary-400 font-semibold">{featureCostLabel("resume-adaptation")}</span>. Deseja continuar?</p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setShowGenerateConfirm(false)}>Cancelar</Button>
             <Button onClick={() => { setShowGenerateConfirm(false); handleAdapt(); }}>Confirmar</Button>
