@@ -7,6 +7,11 @@ import Input from "@/components/ui/Input";
 import Image from "next/image";
 import { KeyRound, Mail, ArrowLeft, CheckCircle, Lock } from "lucide-react";
 import toast from "react-hot-toast";
+import TurnstileWidget, {
+  turnstileEnabled,
+  verifyCaptchaToken,
+  type TurnstileHandle,
+} from "@/components/ui/TurnstileWidget";
 
 type Step = "email" | "code" | "success";
 
@@ -36,6 +41,8 @@ export default function ResetPasswordPage() {
   const [now, setNow] = useState(() => Date.now());
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const sendingRef = useRef(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   // Cooldown timer
   useEffect(() => {
@@ -125,6 +132,19 @@ export default function ResetPasswordPage() {
     if (!email) {
       toast.error("Digite seu email.");
       return;
+    }
+    if (turnstileEnabled && !captchaToken) {
+      toast.error("Confirme que você não é um robô.");
+      return;
+    }
+    if (turnstileEnabled) {
+      const human = await verifyCaptchaToken(captchaToken);
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
+      if (!human) {
+        toast.error("Falha na verificação anti-robô. Tente novamente.");
+        return;
+      }
     }
     await sendCode();
   };
@@ -254,6 +274,11 @@ export default function ResetPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
                   required
+                />
+                <TurnstileWidget
+                  ref={turnstileRef}
+                  onToken={setCaptchaToken}
+                  className="flex justify-center"
                 />
                 <Button
                   type="submit"

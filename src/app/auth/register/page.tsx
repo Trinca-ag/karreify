@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerUser, loginWithGoogle } from "@/services/firebase-auth";
@@ -9,6 +9,11 @@ import Input from "@/components/ui/Input";
 import Image from "next/image";
 import { Gift, CreditCard, Sparkles, Check } from "lucide-react";
 import toast from "react-hot-toast";
+import TurnstileWidget, {
+  turnstileEnabled,
+  verifyCaptchaToken,
+  type TurnstileHandle,
+} from "@/components/ui/TurnstileWidget";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -17,6 +22,8 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const router = useRouter();
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -37,8 +44,23 @@ export default function RegisterPage() {
       return;
     }
 
+    if (turnstileEnabled && !captchaToken) {
+      toast.error("Confirme que você não é um robô.");
+      return;
+    }
+
     setLoading(true);
     try {
+      if (turnstileEnabled) {
+        const human = await verifyCaptchaToken(captchaToken);
+        // Token single-use — reseta pra próxima tentativa.
+        turnstileRef.current?.reset();
+        setCaptchaToken("");
+        if (!human) {
+          toast.error("Falha na verificação anti-robô. Tente novamente.");
+          return;
+        }
+      }
       await registerUser(email, password, name);
       toast.success("Conta criada com sucesso!");
       router.push("/auth/verify");
@@ -281,6 +303,11 @@ export default function RegisterPage() {
                 </span>
               </label>
 
+              <TurnstileWidget
+                ref={turnstileRef}
+                onToken={setCaptchaToken}
+                className="flex justify-center"
+              />
               <Button
                 type="submit"
                 loading={loading}

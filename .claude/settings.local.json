@@ -128,7 +128,8 @@
       "WebFetch(domain:support.google.com)",
       "WebFetch(domain:help.mailgun.com)",
       "WebFetch(domain:docs.gravitysmtp.com)",
-      "WebFetch(domain:www.twilio.com)"
+      "WebFetch(domain:www.twilio.com)",
+      "WebFetch(domain:docs.page)"
     ]
   }
 }

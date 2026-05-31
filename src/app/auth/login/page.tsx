@@ -9,6 +9,11 @@ import Input from "@/components/ui/Input";
 import Image from "next/image";
 import { Sparkles, Shield, Zap, Lock } from "lucide-react";
 import toast from "react-hot-toast";
+import TurnstileWidget, {
+  turnstileEnabled,
+  verifyCaptchaToken,
+  type TurnstileHandle,
+} from "@/components/ui/TurnstileWidget";
 
 const LOGIN_LOCK_STORAGE_KEY = "karreify_login_lock_until";
 
@@ -76,6 +81,8 @@ export default function LoginPage() {
   // Guarda síncrona — `loading` (useState) só atualiza no próximo render, então
   // cliques duplos muito rápidos passavam pelo `if (loading) return`.
   const inflightRef = useRef(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const router = useRouter();
 
   // Carrega lock persistido (caso o user dê F5 ou abra nova aba).
@@ -121,6 +128,22 @@ export default function LoginPage() {
     inflightRef.current = true;
     setLoading(true);
     try {
+      // Verificação anti-robô (Cloudflare Turnstile) antes de qualquer tentativa.
+      if (turnstileEnabled && !captchaToken) {
+        toast.error("Confirme que você não é um robô.");
+        return;
+      }
+      if (turnstileEnabled) {
+        const human = await verifyCaptchaToken(captchaToken);
+        // Token é single-use — reseta já pra ter um novo na próxima tentativa.
+        turnstileRef.current?.reset();
+        setCaptchaToken("");
+        if (!human) {
+          toast.error("Falha na verificação anti-robô. Tente novamente.");
+          return;
+        }
+      }
+
       // Pre-check no nosso rate-limit escalonado (Firebase Auth não tem como
       // ser bloqueado pelo nosso server, então fazemos defesa client-side).
       const precheck = await callLoginRate(email, "check");
@@ -386,6 +409,11 @@ export default function LoginPage() {
                   </Link>
                 </div>
               </div>
+              <TurnstileWidget
+                ref={turnstileRef}
+                onToken={setCaptchaToken}
+                className="flex justify-center"
+              />
               <Button
                 type="button"
                 onClick={() => handleLogin()}

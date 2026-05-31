@@ -9,6 +9,11 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { ArrowLeft, CheckCircle, Lock } from "lucide-react";
 import toast from "react-hot-toast";
+import TurnstileWidget, {
+  turnstileEnabled,
+  verifyCaptchaToken,
+  type TurnstileHandle,
+} from "@/components/ui/TurnstileWidget";
 
 const TRUST_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -53,6 +58,8 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [credCaptcha, setCredCaptcha] = useState("");
+  const credTurnstileRef = useRef<TurnstileHandle>(null);
 
   // Reset password state
   const [resetEmail, setResetEmail] = useState("");
@@ -61,6 +68,8 @@ export default function AdminLoginPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetCooldown, setResetCooldown] = useState(0);
+  const [resetCaptcha, setResetCaptcha] = useState("");
+  const resetTurnstileRef = useRef<TurnstileHandle>(null);
 
   // Lockout visual compartilhado com /auth/login.
   const [lockUntil, setLockUntil] = useState<number>(0);
@@ -133,8 +142,22 @@ export default function AdminLoginPage() {
     e.preventDefault();
     if (isLocked) return;
     if (!identifier.trim() || !password) return;
+    if (turnstileEnabled && !credCaptcha) {
+      toast.error("Confirme que você não é um robô.");
+      return;
+    }
     setLoading(true);
     try {
+      if (turnstileEnabled) {
+        const human = await verifyCaptchaToken(credCaptcha);
+        credTurnstileRef.current?.reset();
+        setCredCaptcha("");
+        if (!human) {
+          toast.error("Falha na verificação anti-robô. Tente novamente.");
+          return;
+        }
+      }
+
       // 1. Resolve email (API call only — no Firebase Auth yet)
       let email = identifier.trim().toLowerCase();
       if (!email.includes("@")) {
@@ -295,8 +318,21 @@ export default function AdminLoginPage() {
     e?.preventDefault();
     if (!resetEmail.trim()) return;
     if (isLocked) return;
+    if (turnstileEnabled && !resetCaptcha) {
+      toast.error("Confirme que você não é um robô.");
+      return;
+    }
     setLoading(true);
     try {
+      if (turnstileEnabled) {
+        const human = await verifyCaptchaToken(resetCaptcha);
+        resetTurnstileRef.current?.reset();
+        setResetCaptcha("");
+        if (!human) {
+          toast.error("Falha na verificação anti-robô. Tente novamente.");
+          return;
+        }
+      }
       const res = await fetch("/api/send-reset-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -453,6 +489,11 @@ export default function AdminLoginPage() {
                   placeholder="Sua senha"
                   required
                 />
+                <TurnstileWidget
+                  ref={credTurnstileRef}
+                  onToken={setCredCaptcha}
+                  className="flex justify-center"
+                />
                 <Button
                   type="submit"
                   loading={loading || sending}
@@ -504,6 +545,11 @@ export default function AdminLoginPage() {
                   onChange={e => setResetEmail(e.target.value)}
                   placeholder="email@exemplo.com"
                   required
+                />
+                <TurnstileWidget
+                  ref={resetTurnstileRef}
+                  onToken={setResetCaptcha}
+                  className="flex justify-center"
                 />
                 <Button
                   type="submit"
