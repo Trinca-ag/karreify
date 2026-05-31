@@ -19,6 +19,37 @@ import { callJooble, JoobleApiError } from "@/lib/jooble";
 
 const JOBS_SEARCH_FEATURE = "jobs-search";
 
+/** Limite de buscas por dia para usuários com passe ativo (reset à meia-noite BRT). */
+const DAILY_SEARCH_LIMIT = 10;
+
+/** Chave de dia no fuso de Brasília (YYYY-MM-DD). O limite diário zera à
+ *  meia-noite BRT, por isso derivamos a data nesse fuso e não em UTC. */
+function brtDateKey(d: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+/** Incrementa o contador diário de buscas do usuário (1 doc por dia). */
+async function bumpDailySearch(uid: string, dateKey: string): Promise<void> {
+  await adminDb
+    .collection("users")
+    .doc(uid)
+    .collection("jobsSearchDaily")
+    .doc(dateKey)
+    .set(
+      {
+        count: FieldValue.increment(1),
+        date: dateKey,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+}
+
 interface SearchParams {
   keyword: string;
   uf?: string;
@@ -149,9 +180,15 @@ export async function POST(request: NextRequest) {
       page: targetPage,
     };
 
+    const dailyDateKey = brtDateKey();
+    // `true` quando um usuário (não-tester) com passe ativo passa pelo gate de
+    // limite diário na página 1 — usamos pra incrementar o contador só após a
+    // busca dar certo (cache hit ou provider OK), nunca em falha.
+    let countableSearch = false;
+
     // Modo de cobrança agora é por passe (semanal/mensal). Testers continuam
-    // com 1 busca grátis. Para users, basta ter um passe ativo — a busca em si
-    // não desconta nada.
+    // com 1 busca grátis. Para users, basta ter um passe ativo — porém limitado
+    // a DAILY_SEARCH_LIMIT buscas por dia.
     if (targetPage === 1) {
       const userSnap = await adminDb.collection("users").doc(ctx.uid).get();
       const userData = userSnap.data() ?? {};
@@ -197,6 +234,28 @@ export async function POST(request: NextRequest) {
             { status: 402 }
           );
         }
+
+        // Mesmo com passe ativo, cada usuário tem no máximo DAILY_SEARCH_LIMIT
+        // buscas por dia. Só checamos aqui; o incremento ocorre após a busca dar
+        // certo. Paginação não conta — todo este gate está sob targetPage === 1.
+        const dailySnap = await adminDb
+          .collection("users")
+          .doc(ctx.uid)
+          .collection("jobsSearchDaily")
+          .doc(dailyDateKey)
+          .get();
+        const usedToday = (dailySnap.data()?.count as number | undefined) ?? 0;
+        if (usedToday >= DAILY_SEARCH_LIMIT) {
+          return NextResponse.json(
+            {
+              error: `Você atingiu o limite de ${DAILY_SEARCH_LIMIT} buscas por dia. O limite zera amanhã.`,
+              code: "DAILY_LIMIT_REACHED",
+              limit: DAILY_SEARCH_LIMIT,
+            },
+            { status: 429 }
+          );
+        }
+        countableSearch = true;
       }
     }
 
@@ -214,6 +273,7 @@ export async function POST(request: NextRequest) {
         exactMatch: !!exactMatch,
         userId: ctx.uid,
       });
+      if (countableSearch) await bumpDailySearch(ctx.uid, dailyDateKey);
       return NextResponse.json({
         jobs: cached.jobs,
         totalCount: cached.totalCount,
@@ -328,6 +388,7 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    if (countableSearch) await bumpDailySearch(ctx.uid, dailyDateKey);
     return NextResponse.json({
       jobs: result.jobs,
       totalCount: result.totalCount,

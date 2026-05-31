@@ -79,7 +79,7 @@ const spotlights: Spotlight[] = [
     gradient: "from-primary-500 to-accent-cyan",
     glowColor: "rgba(59, 130, 246, 0.4)",
     videoFile: "Análise de currículo.mp4",
-    videoUrl: "karreify.app/resume-analysis",
+    videoUrl: "karreify.com/resume-analysis",
   },
   {
     id: "criacao-curriculo",
@@ -100,7 +100,7 @@ const spotlights: Spotlight[] = [
     gradient: "from-emerald-500 to-teal-500",
     glowColor: "rgba(16, 185, 129, 0.4)",
     videoFile: "criação de currículo.mp4",
-    videoUrl: "karreify.app/create-resume",
+    videoUrl: "karreify.com/create-resume",
   },
   {
     id: "adaptacao-vagas",
@@ -121,7 +121,7 @@ const spotlights: Spotlight[] = [
     gradient: "from-orange-500 to-amber-500",
     glowColor: "rgba(249, 115, 22, 0.4)",
     videoFile: "currículo para vaga.mp4",
-    videoUrl: "karreify.app/adapt-resume",
+    videoUrl: "karreify.com/adapt-resume",
   },
   {
     id: "carta-apresentacao",
@@ -142,7 +142,7 @@ const spotlights: Spotlight[] = [
     gradient: "from-teal-500 to-cyan-500",
     glowColor: "rgba(20, 184, 166, 0.4)",
     videoFile: "Carta de apresentação.mp4",
-    videoUrl: "karreify.app/cover-letter",
+    videoUrl: "karreify.com/cover-letter",
   },
   {
     id: "busca-vagas",
@@ -163,7 +163,7 @@ const spotlights: Spotlight[] = [
     gradient: "from-amber-500 to-yellow-500",
     glowColor: "rgba(245, 158, 11, 0.4)",
     videoFile: "vagas.mp4",
-    videoUrl: "karreify.app/jobs",
+    videoUrl: "karreify.com/jobs",
   },
   {
     id: "analise-empresa",
@@ -184,7 +184,7 @@ const spotlights: Spotlight[] = [
     gradient: "from-sky-500 to-blue-500",
     glowColor: "rgba(14, 165, 233, 0.4)",
     videoFile: "análise de empresa.mp4",
-    videoUrl: "karreify.app/company-analysis",
+    videoUrl: "karreify.com/company-analysis",
   },
   {
     id: "mercado-tendencias",
@@ -205,7 +205,7 @@ const spotlights: Spotlight[] = [
     gradient: "from-accent-violet to-accent-pink",
     glowColor: "rgba(139, 92, 246, 0.4)",
     videoFile: "mercado.mp4",
-    videoUrl: "karreify.app/market",
+    videoUrl: "karreify.com/market",
   },
 ];
 
@@ -683,7 +683,7 @@ export default function Home() {
                   <TiltCard intensity={8}>
                     <VideoMockup
                       src={`/videos/${encodeURIComponent("Análise de currículo.mp4")}`}
-                      url="karreify.app/resume-analysis"
+                      url="karreify.com/resume-analysis"
                     />
                   </TiltCard>
                   <div className="absolute -top-4 -right-4 float-badge z-10">
@@ -726,7 +726,7 @@ export default function Home() {
                 <TiltCard intensity={8}>
                   <VideoMockup
                     src={`/videos/${encodeURIComponent("Análise de currículo.mp4")}`}
-                    url="karreify.app/resume-analysis"
+                    url="karreify.com/resume-analysis"
                   />
                 </TiltCard>
                 {/* Floating badges */}
@@ -1249,7 +1249,7 @@ export default function Home() {
           </ScrollReveal>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 max-w-5xl mx-auto items-stretch">
-            {CREDIT_PACKS.map((pack) => {
+            {CREDIT_PACKS.filter((pack) => !pack.isTest).map((pack) => {
               const popular = pack.id === "intermediary";
               const hasBonus = pack.bonusCredits > 0;
               return (

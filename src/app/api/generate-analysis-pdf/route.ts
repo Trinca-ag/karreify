@@ -342,7 +342,7 @@ function buildHtml(data: AnalysisData, date: string): string {
 
 <div class="footer">
   <span class="footer-brand">KARREIFY</span>
-  <span class="footer-note">Análise gerada por Inteligência Artificial · karreify.com.br</span>
+  <span class="footer-note">Análise gerada por Inteligência Artificial · karreify.com</span>
 </div>
 
 </body>

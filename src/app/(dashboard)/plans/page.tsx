@@ -16,6 +16,7 @@ import {
   Gift,
   Lock,
   Zap,
+  FlaskConical,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -102,6 +103,9 @@ export default function PacksPage() {
     }
   };
 
+  const regularPacks = CREDIT_PACKS.filter((p) => !p.isTest);
+  const testPack = CREDIT_PACKS.find((p) => p.isTest);
+
   return (
     // flex+gap (em vez de space-y) pra que a reordenação via `order-*` em mobile
     // funcione sem quebrar o espaçamento — space-y aplica margin no source order,
@@ -157,7 +161,7 @@ export default function PacksPage() {
       {/* Credit costs */}
       {/* Em mobile aparece DEPOIS dos cards de pacote (order-4); em md+ volta
           pra ordem natural (entre saldo e packs → order-3). */}
-      <div className="animate-fade-in-up animation-delay-300 order-4 md:order-3">
+      <div className="animate-fade-in-up animation-delay-300 order-5 md:order-3">
         <div className="relative group bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] overflow-hidden">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative p-6 md:p-8">
@@ -179,8 +183,8 @@ export default function PacksPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-4 px-3 py-2 bg-white/[0.02] border border-white/[0.04] rounded-lg text-[11px] text-gray-500">
-              <span className="text-gray-300 font-medium">Vagas</span>: valor a consultar.
+            <div className="mt-4 px-3 py-2 md:px-4 md:py-3 bg-white/[0.02] border border-white/[0.04] md:border-primary-500/20 rounded-lg text-[11px] md:text-lg text-gray-500 md:text-gray-200">
+              <span className="text-gray-300 font-medium md:text-primary-400 md:font-bold">Vagas</span>: valor a consultar.
             </div>
           </div>
         </div>
@@ -190,7 +194,7 @@ export default function PacksPage() {
       {/* Em mobile sobe pra antes do "Custo por funcionalidade" (order-3);
           em md+ volta pra ordem natural (depois do Custo → order-4). */}
       <div id="pacotes" className="scroll-mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch animate-fade-in-up animation-delay-400 order-3 md:order-4">
-        {CREDIT_PACKS.map((pack) => (
+        {regularPacks.map((pack) => (
           <PackCard
             key={pack.id}
             pack={pack}
@@ -200,7 +204,43 @@ export default function PacksPage() {
         ))}
       </div>
 
-      <p className="text-center text-sm text-gray-500 animate-fade-in-up animation-delay-500 order-5">
+      {/* Test pack — visível com badge "TESTE" para validar a integração de pagamento */}
+      {testPack && (
+        <div className="animate-fade-in-up animation-delay-500 order-4 md:order-5">
+          <div className="relative rounded-2xl bg-white/[0.02] border border-amber-500/20 overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative p-5 md:p-6 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center">
+                  <FlaskConical className="w-5 h-5 text-amber-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-white font-heading">
+                      {testPack.name}
+                    </h3>
+                    <span className="px-2 py-0.5 bg-amber-500/15 text-amber-300 text-[10px] font-bold rounded-md border border-amber-500/30 tracking-wider">
+                      TESTE
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Apenas para validar o fluxo de pagamento — R${testPack.price.toFixed(2).replace(".", ",")} = {testPack.totalCredits} moeda
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleSelectPack(testPack.id)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-amber-500/15 text-amber-200 border border-amber-500/30 hover:bg-amber-500/25 hover:text-amber-100 transition-all"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                Comprar teste
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <p className="text-center text-sm text-gray-500 animate-fade-in-up animation-delay-500 order-6">
         Pagamento via PIX ou cartão (Abacate Pay). As moedas são creditadas
         automaticamente após a confirmação do pagamento.
       </p>

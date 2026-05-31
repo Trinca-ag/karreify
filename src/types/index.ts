@@ -347,7 +347,7 @@ export function featureCostLabel(feature: string): string {
 }
 
 // ==================== Credit Packs ====================
-export type CreditPackId = "basic" | "intermediary" | "plus";
+export type CreditPackId = "test" | "basic" | "intermediary" | "plus";
 
 export interface CreditPack {
   id: CreditPackId;
@@ -359,10 +359,26 @@ export interface CreditPack {
   totalCredits: number;
   /** AbacatePay product id (prod_*). Source of truth for the actual price charged. */
   abacateProductId: string;
+  /** Pacote de teste (R$1) — exibido com badge "TESTE", fora do grid principal. */
+  isTest?: boolean;
   features: string[];
 }
 
 export const CREDIT_PACKS: CreditPack[] = [
+  {
+    id: "test",
+    name: "Karreify Teste",
+    price: 1,
+    baseCredits: 1,
+    bonusCredits: 0,
+    totalCredits: 1,
+    abacateProductId: "prod_YNBckch4wYfDQRmH3mrRDAQp",
+    isTest: true,
+    features: [
+      "1 moeda",
+      "Apenas para validar fluxo de pagamento",
+    ],
+  },
   {
     id: "basic",
     name: "Básico",
@@ -408,8 +424,9 @@ export const CREDIT_PACKS: CreditPack[] = [
 
 // ==================== Jobs Passes ====================
 /**
- * Passe pago em moedas que libera buscas ilimitadas na /jobs por um período.
- * Sem cobrança recorrente — o usuário compra de novo quando expirar.
+ * Passe pago em moedas que libera a busca de vagas na /jobs por um período,
+ * limitada a 10 buscas por dia (reset à meia-noite BRT). Sem cobrança
+ * recorrente — o usuário compra de novo quando expirar.
  */
 export type JobsPassId = "weekly" | "monthly";
 
@@ -431,14 +448,14 @@ export const JOBS_PASSES: JobsPass[] = [
     name: "Passe semanal",
     cost: 60,
     durationMs: 7 * DAY_MS,
-    description: "7 dias de buscas ilimitadas",
+    description: "7 dias de acesso · até 10 buscas por dia",
   },
   {
     id: "monthly",
     name: "Passe mensal",
     cost: 150,
     durationMs: 30 * DAY_MS,
-    description: "30 dias de buscas ilimitadas",
+    description: "30 dias de acesso · até 10 buscas por dia",
   },
 ];
 

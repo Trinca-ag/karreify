@@ -16,10 +16,21 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://karreify.com"),
   title: "Karreify - Impulsione sua carreira com IA",
   description:
     "Plataforma inteligente para criar, adaptar e analisar currículos, gerar cartas de apresentação e analisar empresas com inteligência artificial.",
   keywords: ["currículo", "IA", "carreira", "ATS", "resume builder", "carta de apresentação"],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    url: "/",
+    siteName: "Karreify",
+    title: "Karreify - Impulsione sua carreira com IA",
+    description:
+      "Plataforma inteligente para criar, adaptar e analisar currículos, gerar cartas de apresentação e analisar empresas com inteligência artificial.",
+  },
 };
 
 export default function RootLayout({

@@ -78,7 +78,12 @@ export async function sendTransactionalEmail(
   const transporter = getTransporter();
   if (!transporter) return { sent: false, fallback: true };
 
-  const user = process.env.EMAIL_USER!;
+  // From/Reply-To são desacoplados do login SMTP: assim dá pra autenticar num
+  // relay (ex.: Resend usa o usuário SMTP "resend") e ainda enviar como
+  // suporte@karreify.com. Cai de volta no EMAIL_USER quando EMAIL_FROM não está
+  // setado (mantém o comportamento legado do Gmail).
+  const fromAddress = process.env.EMAIL_FROM || process.env.EMAIL_USER!;
+  const replyToAddress = process.env.EMAIL_REPLY_TO || fromAddress;
   const fromName = opts.fromName || "Karreify";
   const isHighPriority = opts.priority === "high";
 
@@ -94,9 +99,9 @@ export async function sendTransactionalEmail(
   }
 
   await transporter.sendMail({
-    from: `"${fromName}" <${user}>`,
+    from: `"${fromName}" <${fromAddress}>`,
     to: opts.to,
-    replyTo: user,
+    replyTo: replyToAddress,
     subject: opts.subject,
     text: opts.text,
     html: opts.html,

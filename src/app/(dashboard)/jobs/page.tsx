@@ -95,6 +95,7 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(false);
   const [testerLimitOpen, setTesterLimitOpen] = useState(false);
   const [passModalOpen, setPassModalOpen] = useState(false);
+  const [dailyLimitOpen, setDailyLimitOpen] = useState(false);
   const [buyingPass, setBuyingPass] = useState<JobsPassId | null>(null);
 
   useEffect(() => {
@@ -213,6 +214,11 @@ export default function JobsPage() {
         setPassModalOpen(true);
         setJobs([]);
         setTotalCount(0);
+        return;
+      }
+      if (err instanceof JobsSearchError && err.code === "DAILY_LIMIT_REACHED") {
+        // Não limpamos os resultados já exibidos — só avisamos do limite.
+        setDailyLimitOpen(true);
         return;
       }
       const msg = err instanceof Error ? err.message : "Erro ao buscar vagas.";
@@ -442,7 +448,7 @@ export default function JobsPage() {
                   <span className="font-semibold text-white">
                     {passDaysLeft} {passDaysLeft === 1 ? "dia" : "dias"}
                   </span>{" "}
-                  · buscas ilimitadas
+                  · até 10 buscas por dia
                 </span>
               </div>
               {canExtend ? (
@@ -613,6 +619,36 @@ export default function JobsPage() {
       </Modal>
 
       <Modal
+        isOpen={dailyLimitOpen}
+        onClose={() => setDailyLimitOpen(false)}
+        size="sm"
+      >
+        <div className="text-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-black/20">
+            <CalendarClock className="w-7 h-7 text-white" />
+          </div>
+          <h2 className="mt-5 text-lg font-bold text-white font-heading">
+            Limite diário atingido
+          </h2>
+          <p className="mt-2 text-sm text-gray-400">
+            Você já fez suas{" "}
+            <span className="text-white font-semibold">10 buscas de hoje</span>.
+            O limite zera à meia-noite (horário de Brasília) — volte amanhã para
+            continuar pesquisando vagas.
+          </p>
+          <p className="mt-2 text-xs text-gray-500">
+            Você ainda pode navegar pelas páginas das buscas que já fez.
+          </p>
+          <Button
+            onClick={() => setDailyLimitOpen(false)}
+            className="mt-6 w-full"
+          >
+            Entendi
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
         isOpen={passModalOpen}
         onClose={() => !buyingPass && setPassModalOpen(false)}
         size="lg"
@@ -641,14 +677,14 @@ export default function JobsPage() {
                   ? canExtend
                     ? "Estenda seu acesso"
                     : "Você ainda tem acesso ativo"
-                  : "Libere buscas ilimitadas"}
+                  : "Libere o acesso às vagas"}
               </h2>
               <p className="text-white/80 text-sm mt-2 max-w-md leading-relaxed">
                 {hasActivePass
                   ? canExtend
                     ? `Seu passe atual expira em ${passDaysLeft} ${passDaysLeft === 1 ? "dia" : "dias"}. Comprar um novo passe estende a partir da data atual de expiração.`
                     : `Seu passe atual ainda tem ${passDaysLeft} ${passDaysLeft === 1 ? "dia" : "dias"}. A renovação fica liberada quando faltar ${EXTENSION_THRESHOLD_DAYS} dias ou menos.`
-                  : "Escolha entre semanal ou mensal e tenha buscas ilimitadas. Sem cobrança recorrente."}
+                  : "Escolha entre semanal ou mensal e tenha até 10 buscas por dia. Sem cobrança recorrente."}
               </p>
             </div>
           </div>
@@ -730,7 +766,7 @@ export default function JobsPage() {
                   <ul className="space-y-1.5 mb-4 text-xs text-gray-300 flex-1">
                     <li className="flex items-start gap-1.5">
                       <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                      <span>Buscas ilimitadas</span>
+                      <span>Até 10 buscas por dia</span>
                     </li>
                     <li className="flex items-start gap-1.5">
                       <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
