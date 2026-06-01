@@ -440,7 +440,7 @@ export default function JobsPage() {
               </span>
             </div>
           ) : hasActivePass ? (
-            <div className="flex items-center justify-between gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg text-[11px] text-emerald-200 leading-relaxed">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg text-[11px] text-emerald-200 leading-relaxed">
               <div className="flex items-start gap-2">
                 <CalendarClock className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0 mt-0.5" />
                 <span>

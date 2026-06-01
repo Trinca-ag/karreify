@@ -57,7 +57,10 @@ function buildHtml(data: CompanyAnalysisResult, date: string): string {
     font-size: 11px;
     line-height: 1.55;
   }
-  .page { padding: 16mm 18mm; }
+  /* As margens são aplicadas por página via page.pdf({ margin }) no Puppeteer.
+     Padding no container só criaria respiro no topo da 1ª página — a partir da
+     2ª o conteúdo ficaria colado no topo. */
+  .page { padding: 0; }
 
   .header {
     display: flex;
@@ -322,7 +325,13 @@ async function renderPdf(html: string): Promise<Buffer> {
     browser = await puppeteer.default.launch({ args, executablePath, headless: "shell" as const });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdf = await page.pdf({ format: "A4", printBackground: true });
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      // Margem por página (não por container): garante o mesmo respiro no topo
+      // e na base de TODAS as páginas, não só da primeira.
+      margin: { top: "16mm", right: "18mm", bottom: "16mm", left: "18mm" },
+    });
     await page.close();
     return Buffer.from(pdf);
   } finally {
