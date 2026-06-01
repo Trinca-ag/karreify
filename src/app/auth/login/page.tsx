@@ -230,7 +230,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-dark-900 flex">
+    <div className="min-h-screen bg-dark-900 flex overflow-x-hidden">
       {/* Left side - branding with futuristic design */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col justify-between p-12">
         {/* Background grid pattern */}
@@ -302,7 +302,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right side - form */}
-      <div className="flex-1 flex items-center justify-center p-8 relative">
+      <div className="flex-1 min-w-0 flex items-center justify-center p-8 relative">
         {/* Subtle background orb for right side */}
         <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-primary-600/5 rounded-full blur-[100px]" />
 
@@ -321,7 +321,7 @@ export default function LoginPage() {
           </div>
 
           {/* Form card */}
-          <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+          <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 sm:p-8 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
             <h1 className="text-2xl font-heading font-bold text-white mb-2">Entrar</h1>
             <p className="text-gray-400 mb-8">
               Nao tem uma conta?{" "}

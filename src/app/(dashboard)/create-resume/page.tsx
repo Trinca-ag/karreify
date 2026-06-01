@@ -1251,7 +1251,10 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                   <Plus className="w-4 h-4" /> Adicionar
                 </button>
               </div>
-              {experiences.map((exp, i) => {
+              {/* Exibe do mais novo pro mais antigo (índice original preservado
+                  no label/handlers) — assim o item recém-adicionado aparece no
+                  topo, logo abaixo do botão "Adicionar", sem precisar descer. */}
+              {experiences.map((exp, i) => ({ exp, i })).reverse().map(({ exp, i }) => {
                 const touched = isExperienceTouched(exp);
                 return (
                 <div key={i} className="p-3 sm:p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-5">
@@ -1311,7 +1314,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                   <Plus className="w-4 h-4" /> Adicionar
                 </button>
               </div>
-              {educations.map((edu, i) => {
+              {educations.map((edu, i) => ({ edu, i })).reverse().map(({ edu, i }) => {
                 const touched = isEducationTouched(edu);
                 return (
                 <div key={i} className="p-3 sm:p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
@@ -1370,7 +1373,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
               {projects.length === 0 && (
                 <p className="text-sm text-gray-500">Nenhum projeto adicionado. Clique em &quot;Adicionar&quot; para incluir projetos pessoais, trabalhos voluntarios, freelances, etc.</p>
               )}
-              {projects.map((proj, i) => {
+              {projects.map((proj, i) => ({ proj, i })).reverse().map(({ proj, i }) => {
                 const touched = isProjectTouched(proj);
                 return (
                 <div key={i} className="p-3 sm:p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl mb-3 space-y-3">
