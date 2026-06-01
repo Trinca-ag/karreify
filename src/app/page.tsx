@@ -651,8 +651,34 @@ function renderIllustration(kind: WhyChooseItem["illustration"]) {
    ========================================================================= */
 
 export default function Home() {
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://karreify.com";
+  const webAppJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "Karreify",
+    url: siteUrl,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    inLanguage: "pt-BR",
+    description:
+      "Crie, adapte e analise currículos com inteligência artificial. Gere cartas de apresentação, encontre vagas e impulsione sua carreira.",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "BRL",
+      description:
+        "Comece grátis com créditos iniciais; pacotes de moedas a partir de R$ 14,90.",
+    },
+  };
+
   return (
     <div className="min-h-screen bg-dark-900 text-white overflow-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(webAppJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
       <Navbar />
 
       {/* ========== HERO ========== */}

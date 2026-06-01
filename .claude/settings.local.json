@@ -129,7 +129,13 @@
       "WebFetch(domain:help.mailgun.com)",
       "WebFetch(domain:docs.gravitysmtp.com)",
       "WebFetch(domain:www.twilio.com)",
-      "WebFetch(domain:docs.page)"
+      "WebFetch(domain:docs.page)",
+      "WebFetch(domain:onlinecurriculo.com.br)",
+      "WebFetch(domain:developers.google.com)",
+      "WebFetch(domain:www.bing.com)",
+      "Bash(echo \"EXIT CODE: $?\")",
+      "Bash(echo \"EXIT: $?\")",
+      "WebFetch(domain:karreify.com)"
     ]
   }
 }

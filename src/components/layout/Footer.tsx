@@ -19,7 +19,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
           {/* Brand */}
-          <div className="md:col-span-6">
+          <div className="md:col-span-3">
             <div className="flex items-center gap-2.5 mb-5">
               <Image
                 src="/images/logo-karreify.png"
@@ -43,6 +43,30 @@ export default function Footer() {
                 <Instagram className="w-4 h-4" />
               </a>
             </div>
+          </div>
+
+          {/* Currículo */}
+          <div className="md:col-span-3">
+            <h3 className="text-sm font-heading font-semibold text-white mb-4 tracking-wide">
+              Currículo
+            </h3>
+            <ul className="space-y-3">
+              {[
+                { href: "/como-fazer-um-curriculo", label: "Como fazer um currículo" },
+                { href: "/modelos-de-curriculo", label: "Modelos por profissão" },
+                { href: "/curriculo-sem-experiencia", label: "Currículo sem experiência" },
+                { href: "/sobre", label: "Sobre o Karreify" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-gray-500 hover:text-primary-400 transition-colors duration-200"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
 
           {/* Links */}
