@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import { CREDIT_PACKS } from "@/types";
+import { CREDIT_PACKS, JOBS_PASSES, FREE_SEARCH_LIMIT } from "@/types";
 import type { CreditPack } from "@/types";
 import { startCheckout } from "@/services/payment";
 import {
@@ -184,7 +184,7 @@ export default function PacksPage() {
               ))}
             </div>
             <div className="mt-4 px-3 py-2 md:px-4 md:py-3 bg-white/[0.02] border border-white/[0.04] md:border-primary-500/20 rounded-lg text-[11px] md:text-lg text-gray-500 md:text-gray-200">
-              <span className="text-gray-300 font-medium md:text-primary-400 md:font-bold">Vagas</span>: valor a consultar.
+              <span className="text-gray-300 font-medium md:text-primary-400 md:font-bold">Busca de vagas</span>: {FREE_SEARCH_LIMIT} grátis a cada 24h. Para buscas ilimitadas, passe semanal ({JOBS_PASSES.find((p) => p.id === "weekly")?.cost} moedas) ou mensal ({JOBS_PASSES.find((p) => p.id === "monthly")?.cost} moedas).
             </div>
           </div>
         </div>

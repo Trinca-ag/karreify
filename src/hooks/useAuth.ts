@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { onAuthChange, getUserData, logoutUser } from "@/services/firebase-auth";
+import { onAuthChange, getUserData, logoutUser, triggerWelcomeCredits } from "@/services/firebase-auth";
 import { isDeviceTrusted, updateDeviceActivity } from "@/services/device-manager";
 import { getDeviceId } from "@/utils/device-fingerprint";
 import { cache, CK, TTL, invalidateUser, invalidateAll } from "@/lib/cache";
@@ -63,6 +63,11 @@ export function useAuth() {
       }
 
       let firstEmission = true;
+      // Garante um único disparo do grant de boas-vindas por sessão de auth.
+      // Fica dentro do callback (não após `await ready`) para cobrir a corrida
+      // em que o doc do usuário só aparece numa emissão posterior à primeira
+      // (ex.: cadastro novo cujo setDoc ainda não terminou).
+      let welcomeCreditsTried = false;
       const ready = new Promise<void>((resolve) => {
         unsubSnapshot = onSnapshot(doc(db, "users", user.uid), (snap) => {
           const data = snap.exists() ? (snap.data() as User) : null;
@@ -70,6 +75,20 @@ export function useAuth() {
           if (data) {
             cache.set(CK.userData(user.uid), data, TTL.userData);
             cache.set(CK.credits(user.uid), data.credits ?? 0, TTL.credits);
+            // Bônus de boas-vindas (15 créditos): concede uma vez por conta,
+            // cobrindo novos cadastros E o backfill das contas já existentes.
+            // O endpoint é idempotente (flag welcomeCreditsGranted); quando o
+            // crédito cai, este mesmo onSnapshot atualiza o saldo na UI.
+            if (!data.welcomeCreditsGranted && !welcomeCreditsTried) {
+              // Otimista: marca como tentado para não disparar em emissões
+              // sucessivas do snapshot. Se o grant não "assentar" (doc ainda não
+              // visível no backend → reason "no-user-doc", ou falha de rede),
+              // libera de novo para uma emissão posterior retentar nesta sessão.
+              welcomeCreditsTried = true;
+              void triggerWelcomeCredits().then((r) => {
+                if (!r.settled) welcomeCreditsTried = false;
+              });
+            }
           }
           if (firstEmission) {
             firstEmission = false;

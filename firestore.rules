@@ -20,16 +20,36 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId)
-        && (!('role' in request.resource.data) || request.resource.data.role == 'user');
+        && (!('role' in request.resource.data) || request.resource.data.role == 'user')
+        // Campos server-authoritative (saldo, bônus, contadores grátis, passe)
+        // nunca vêm do client no cadastro — o setDoc de signup cria com
+        // credits:0 e sem esses campos. Bloquear injeção no create impede
+        // auto-crédito e bypass do limite grátis logo na criação da conta.
+        && (!('credits' in request.resource.data) || request.resource.data.credits == 0)
+        && !('welcomeCreditsGranted' in request.resource.data)
+        && !('freeSearchCount' in request.resource.data)
+        && !('freeSearchLastAt' in request.resource.data)
+        && !('jobsPassExpiresAt' in request.resource.data)
+        && !('jobsPassType' in request.resource.data);
+      // Pelo client o dono só edita campos de perfil (profile/page.tsx). Saldo,
+      // flag de boas-vindas, contadores de busca grátis e passe são gravados
+      // exclusivamente pelo Admin SDK (que ignora estas regras). Restringir o
+      // update a um allowlist impede o client de se auto-creditar, resetar o
+      // limite grátis (freeSearchCount/freeSearchLastAt) ou estender o passe.
       allow update: if isAdmin()
         || (isOwner(userId)
-            && !('role' in request.resource.data.diff(resource.data).affectedKeys()));
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['displayName', 'photoURL', 'autoSaveDocuments', 'updatedAt']));
       allow delete: if isOwner(userId) || isAdmin();
 
       // Transactions subcollection
       match /transactions/{transactionId} {
         allow read: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId);
+        // Criação é 100% server-side via Admin SDK (credits-server, webhook
+        // AbacatePay, buy-pass, welcome, gate de tester). Bloquear o create do
+        // client impede forjar transações — poluir o ledger, o gate de tester
+        // e a listagem admin de passes (collectionGroup em feature=='jobs-pass').
+        allow create: if false;
         allow update: if isAdmin();
         allow delete: if isOwner(userId) || isAdmin();
       }

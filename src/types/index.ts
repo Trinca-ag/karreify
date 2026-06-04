@@ -9,9 +9,16 @@ export interface User {
   credits: number;
   role: UserRole;
   autoSaveDocuments?: boolean;
+  /** Set true once the 15-credit welcome bonus has been granted. Guards the
+   *  idempotent top-up so it never double-grants (new signups + backfill). */
+  welcomeCreditsGranted?: boolean;
   /** Epoch ms; while greater than Date.now(), the user can search jobs freely. */
   jobsPassExpiresAt?: number | null;
   jobsPassType?: JobsPassId | null;
+  /** Buscas gratuitas usadas na janela atual (sem passe). */
+  freeSearchCount?: number;
+  /** Epoch ms da última busca gratuita; a janela de 24h é contada a partir daqui. */
+  freeSearchLastAt?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -339,6 +346,11 @@ export const FEATURE_COSTS: Record<string, number> = {
   "company-analysis": 5,
 };
 
+/** Bônus de boas-vindas concedido uma única vez por conta (novos cadastros e
+ *  backfill das contas já existentes, via top-up idempotente no login).
+ *  Fonte única da verdade — usar também na copy de marketing. */
+export const WELCOME_CREDITS = 15;
+
 /** Formatado para UI: "5 créditos" / "1 crédito". Use sempre em vez de
  *  hardcoded — qualquer mudança de preço passa a refletir automaticamente. */
 export function featureCostLabel(feature: string): string {
@@ -422,11 +434,23 @@ export const CREDIT_PACKS: CreditPack[] = [
   },
 ];
 
+// ==================== Jobs Free Tier ====================
+/** Buscas gratuitas (sem passe) por janela. Paginar entre páginas de uma busca
+ *  NÃO consome busca — só conta a busca inicial (page 1). */
+export const FREE_SEARCH_LIMIT = 3;
+/** Janela de 24h contada a partir da última busca gratuita. Esgotadas as 3,
+ *  a próxima só libera 24h após a última; passado esse prazo, volta para 3. */
+export const FREE_SEARCH_WINDOW_MS = 24 * 60 * 60 * 1000;
+/** Teto de segurança (invisível) por dia para quem tem passe ativo. A UI
+ *  promete "buscas ilimitadas"; este teto só existe para proteger a cota das
+ *  APIs de vagas (Jooble/Adzuna) contra abuso. Nenhum usuário real se aproxima. */
+export const PASS_DAILY_SAFETY_CAP = 100;
+
 // ==================== Jobs Passes ====================
 /**
- * Passe pago em moedas que libera a busca de vagas na /jobs por um período,
- * limitada a 10 buscas por dia (reset à meia-noite BRT). Sem cobrança
- * recorrente — o usuário compra de novo quando expirar.
+ * Passe pago em moedas que libera buscas de vagas ILIMITADAS na /jobs por um
+ * período (sem o limite gratuito de 3/dia). Sem cobrança recorrente — o
+ * usuário compra de novo quando expirar.
  */
 export type JobsPassId = "weekly" | "monthly";
 
@@ -448,14 +472,14 @@ export const JOBS_PASSES: JobsPass[] = [
     name: "Passe semanal",
     cost: 60,
     durationMs: 7 * DAY_MS,
-    description: "7 dias de acesso · até 10 buscas por dia",
+    description: "7 dias de acesso · buscas ilimitadas",
   },
   {
     id: "monthly",
     name: "Passe mensal",
     cost: 150,
     durationMs: 30 * DAY_MS,
-    description: "30 dias de acesso · até 10 buscas por dia",
+    description: "30 dias de acesso · buscas ilimitadas",
   },
 ];
 

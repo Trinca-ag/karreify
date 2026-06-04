@@ -36,7 +36,12 @@ import {
 import { BRAZILIAN_STATES, fetchCitiesByUF } from "@/lib/ibge";
 import { useJobsCache } from "@/components/providers/JobsCacheProvider";
 import { useAuthContext } from "@/components/providers/AuthProvider";
-import { JOBS_PASSES, type JobsPassId } from "@/types";
+import {
+  JOBS_PASSES,
+  FREE_SEARCH_LIMIT,
+  FREE_SEARCH_WINDOW_MS,
+  type JobsPassId,
+} from "@/types";
 
 const PERIOD_OPTIONS: { value: DatePeriod; label: string }[] = [
   { value: "today", label: "Hoje" },
@@ -78,10 +83,9 @@ export default function JobsPage() {
   } = useJobsCache();
 
   const { userData, refreshUserData } = useAuthContext();
-  const isTester = userData?.role === "tester";
 
   const passExpiresAt = userData?.jobsPassExpiresAt ?? 0;
-  const hasActivePass = !isTester && passExpiresAt > Date.now();
+  const hasActivePass = passExpiresAt > Date.now();
   const passDaysLeft = hasActivePass
     ? Math.max(1, Math.ceil((passExpiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
     : 0;
@@ -90,10 +94,22 @@ export default function JobsPage() {
   const canExtend = hasActivePass && passDaysLeft <= EXTENSION_THRESHOLD_DAYS;
   const canBuy = !hasActivePass || canExtend;
 
+  // Tier gratuito (sem passe; inclui testers): FREE_SEARCH_LIMIT buscas por
+  // janela de 24h. Derivado do user doc (live via onSnapshot), então atualiza
+  // sozinho após cada busca. Cada página de resultados conta como uma busca.
+  const freeLastAt = userData?.freeSearchLastAt ?? 0;
+  const freeWindowExpired = Date.now() - freeLastAt >= FREE_SEARCH_WINDOW_MS;
+  const freeUsed = freeWindowExpired ? 0 : userData?.freeSearchCount ?? 0;
+  const freeRemaining = Math.max(0, FREE_SEARCH_LIMIT - freeUsed);
+  const freeResetAt = freeLastAt + FREE_SEARCH_WINDOW_MS;
+  const freeHoursLeft = Math.max(
+    1,
+    Math.ceil((freeResetAt - Date.now()) / (60 * 60 * 1000))
+  );
+
   const [cities, setCities] = useState<string[]>([]);
   const [citiesLoading, setCitiesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [testerLimitOpen, setTesterLimitOpen] = useState(false);
   const [passModalOpen, setPassModalOpen] = useState(false);
   const [dailyLimitOpen, setDailyLimitOpen] = useState(false);
   const [buyingPass, setBuyingPass] = useState<JobsPassId | null>(null);
@@ -108,21 +124,6 @@ export default function JobsPage() {
       .then((c) => setCities(c))
       .finally(() => setCitiesLoading(false));
   }, [uf]);
-
-  useEffect(() => {
-    if (isTester) setTesterLimitOpen(true);
-  }, [isTester]);
-
-  // Abre o modal de passes ao entrar na página caso o user não tenha passe
-  // ativo e não seja tester. Mostrar uma vez por sessão é UX agressivo demais
-  // (toda navegação reabre); mas o usuário pediu explicitamente "toda vez que
-  // o usuário acesse a /jobs" → reabrir a cada mount é o comportamento certo.
-  useEffect(() => {
-    if (userData === null) return; // aguarda userData carregar
-    if (isTester) return;
-    if (hasActivePass) return;
-    setPassModalOpen(true);
-  }, [userData, isTester, hasActivePass]);
 
   async function handleBuyPass(passId: JobsPassId) {
     if (hasActivePass && !canExtend) {
@@ -186,7 +187,6 @@ export default function JobsPage() {
       return;
     }
 
-    setPage(targetPage);
     setLoading(true);
     setError(null);
     try {
@@ -200,24 +200,22 @@ export default function JobsPage() {
       });
       setJobs(result.jobs);
       setTotalCount(result.totalCount);
+      setPage(targetPage);
       setSearched(true);
       cachePage(cacheKey, result.jobs, result.totalCount);
       if (typeof window !== "undefined") {
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (err) {
-      if (err instanceof JobsSearchError && err.code === "TESTER_LIMIT_REACHED") {
-        setTesterLimitOpen(true);
-        return;
-      }
-      if (err instanceof JobsSearchError && err.code === "NO_ACTIVE_PASS") {
+      if (err instanceof JobsSearchError && err.code === "FREE_LIMIT_REACHED") {
+        // Esgotou as buscas gratuitas (cada página conta) → mostra os passes.
+        // setPage só avança no sucesso, então a página/resultados atuais ficam
+        // intactos — o usuário continua vendo o que já tinha carregado.
         setPassModalOpen(true);
-        setJobs([]);
-        setTotalCount(0);
         return;
       }
       if (err instanceof JobsSearchError && err.code === "DAILY_LIMIT_REACHED") {
-        // Não limpamos os resultados já exibidos — só avisamos do limite.
+        // Teto de segurança de quem tem passe ativo (raro) — só avisamos.
         setDailyLimitOpen(true);
         return;
       }
@@ -430,16 +428,7 @@ export default function JobsPage() {
               </Button>
             </div>
           </div>
-          {isTester ? (
-            <div className="flex items-start gap-2 px-3 py-2 bg-violet-500/5 border border-violet-500/15 rounded-lg text-[11px] text-violet-200 leading-relaxed">
-              <Lock className="w-3.5 h-3.5 text-violet-300 flex-shrink-0 mt-0.5" />
-              <span>
-                Conta no modo Tester: você tem direito a apenas{" "}
-                <span className="font-semibold text-white">1 busca</span>, sem
-                navegação entre páginas.
-              </span>
-            </div>
-          ) : hasActivePass ? (
+          {hasActivePass ? (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg text-[11px] text-emerald-200 leading-relaxed">
               <div className="flex items-start gap-2">
                 <CalendarClock className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0 mt-0.5" />
@@ -448,7 +437,7 @@ export default function JobsPage() {
                   <span className="font-semibold text-white">
                     {passDaysLeft} {passDaysLeft === 1 ? "dia" : "dias"}
                   </span>{" "}
-                  · até 10 buscas por dia
+                  · buscas ilimitadas
                 </span>
               </div>
               {canExtend ? (
@@ -464,20 +453,41 @@ export default function JobsPage() {
                 </span>
               )}
             </div>
+          ) : freeRemaining > 0 ? (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg text-[11px] text-emerald-200 leading-relaxed">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0 mt-0.5" />
+                <span>
+                  Buscas gratuitas:{" "}
+                  <span className="font-semibold text-white">
+                    {freeRemaining} de {FREE_SEARCH_LIMIT}
+                  </span>{" "}
+                  restantes · cada página de resultados conta como uma busca.
+                </span>
+              </div>
+              <button
+                onClick={() => setPassModalOpen(true)}
+                className="text-[11px] font-semibold text-emerald-200 hover:text-white bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 px-2 py-1.5 rounded-md transition-colors w-full sm:w-auto sm:py-0.5 sm:px-2"
+              >
+                Buscas ilimitadas
+              </button>
+            </div>
           ) : (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 bg-yellow-500/5 border border-yellow-500/15 rounded-lg text-[11px] text-yellow-200 leading-relaxed">
               <div className="flex items-start gap-2">
-                <Coins className="w-3.5 h-3.5 text-yellow-300 flex-shrink-0 mt-0.5" />
+                <CalendarClock className="w-3.5 h-3.5 text-yellow-300 flex-shrink-0 mt-0.5" />
                 <span>
-                  Você precisa de um passe ativo para buscar vagas. Passes
-                  semanal ({JOBS_PASSES.find(p => p.id === "weekly")?.cost} moedas) ou mensal ({JOBS_PASSES.find(p => p.id === "monthly")?.cost} moedas).
+                  Você usou suas {FREE_SEARCH_LIMIT} buscas gratuitas. Liberam de
+                  novo em{" "}
+                  <span className="font-semibold text-white">~{freeHoursLeft}h</span>{" "}
+                  · ou ative um passe para buscas ilimitadas.
                 </span>
               </div>
               <button
                 onClick={() => setPassModalOpen(true)}
                 className="text-[11px] font-semibold text-white bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 px-2 py-1.5 rounded-md transition-colors w-full sm:w-auto sm:py-0.5 sm:px-2"
               >
-                Comprar passe
+                Ativar passe
               </button>
             </div>
           )}
@@ -542,7 +552,7 @@ export default function JobsPage() {
                 vagas encontradas
               </span>
             </div>
-            {!isTester && totalCount > PAGE_SIZE && (
+            {totalCount > PAGE_SIZE && (
               <span className="text-xs text-gray-500 px-3 py-1 bg-white/5 border border-white/10 rounded-lg">
                 página {page} de {totalPages.toLocaleString("pt-BR")}
               </span>
@@ -559,7 +569,7 @@ export default function JobsPage() {
             ))}
           </div>
 
-          {!isTester && totalCount > PAGE_SIZE && (
+          {totalCount > PAGE_SIZE && (
             <div className="flex items-center justify-center gap-2 pt-2">
               <button
                 onClick={() => runSearch(page - 1)}
@@ -593,32 +603,6 @@ export default function JobsPage() {
       )}
 
       <Modal
-        isOpen={testerLimitOpen}
-        onClose={() => setTesterLimitOpen(false)}
-        size="sm"
-      >
-        <div className="text-center">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-black/20">
-            <Lock className="w-7 h-7 text-white" />
-          </div>
-          <h2 className="mt-5 text-lg font-bold text-white font-heading">
-            Limite de buscas atingido
-          </h2>
-          <p className="mt-2 text-sm text-gray-400">
-            Contas no modo Tester têm direito a apenas{" "}
-            <span className="text-white font-semibold">1 busca</span> de vagas.
-            Em caso de dúvidas, entre em contato com a equipe.
-          </p>
-          <Button
-            onClick={() => setTesterLimitOpen(false)}
-            className="mt-6 w-full"
-          >
-            Entendi
-          </Button>
-        </div>
-      </Modal>
-
-      <Modal
         isOpen={dailyLimitOpen}
         onClose={() => setDailyLimitOpen(false)}
         size="sm"
@@ -628,13 +612,12 @@ export default function JobsPage() {
             <CalendarClock className="w-7 h-7 text-white" />
           </div>
           <h2 className="mt-5 text-lg font-bold text-white font-heading">
-            Limite diário atingido
+            Muitas buscas em pouco tempo
           </h2>
           <p className="mt-2 text-sm text-gray-400">
-            Você já fez suas{" "}
-            <span className="text-white font-semibold">10 buscas de hoje</span>.
-            O limite zera à meia-noite (horário de Brasília) — volte amanhã para
-            continuar pesquisando vagas.
+            Detectamos um volume incomum de buscas na sua conta em um curto
+            período. Aguarde um pouco e tente novamente — é só uma proteção
+            contra uso automatizado.
           </p>
           <p className="mt-2 text-xs text-gray-500">
             Você ainda pode navegar pelas páginas das buscas que já fez.
@@ -677,14 +660,14 @@ export default function JobsPage() {
                   ? canExtend
                     ? "Estenda seu acesso"
                     : "Você ainda tem acesso ativo"
-                  : "Libere o acesso às vagas"}
+                  : "Buscas ilimitadas"}
               </h2>
               <p className="text-white/80 text-sm mt-2 max-w-md leading-relaxed">
                 {hasActivePass
                   ? canExtend
                     ? `Seu passe atual expira em ${passDaysLeft} ${passDaysLeft === 1 ? "dia" : "dias"}. Comprar um novo passe estende a partir da data atual de expiração.`
                     : `Seu passe atual ainda tem ${passDaysLeft} ${passDaysLeft === 1 ? "dia" : "dias"}. A renovação fica liberada quando faltar ${EXTENSION_THRESHOLD_DAYS} dias ou menos.`
-                  : "Escolha entre semanal ou mensal e tenha até 10 buscas por dia. Sem cobrança recorrente."}
+                  : `Buscar vagas é grátis: ${FREE_SEARCH_LIMIT} buscas a cada 24h, e cada página de resultados conta como uma busca. Com um passe semanal ou mensal, buscas e páginas ficam ilimitadas. Sem cobrança recorrente.`}
               </p>
             </div>
           </div>
@@ -766,7 +749,7 @@ export default function JobsPage() {
                   <ul className="space-y-1.5 mb-4 text-xs text-gray-300 flex-1">
                     <li className="flex items-start gap-1.5">
                       <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                      <span>Até 10 buscas por dia</span>
+                      <span>Buscas ilimitadas</span>
                     </li>
                     <li className="flex items-start gap-1.5">
                       <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />

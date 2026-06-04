@@ -11,7 +11,7 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { cache, CK, TTL, invalidateAll } from "@/lib/cache";
-import { authedFetch } from "@/lib/api-client";
+import { authedFetch, authedFetchJson } from "@/lib/api-client";
 import type { User } from "@/types";
 
 async function triggerWelcome(): Promise<void> {
@@ -19,6 +19,30 @@ async function triggerWelcome(): Promise<void> {
     await authedFetch("/api/notifications/welcome", { method: "POST" });
   } catch (e) {
     console.error("welcome trigger failed:", e);
+  }
+}
+
+/**
+ * Dispara o grant idempotente de créditos de boas-vindas. Server-authoritative
+ * e flag-guarded (welcomeCreditsGranted), então é seguro chamar em todo login —
+ * concede 15 créditos apenas na primeira vez (cobre novos cadastros e o backfill
+ * das contas já existentes). Quando o crédito cai, o onSnapshot de users/{uid}
+ * atualiza o saldo na UI automaticamente.
+ */
+export async function triggerWelcomeCredits(): Promise<{ settled: boolean }> {
+  try {
+    const data = await authedFetchJson<{ granted?: boolean; reason?: string }>(
+      "/api/credits/welcome",
+      { method: "POST" }
+    );
+    // `settled` = não há motivo para tentar de novo nesta sessão: ou concedeu
+    // agora, ou já estava concedido. Só o caso "no-user-doc" (corrida com o
+    // setDoc do cadastro, antes de o backend enxergar o doc) pede retry numa
+    // emissão posterior do onSnapshot.
+    return { settled: data?.reason !== "no-user-doc" };
+  } catch (e) {
+    console.error("welcome-credits trigger failed:", e);
+    return { settled: false };
   }
 }
 

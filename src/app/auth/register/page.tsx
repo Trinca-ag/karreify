@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Image from "next/image";
 import { Gift, CreditCard, Sparkles, Check } from "lucide-react";
+import { WELCOME_CREDITS } from "@/types";
 import toast from "react-hot-toast";
 import TurnstileWidget, {
   turnstileEnabled,
@@ -137,7 +138,7 @@ export default function RegisterPage() {
                 <Gift className="w-5 h-5 text-primary-400" />
               </div>
               <div>
-                <span className="text-gray-300 text-sm font-medium">5 creditos gratuitos</span>
+                <span className="text-gray-300 text-sm font-medium">{WELCOME_CREDITS} créditos gratuitos</span>
                 <p className="text-gray-500 text-xs">Comece a usar sem pagar nada</p>
               </div>
             </div>

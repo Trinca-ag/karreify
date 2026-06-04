@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminRequest } from "@/utils/admin-verify";
 import { adminDb } from "@/lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
 import { createRoleChangeNotification } from "@/lib/notifications-server";
 
 const TESTER_GRANT = 45;
@@ -28,29 +27,35 @@ export async function POST(request: NextRequest) {
     const promotingToTester = role === "tester" && previousRole !== "tester";
     const demotingFromTester = role === "user" && previousRole === "tester";
 
+    // Modo Tester tem saldo FIXO de 45 moedas: ao ATIVAR, o saldo é DEFINIDO em
+    // 45 (não soma aos créditos de cadastro); ao DESATIVAR, zera. Por isso é SET,
+    // não increment. creditsDelta guarda a variação REAL de saldo para auditoria
+    // (transações) e para a notificação.
     const updates: Record<string, unknown> = { role, updatedAt: new Date() };
+    let creditsDelta = 0;
     if (promotingToTester) {
-      updates.credits = FieldValue.increment(TESTER_GRANT);
+      updates.credits = TESTER_GRANT;
+      // Trava o bônus de boas-vindas: garante que o welcome (idempotente) nunca
+      // some +15 por cima dos 45, mesmo que a promoção ocorra antes de o grant
+      // de boas-vindas ter disparado para a conta.
+      updates.welcomeCreditsGranted = true;
+      creditsDelta = TESTER_GRANT - previousCredits;
     } else if (demotingFromTester) {
       updates.credits = 0;
+      creditsDelta = -previousCredits;
     }
 
     await userRef.update(updates);
 
-    if (promotingToTester) {
+    // Transação de auditoria com a variação REAL de saldo (set, não soma).
+    if ((promotingToTester || demotingFromTester) && creditsDelta !== 0) {
       await adminDb.collection(`users/${uid}/transactions`).add({
-        amount: TESTER_GRANT,
-        type: "credit",
-        feature: "tester-grant",
-        description: `Moedas concedidas ao ativar modo Tester`,
-        createdAt: new Date(),
-      });
-    } else if (demotingFromTester && previousCredits > 0) {
-      await adminDb.collection(`users/${uid}/transactions`).add({
-        amount: previousCredits,
-        type: "debit",
-        feature: "tester-revoke",
-        description: `Moedas removidas ao desativar modo Tester`,
+        amount: Math.abs(creditsDelta),
+        type: creditsDelta > 0 ? "credit" : "debit",
+        feature: promotingToTester ? "tester-grant" : "tester-revoke",
+        description: promotingToTester
+          ? `Saldo definido em ${TESTER_GRANT} moedas ao ativar modo Tester`
+          : "Saldo zerado ao desativar modo Tester",
         createdAt: new Date(),
       });
     }
@@ -58,13 +63,12 @@ export async function POST(request: NextRequest) {
     const updated = await userRef.get();
 
     if (promotingToTester || demotingFromTester) {
-      const creditsDelta = promotingToTester ? TESTER_GRANT : -previousCredits;
       const title = promotingToTester
         ? "Você virou Tester!"
         : "Seu modo Tester foi desativado";
       const message = promotingToTester
-        ? `Sua conta foi atualizada para Tester. Você recebeu ${TESTER_GRANT} moedas.`
-        : `Sua conta voltou para User${previousCredits > 0 ? `. As ${previousCredits} moedas Tester foram removidas.` : "."}`;
+        ? `Sua conta foi atualizada para Tester com ${TESTER_GRANT} moedas.`
+        : "Sua conta voltou para User e o saldo foi zerado.";
       await createRoleChangeNotification({
         uid,
         title,

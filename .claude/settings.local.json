@@ -135,7 +135,8 @@
       "WebFetch(domain:www.bing.com)",
       "Bash(echo \"EXIT CODE: $?\")",
       "Bash(echo \"EXIT: $?\")",
-      "WebFetch(domain:karreify.com)"
+      "WebFetch(domain:karreify.com)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

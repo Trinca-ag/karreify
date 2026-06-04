@@ -16,11 +16,11 @@ import {
 } from "@/lib/adzuna-usage";
 import { callAdzuna, AdzunaApiError } from "@/lib/adzuna";
 import { callJooble, JoobleApiError } from "@/lib/jooble";
-
-const JOBS_SEARCH_FEATURE = "jobs-search";
-
-/** Limite de buscas por dia para usuários com passe ativo (reset à meia-noite BRT). */
-const DAILY_SEARCH_LIMIT = 10;
+import {
+  FREE_SEARCH_LIMIT,
+  FREE_SEARCH_WINDOW_MS,
+  PASS_DAILY_SAFETY_CAP,
+} from "@/types";
 
 /** Chave de dia no fuso de Brasília (YYYY-MM-DD). O limite diário zera à
  *  meia-noite BRT, por isso derivamos a data nesse fuso e não em UTC. */
@@ -33,7 +33,8 @@ function brtDateKey(d: Date = new Date()): string {
   }).format(d);
 }
 
-/** Incrementa o contador diário de buscas do usuário (1 doc por dia). */
+/** Incrementa o contador diário de buscas do usuário (1 doc por dia). Usado
+ *  apenas como teto de segurança para quem tem passe ativo. */
 async function bumpDailySearch(uid: string, dateKey: string): Promise<void> {
   await adminDb
     .collection("users")
@@ -48,6 +49,67 @@ async function bumpDailySearch(uid: string, dateKey: string): Promise<void> {
       },
       { merge: true }
     );
+}
+
+/**
+ * Reserva atomicamente uma busca gratuita: checa o limite E incrementa o
+ * contador na MESMA transação. Como o runTransaction do Firestore é
+ * serializável (re-tenta no conflito de escrita), o contador nunca ultrapassa
+ * FREE_SEARCH_LIMIT mesmo com N buscas page-1 concorrentes — fecha a corrida em
+ * que todas passariam por um gate de leitura antes de qualquer incremento.
+ * Reabre a janela (count=1) quando já se passaram 24h desde a última busca.
+ *
+ * Retorna allowed:false (+retryAt) se a janela esgotou, ou allowed:true
+ * (+remaining/resetAt) tendo gravado a reserva. Se a busca depois falhar, chame
+ * refundFreeSearch para estornar.
+ */
+async function reserveFreeSearch(
+  uid: string,
+  now: number
+): Promise<
+  | { allowed: false; retryAt: number }
+  | { allowed: true; remaining: number; resetAt: number }
+> {
+  const userRef = adminDb.collection("users").doc(uid);
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(userRef);
+    const data = snap.data() ?? {};
+    const lastAt = (data.freeSearchLastAt as number | undefined) ?? 0;
+    const count = (data.freeSearchCount as number | undefined) ?? 0;
+    const windowExpired = now - lastAt >= FREE_SEARCH_WINDOW_MS;
+    const usedInWindow = windowExpired ? 0 : count;
+
+    if (usedInWindow >= FREE_SEARCH_LIMIT) {
+      return { allowed: false as const, retryAt: lastAt + FREE_SEARCH_WINDOW_MS };
+    }
+
+    const newCount = usedInWindow + 1;
+    tx.update(userRef, {
+      freeSearchCount: newCount,
+      freeSearchLastAt: now,
+      updatedAt: new Date(),
+    });
+    return {
+      allowed: true as const,
+      remaining: Math.max(0, FREE_SEARCH_LIMIT - newCount),
+      resetAt: now + FREE_SEARCH_WINDOW_MS,
+    };
+  });
+}
+
+/**
+ * Estorna uma reserva quando a busca acabou falhando (erro do provider ou erro
+ * inesperado). Compensa com -1 dentro de uma transação — seguro mesmo se outra
+ * busca concorrente incrementou no meio, e nunca deixa o contador negativo.
+ */
+async function refundFreeSearch(uid: string): Promise<void> {
+  const userRef = adminDb.collection("users").doc(uid);
+  await adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(userRef);
+    const count = (snap.data()?.freeSearchCount as number | undefined) ?? 0;
+    if (count <= 0) return;
+    tx.update(userRef, { freeSearchCount: count - 1, updatedAt: new Date() });
+  });
 }
 
 interface SearchParams {
@@ -150,6 +212,10 @@ export async function POST(request: NextRequest) {
   const rl = rateLimit(ctx.uid, { scope: "search-jobs", limit: 30, windowMs: 60_000 });
   if (!rl.allowed) return rateLimitResponse(rl);
 
+  // Declarado fora do try para o catch poder estornar a reserva de busca
+  // gratuita caso um erro inesperado ocorra depois de já termos reservado.
+  let freeSearchReserved = false;
+
   try {
     const body = await request.json();
     const { keyword, uf, city, period, exactMatch, page } = body as {
@@ -180,82 +246,75 @@ export async function POST(request: NextRequest) {
       page: targetPage,
     };
 
+    const now = Date.now();
     const dailyDateKey = brtDateKey();
-    // `true` quando um usuário (não-tester) com passe ativo passa pelo gate de
-    // limite diário na página 1 — usamos pra incrementar o contador só após a
-    // busca dar certo (cache hit ou provider OK), nunca em falha.
-    let countableSearch = false;
+    // Cobrança: o passe (countablePassSearch) conta só a busca inicial (page 1)
+    // no teto de segurança e é incrementado APÓS o sucesso. O tier gratuito
+    // reserva por página ANTES da busca (reserveFreeSearch) — cada página conta
+    // — e estorna (refundFreeSearch) se a busca falhar.
+    let countablePassSearch = false; // passe ativo → conta no teto de segurança
+    // Devolvido ao cliente para exibir "X buscas gratuitas restantes".
+    let freeInfo: { remaining: number; resetAt: number } | null = null;
 
-    // Modo de cobrança agora é por passe (semanal/mensal). Testers continuam
-    // com 1 busca grátis. Para users, basta ter um passe ativo — porém limitado
-    // a DAILY_SEARCH_LIMIT buscas por dia.
-    if (targetPage === 1) {
+    // Buscar vagas é GRATUITO: FREE_SEARCH_LIMIT buscas por janela de 24h, e
+    // CADA PÁGINA de resultados conta como uma busca (a reserva roda em TODA
+    // página, não só na page 1). Testers usam exatamente este tier gratuito
+    // (3/24h, como qualquer usuário). Passe ativo = ilimitado, com teto de
+    // segurança invisível que conta só a busca inicial (page 1) — paginar
+    // dentro do passe não consome.
+    {
       const userSnap = await adminDb.collection("users").doc(ctx.uid).get();
       const userData = userSnap.data() ?? {};
-      const role = userData.role === "tester" ? "tester" : "user";
+      const passExpiresAt = (userData.jobsPassExpiresAt as number | undefined) ?? 0;
+      const hasActivePass = passExpiresAt > now;
 
-      if (role === "tester") {
-        const prior = await adminDb
-          .collection("users")
-          .doc(ctx.uid)
-          .collection("transactions")
-          .where("feature", "==", JOBS_SEARCH_FEATURE)
-          .where("type", "==", "debit")
-          .limit(1)
-          .get();
-        if (!prior.empty) {
-          return NextResponse.json(
-            {
-              error: "Testers têm direito a apenas 1 busca de vagas gratuita.",
-              code: "TESTER_LIMIT_REACHED",
-            },
-            { status: 403 }
-          );
+      if (hasActivePass) {
+        // Passe ativo = buscas ilimitadas. Teto de segurança (invisível) conta
+        // só a busca inicial de cada pesquisa (page 1); paginar não consome.
+        if (targetPage === 1) {
+          const dailySnap = await adminDb
+            .collection("users")
+            .doc(ctx.uid)
+            .collection("jobsSearchDaily")
+            .doc(dailyDateKey)
+            .get();
+          const usedToday = (dailySnap.data()?.count as number | undefined) ?? 0;
+          if (usedToday >= PASS_DAILY_SAFETY_CAP) {
+            return NextResponse.json(
+              {
+                error: "Muitas buscas em um curto período. Tente novamente mais tarde.",
+                code: "DAILY_LIMIT_REACHED",
+                limit: PASS_DAILY_SAFETY_CAP,
+              },
+              { status: 429 }
+            );
+          }
+          countablePassSearch = true;
         }
-        await adminDb
-          .collection("users")
-          .doc(ctx.uid)
-          .collection("transactions")
-          .add({
-            amount: 0,
-            type: "debit",
-            feature: JOBS_SEARCH_FEATURE,
-            description: "Busca de vagas (tester — primeira grátis)",
-            createdAt: FieldValue.serverTimestamp(),
-          });
       } else {
-        const passExpiresAt = (userData.jobsPassExpiresAt as number | undefined) ?? 0;
-        if (passExpiresAt <= Date.now()) {
+        // Tier gratuito: CADA PÁGINA (inclusive paginação) conta como uma das
+        // FREE_SEARCH_LIMIT buscas por janela de 24h. Reserva atômica (checa +
+        // incrementa numa transação) ANTES de chamar o provider, evitando que
+        // requisições concorrentes furem o limite. Se a busca falhar adiante,
+        // estornamos (refundFreeSearch). Revisitar uma página já vista é servido
+        // do cache do client (jobs/page.tsx) e não chega aqui — só páginas novas.
+        const reservation = await reserveFreeSearch(ctx.uid, now);
+        if (!reservation.allowed) {
           return NextResponse.json(
             {
-              error: "Você não tem um passe ativo. Compre um passe semanal ou mensal para buscar vagas.",
-              code: "NO_ACTIVE_PASS",
-            },
-            { status: 402 }
-          );
-        }
-
-        // Mesmo com passe ativo, cada usuário tem no máximo DAILY_SEARCH_LIMIT
-        // buscas por dia. Só checamos aqui; o incremento ocorre após a busca dar
-        // certo. Paginação não conta — todo este gate está sob targetPage === 1.
-        const dailySnap = await adminDb
-          .collection("users")
-          .doc(ctx.uid)
-          .collection("jobsSearchDaily")
-          .doc(dailyDateKey)
-          .get();
-        const usedToday = (dailySnap.data()?.count as number | undefined) ?? 0;
-        if (usedToday >= DAILY_SEARCH_LIMIT) {
-          return NextResponse.json(
-            {
-              error: `Você atingiu o limite de ${DAILY_SEARCH_LIMIT} buscas por dia. O limite zera amanhã.`,
-              code: "DAILY_LIMIT_REACHED",
-              limit: DAILY_SEARCH_LIMIT,
+              error: `Você usou suas ${FREE_SEARCH_LIMIT} buscas gratuitas. Volte em 24h ou ative um passe para buscas ilimitadas.`,
+              code: "FREE_LIMIT_REACHED",
+              limit: FREE_SEARCH_LIMIT,
+              retryAt: reservation.retryAt,
             },
             { status: 429 }
           );
         }
-        countableSearch = true;
+        freeSearchReserved = true;
+        freeInfo = {
+          remaining: reservation.remaining,
+          resetAt: reservation.resetAt,
+        };
       }
     }
 
@@ -273,11 +332,17 @@ export async function POST(request: NextRequest) {
         exactMatch: !!exactMatch,
         userId: ctx.uid,
       });
-      if (countableSearch) await bumpDailySearch(ctx.uid, dailyDateKey);
+      if (countablePassSearch) await bumpDailySearch(ctx.uid, dailyDateKey);
+      // Busca gratuita já foi reservada (incrementada) no gate; cache hit é
+      // sucesso, então não há nada a estornar.
       return NextResponse.json({
         jobs: cached.jobs,
         totalCount: cached.totalCount,
         page: targetPage,
+        ...(freeInfo && {
+          freeSearchesRemaining: freeInfo.remaining,
+          freeSearchResetAt: freeInfo.resetAt,
+        }),
       });
     }
 
@@ -345,6 +410,10 @@ export async function POST(request: NextRequest) {
       });
       if (result.provider === "jooble") bumpJoobleCount();
 
+      // Falhou nos dois providers — estorna a reserva para não consumir uma
+      // busca gratuita que não entregou resultados.
+      if (freeSearchReserved) await refundFreeSearch(ctx.uid);
+
       const isDev = process.env.NODE_ENV !== "production";
       return NextResponse.json(
         {
@@ -388,14 +457,27 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    if (countableSearch) await bumpDailySearch(ctx.uid, dailyDateKey);
+    if (countablePassSearch) await bumpDailySearch(ctx.uid, dailyDateKey);
+    // Busca gratuita já foi reservada no gate; provider OK = sucesso, nada a estornar.
     return NextResponse.json({
       jobs: result.jobs,
       totalCount: result.totalCount,
       page: targetPage,
+      ...(freeInfo && {
+        freeSearchesRemaining: freeInfo.remaining,
+        freeSearchResetAt: freeInfo.resetAt,
+      }),
     });
   } catch (err) {
     console.error("[search-jobs]", err);
+    // Erro inesperado depois de já termos reservado a busca gratuita → estorna.
+    if (freeSearchReserved) {
+      try {
+        await refundFreeSearch(ctx.uid);
+      } catch (refundErr) {
+        console.error("[search-jobs] estorno da busca gratuita falhou:", refundErr);
+      }
+    }
     return NextResponse.json({ error: "Erro ao buscar vagas." }, { status: 500 });
   }
 }

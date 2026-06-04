@@ -4,7 +4,7 @@ import Link from "next/link";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import TiltCard from "@/components/ui/TiltCard";
 import VideoMockup from "@/components/ui/VideoMockup";
-import { CREDIT_PACKS } from "@/types";
+import { CREDIT_PACKS, WELCOME_CREDITS } from "@/types";
 import {
   FileSearch,
   FilePlus,
@@ -667,7 +667,7 @@ export default function Home() {
       price: "0",
       priceCurrency: "BRL",
       description:
-        "Comece grátis com créditos iniciais; pacotes de moedas a partir de R$ 14,90.",
+        `Comece grátis: busca de vagas e análise de currículo gratuitas, ${WELCOME_CREDITS} créditos ao se cadastrar. Pacotes de moedas a partir de R$ 14,90.`,
     },
   };
 
@@ -701,6 +701,24 @@ export default function Home() {
                 Crie currículos profissionais, encontre vagas, analise empresas
                 e planeje sua carreira com IA de última geração.
               </p>
+
+              {/* Diferenciais gratuitos — destaque acima da dobra. Cores ecoam
+                  os badges das seções (amber = vagas, primary = currículo,
+                  emerald = bônus). */}
+              <div className="mt-6 flex flex-wrap justify-center lg:justify-start gap-2.5 animate-fade-in-up animation-delay-200">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  Busca de vagas grátis
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary-500/10 border border-primary-500/20 text-primary-300">
+                  <FileSearch className="w-3.5 h-3.5" />
+                  Análise de currículo grátis
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
+                  <Gift className="w-3.5 h-3.5" />
+                  {WELCOME_CREDITS} créditos ao se cadastrar
+                </span>
+              </div>
 
               {/* Mockup — mobile/tablet only, between paragraph and CTAs.
                   Desktop renders the same card in the right grid column below. */}
