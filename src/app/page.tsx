@@ -702,22 +702,31 @@ export default function Home() {
                 e planeje sua carreira com IA de última geração.
               </p>
 
-              {/* Diferenciais gratuitos — destaque acima da dobra. Cores ecoam
-                  os badges das seções (amber = vagas, primary = currículo,
-                  emerald = bônus). */}
-              <div className="mt-6 flex flex-wrap justify-center lg:justify-start gap-2.5 animate-fade-in-up animation-delay-200">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-500/10 border border-amber-500/20 text-amber-300">
-                  <Briefcase className="w-3.5 h-3.5" />
-                  Busca de vagas grátis
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary-500/10 border border-primary-500/20 text-primary-300">
-                  <FileSearch className="w-3.5 h-3.5" />
-                  Análise de currículo grátis
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
-                  <Gift className="w-3.5 h-3.5" />
-                  {WELCOME_CREDITS} créditos ao se cadastrar
-                </span>
+              {/* Diferenciais gratuitos — cartão único e sóbrio (substitui as
+                  três pílulas coloridas, que davam aparência de template). Checks
+                  num tom único (emerald) comunicam "incluído / sem custo" sem o
+                  efeito arco-íris; divisórias finas ecoam a barra de stats. */}
+              <div className="mt-7 w-full max-w-md mx-auto lg:mx-0 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-sm px-5 py-4 shadow-[0_8px_30px_rgba(0,0,0,0.12)] animate-fade-in-up animation-delay-200">
+                <ul className="divide-y divide-white/5">
+                  {[
+                    "Busca de vagas sem custo",
+                    "Análise de currículo gratuita",
+                    `${WELCOME_CREDITS} créditos de boas-vindas`,
+                  ].map((item) => (
+                    <li
+                      key={item}
+                      className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                    >
+                      <span className="flex-shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/20">
+                        <Check
+                          className="w-3 h-3 text-emerald-400"
+                          strokeWidth={3}
+                        />
+                      </span>
+                      <span className="text-sm text-gray-300">{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               {/* Mockup — mobile/tablet only, between paragraph and CTAs.

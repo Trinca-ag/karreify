@@ -377,20 +377,24 @@ export interface CreditPack {
 }
 
 export const CREDIT_PACKS: CreditPack[] = [
-  {
-    id: "test",
-    name: "Karreify Teste",
-    price: 1,
-    baseCredits: 1,
-    bonusCredits: 0,
-    totalCredits: 1,
-    abacateProductId: "prod_YNBckch4wYfDQRmH3mrRDAQp",
-    isTest: true,
-    features: [
-      "1 moeda",
-      "Apenas para validar fluxo de pagamento",
-    ],
-  },
+  // Pacote de teste de R$1 — OCULTO. Descomente o objeto abaixo para reexibir o
+  // card "TESTE" na /plans e validar o fluxo de pagamento de ponta a ponta.
+  // Antes de reativar, garanta que `abacateProductId` aponta para um produto de
+  // R$1 existente na conta/chave atual do AbacatePay.
+  // {
+  //   id: "test",
+  //   name: "Karreify Teste",
+  //   price: 1,
+  //   baseCredits: 1,
+  //   bonusCredits: 0,
+  //   totalCredits: 1,
+  //   abacateProductId: "prod_YNBckch4wYfDQRmH3mrRDAQp",
+  //   isTest: true,
+  //   features: [
+  //     "1 moeda",
+  //     "Apenas para validar fluxo de pagamento",
+  //   ],
+  // },
   {
     id: "basic",
     name: "Básico",
