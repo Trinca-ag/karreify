@@ -136,7 +136,9 @@
       "Bash(echo \"EXIT CODE: $?\")",
       "Bash(echo \"EXIT: $?\")",
       "WebFetch(domain:karreify.com)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(echo \"TSC_EXIT: $?\")",
+      "Bash(echo \"ESLINT_EXIT: $?\")"
     ]
   }
 }

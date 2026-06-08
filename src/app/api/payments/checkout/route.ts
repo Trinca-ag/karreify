@@ -67,6 +67,10 @@ export async function POST(request: NextRequest) {
       abacateProductId: pack.abacateProductId,
       amount: pack.price,
       creditsToAdd: pack.totalCredits,
+      // Congela o indicador do comprador no instante da compra, para o webhook
+      // gerar a comissão sem reler o doc do usuário. referredBy é imutável, então
+      // isto coincide com users.referredBy — fica como fonte primária + auditoria.
+      referredBy: (userData.referredBy as string | undefined) ?? null,
       status: "pending",
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),

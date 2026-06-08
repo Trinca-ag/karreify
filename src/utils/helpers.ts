@@ -14,6 +14,12 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
+/** Formata centavos inteiros como BRL (ex.: 440 → "R$ 4,40"). Use para todos os
+ *  valores da carteira/comissões/saques, que são armazenados em centavos. */
+export function formatCents(cents: number): string {
+  return formatCurrency(cents / 100);
+}
+
 export function getScoreColor(score: number): string {
   if (score >= 80) return "text-green-600";
   if (score >= 60) return "text-yellow-600";

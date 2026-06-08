@@ -167,6 +167,23 @@ export default function NotificationBell() {
       ) {
         setOpen(false);
         router.push(`/support/${n.ticketId}`);
+        return;
+      }
+      // Eventos de indicação/carteira → deep-link para a área correspondente.
+      if (n.type === "referral-signup" || n.type === "referral-bonus") {
+        setOpen(false);
+        router.push("/profile");
+        return;
+      }
+      if (n.type === "commission" || n.type === "withdrawal-status") {
+        setOpen(false);
+        router.push("/carteira");
+        return;
+      }
+      if (n.type === "refund-status") {
+        setOpen(false);
+        router.push("/compras");
+        return;
       }
     },
     [router, user]

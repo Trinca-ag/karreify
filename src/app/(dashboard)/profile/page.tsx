@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import type { Device } from "@/types";
+import ReferralCard from "@/components/referral/ReferralCard";
 
 const AVATARS = [
   "/avatars/avatar-1.png",
@@ -607,6 +608,9 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Indicação */}
+      <ReferralCard />
 
       {/* Preferences */}
       <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.06] hover:border-primary-500/30 transition-all duration-300 animate-fade-in-up animation-delay-300">

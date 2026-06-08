@@ -3,5 +3,8 @@
   "regions": ["gru1"],
   "git": {
     "deploymentEnabled": false
-  }
+  },
+  "crons": [
+    { "path": "/api/cron/release-commissions", "schedule": "0 3 * * *" }
+  ]
 }

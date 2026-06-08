@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerUser, loginWithGoogle } from "@/services/firebase-auth";
+import { captureRefFromUrl } from "@/services/referral";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Image from "next/image";
@@ -26,6 +27,12 @@ export default function RegisterPage() {
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef<TurnstileHandle>(null);
   const router = useRouter();
+
+  // Captura ?ref= no carregamento e persiste em cookie — sobrevive ao popup do
+  // Google OAuth e ao redirect de /auth/verify até a atribuição pós-login.
+  useEffect(() => {
+    captureRefFromUrl();
+  }, []);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

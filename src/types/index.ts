@@ -19,6 +19,12 @@ export interface User {
   freeSearchCount?: number;
   /** Epoch ms da última busca gratuita; a janela de 24h é contada a partir daqui. */
   freeSearchLastAt?: number;
+  /** Código de indicação próprio do usuário (gerado no servidor; base do link
+   *  compartilhável em /profile). Imutável depois de gerado. */
+  referralCode?: string;
+  /** uid do indicador. Definido UMA única vez no cadastro (server-only) e nunca
+   *  alterado depois. null quando o usuário não veio por indicação. */
+  referredBy?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -224,7 +230,13 @@ export type NotificationType =
   | "ticket-created"
   | "ticket-reply"
   | "ticket-closed"
-  | "feedback-thanks";
+  | "feedback-thanks"
+  // Sistema de indicação / carteira
+  | "referral-signup"      // alguém se cadastrou pelo seu link
+  | "referral-bonus"       // você recebeu +5 créditos de indicação
+  | "commission"           // comissão recebida / liberada / cancelada / estornada
+  | "withdrawal-status"    // saque solicitado / aprovado / pago / recusado
+  | "refund-status";       // reembolso solicitado / aprovado / recusado
 
 /**
  * Payload server stashes so the user can save the document later from a
@@ -274,6 +286,24 @@ export interface Notification {
 
   // ticket-* only
   ticketId?: string;
+
+  // referral / wallet events only
+  /** Valor financeiro envolvido, em centavos (comissão, saque, reembolso). */
+  amountCents?: number;
+  /** Sub-status do evento financeiro, para a UI escolher copy/ícone/cor. */
+  walletEventStatus?:
+    | "held"
+    | "released"
+    | "reversed"
+    | "cancelled"
+    | "requested"
+    | "approved"
+    | "paid"
+    | "rejected"
+    | "processed";
+  /** id do registro relacionado (comissão / saque / reembolso / indicação),
+   *  usado para deep-link ao abrir a notificação. */
+  relatedId?: string;
 }
 
 // ==================== Feedback Types ====================
@@ -332,7 +362,9 @@ export interface CreditTransaction {
   id: string;
   userId: string;
   amount: number;
-  type: "debit" | "credit";
+  // 'refund' já é gravado pelo credits-server e pelo webhook AbacatePay; a
+  // união declara os três para refletir o que o código realmente escreve.
+  type: "debit" | "credit" | "refund";
   feature: string;
   description: string;
   createdAt: Date;
@@ -378,7 +410,8 @@ export interface CreditPack {
 
 export const CREDIT_PACKS: CreditPack[] = [
   // Pacote de teste de R$1 — OCULTO. Descomente o objeto abaixo para reexibir o
-  // card "TESTE" na /plans e validar o fluxo de pagamento de ponta a ponta.
+  // card "TESTE" na /plans e validar o fluxo de ponta a ponta (indicação →
+  // comissão de R$ 0,25, já configurada em COMMISSION_BY_PACK_CENTS.test).
   // Antes de reativar, garanta que `abacateProductId` aponta para um produto de
   // R$1 existente na conta/chave atual do AbacatePay.
   // {
@@ -513,6 +546,10 @@ export interface PendingPayment {
   abacateProductId: string;
   amount: number;
   creditsToAdd: number;
+  /** uid do indicador do comprador no momento do checkout (copiado de
+   *  users.referredBy). Permite ao webhook gerar a comissão sem reler o doc do
+   *  usuário, e congela a atribuição no instante da compra. */
+  referredBy?: string | null;
   status: PendingPaymentStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -520,4 +557,230 @@ export interface PendingPayment {
   refundedAt?: Date | null;
   errors?: PaymentErrorEntry[];
   lastError?: PaymentErrorEntry | null;
+}
+
+// ==================== Sistema de Indicação / Carteira ====================
+// Regras de dinheiro deste módulo:
+//  • Toda mutação financeira é server-only (Admin SDK), dentro de runTransaction,
+//    com guarda de idempotência por status + escrita de um ledger imutável.
+//  • Valores em dinheiro são SEMPRE armazenados em centavos inteiros (…Cents)
+//    para evitar erro de ponto flutuante; reais só na exibição.
+
+/** Converte centavos (int) → reais (number). Use apenas para exibição/cálculo de
+ *  display; nunca persista reais decimais em campos da carteira. */
+export const centsToReais = (cents: number): number => cents / 100;
+
+/** Créditos concedidos ao indicador quando um novo usuário se cadastra pelo seu
+ *  link de indicação. Concedido uma única vez por indicado. */
+export const REFERRAL_CREDITS = 5;
+
+/** Janela após o cadastro em que a indicação ainda pode ser atribuída. Cadastros
+ *  legítimos atribuem em segundos; isto garante fidelidade ao "nova pessoa se
+ *  cadastrar" — contas antigas não podem ser atribuídas a um indicador depois. */
+export const REFERRAL_ATTRIBUTION_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
+
+/** Comissão em dinheiro (centavos) paga ao indicador quando o indicado compra um
+ *  pacote. Valor FIXO por pacote (não percentual). Pacotes sem comissão = 0. */
+export const COMMISSION_BY_PACK_CENTS: Record<CreditPackId, number> = {
+  test: 25, // R$ 1,00 → R$ 0,25
+  basic: 440, // R$ 14,90 → R$ 4,40
+  intermediary: 890, // R$ 29,90 → R$ 8,90
+  plus: 1790, // R$ 59,90 → R$ 17,90
+};
+
+/** Dias que a comissão fica retida (held) antes de liberar automaticamente para
+ *  saque. A liberação é feita por um cron diário (Fase 4). */
+export const COMMISSION_HOLD_DAYS = 8;
+export const COMMISSION_HOLD_MS = COMMISSION_HOLD_DAYS * 24 * 60 * 60 * 1000;
+
+/** Conversão carteira → créditos: cada crédito custa R$ 3,00 (300 centavos).
+ *  creditsToAdd = floor(balanceCents / WALLET_CENTS_PER_CREDIT); o resto fica na
+ *  carteira (deduz-se exatamente creditsToAdd * 300). Conversão é irreversível. */
+export const WALLET_CENTS_PER_CREDIT = 300;
+
+/** Limites de saque (centavos). */
+export const WITHDRAW_MIN_CENTS = 3000; // R$ 30,00
+export const WITHDRAW_MAX_CENTS = 100000; // R$ 1.000,00
+/** Quantos saques o usuário pode SOLICITAR por dia. */
+export const WITHDRAW_MAX_PER_DAY = 1;
+/** Intervalo mínimo entre solicitações de saque — implementa o "1 saque por dia"
+ *  como janela de 24h a partir da última solicitação (checado server-side). */
+export const WITHDRAW_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+/** Reembolso: janela de elegibilidade em dias a partir da compra. */
+export const REFUND_WINDOW_DAYS = 7;
+export const REFUND_WINDOW_MS = REFUND_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+/** Reembolso bloqueado quando ≥ 30% dos créditos do pacote já foram consumidos.
+ *  O consumo é medido pela soma dos débitos no ledger após a data da compra. */
+export const REFUND_MAX_CREDITS_USED_PCT = 0.3;
+
+/** Tipos de chave PIX aceitos numa solicitação de saque. */
+export type PixKeyType = "cpf" | "cnpj" | "email" | "phone" | "random";
+
+// ---- Indicação (vínculo indicador ↔ indicado) ----
+export type ReferralStatus =
+  | "attributed" // vínculo criado no cadastro
+  | "converted"; // indicado fez a primeira compra paga
+
+export interface Referral {
+  id: string;
+  referrerUid: string;
+  referredUid: string;
+  /** Código usado no cadastro (== referralCode do indicador). */
+  code: string;
+  status: ReferralStatus;
+  /** Guarda de idempotência do bônus +5 (concedido uma única vez). */
+  signupBonusGranted: boolean;
+  convertedAt?: Date | null;
+  createdAt: Date;
+}
+
+// ---- Carteira (saldo em dinheiro, separado dos créditos) ----
+export interface Wallet {
+  uid: string;
+  /** Disponível para saque agora (pós-liberação). Centavos. PODE ficar negativo
+   *  após estorno de reembolso (bloqueia novos saques até regularizar). */
+  balanceCents: number;
+  /** Comissões ainda retidas na janela de 8 dias (não sacáveis). Centavos. */
+  pendingCents: number;
+  /** Acumulado vitalício de comissões recebidas. Centavos (analytics). */
+  totalEarnedCents: number;
+  /** Total já sacado (somatório de saques pagos). Centavos. */
+  totalWithdrawnCents: number;
+  /** Total convertido em créditos. Centavos. */
+  totalConvertedCents: number;
+  /** Epoch ms da última solicitação de saque (impõe o limite de 1/24h). */
+  lastWithdrawalAt?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type WalletTxType =
+  | "commission-pending" // comissão criada → entra em pendingCents
+  | "commission-released" // liberada após 8 dias → pendingCents vira balanceCents
+  | "commission-clawback" // estorno por reembolso → debita (pode ir negativo)
+  | "withdrawal-reserve" // reserva ao solicitar saque → debita balanceCents
+  | "withdrawal-refund" // devolução por saque recusado → credita de volta
+  | "credit-conversion"; // conversão carteira → créditos → debita balanceCents
+
+/** Ledger imutável da carteira (append-only), espelhando users/{uid}/transactions.
+ *  O status do registro financeiro mora na comissão/saque/reembolso; o ledger só
+ *  guarda o movimento assinado. */
+export interface WalletTransaction {
+  id: string;
+  /** Assinado: + entradas, − saídas. Centavos. */
+  amountCents: number;
+  type: WalletTxType;
+  refType: "commission" | "withdrawal" | "refund" | "conversion";
+  /** id do doc relacionado (commission / withdrawal / refund / conversion). */
+  refId: string;
+  /** id do pendingPayments que originou (join de idempotência), quando aplicável. */
+  sourcePaymentId?: string;
+  description: string;
+  createdAt: Date;
+}
+
+// ---- Comissões ----
+export type CommissionStatus =
+  | "held" // retida na janela de 8 dias
+  | "released" // liberada para saque
+  | "reversed" // estornada por reembolso da compra
+  | "cancelled"; // cancelada manualmente pelo admin
+
+export interface Commission {
+  /** Doc id == sourcePaymentId (chave de deduplicação). */
+  id: string;
+  referralId: string;
+  referrerUid: string;
+  referredUid: string;
+  /** id do pendingPayments que originou a comissão. */
+  sourcePaymentId: string;
+  packId: CreditPackId;
+  /** Valor da comissão em centavos (fixo por pacote — COMMISSION_BY_PACK_CENTS). */
+  amountCents: number;
+  status: CommissionStatus;
+  /** Epoch ms em que a comissão libera para saque (completedAt + 8 dias). */
+  holdUntil: number;
+  releasedAt?: Date | null;
+  reversedAt?: Date | null;
+  reversalReason?: string | null;
+  createdAt: Date;
+}
+
+// ---- Saques (PIX) ----
+export type WithdrawalStatus =
+  | "requested" // aguardando análise do admin (saldo já reservado)
+  | "approved" // aprovado, aguardando pagamento manual
+  | "paid" // PIX efetuado pelo admin
+  | "rejected"; // recusado (saldo devolvido)
+
+export interface Withdrawal {
+  id: string;
+  uid: string;
+  /** Valor solicitado em centavos (reservado do balanceCents ao solicitar). */
+  amountCents: number;
+  pixKey: string;
+  pixKeyType: PixKeyType;
+  status: WithdrawalStatus;
+  requestedAt: Date;
+  decidedBy?: string | null; // admin uid que aprovou/recusou
+  decidedAt?: Date | null;
+  rejectReason?: string | null;
+  paidAt?: Date | null;
+  /** Comprovante/identificador do PIX, preenchido manualmente pelo admin ao pagar. */
+  payoutRef?: string | null;
+}
+
+// ---- Reembolsos ----
+export type RefundStatus =
+  | "requested" // aguardando análise do admin
+  | "approved" // aprovado (será processado)
+  | "rejected" // recusado
+  | "processed"; // créditos removidos + comissão estornada
+
+export interface Refund {
+  id: string;
+  /** id do pendingPayments da compra a reembolsar. */
+  paymentId: string;
+  uid: string;
+  packId: CreditPackId;
+  /** Valor pago na compra, em centavos. */
+  amountCents: number;
+  /** Créditos concedidos pela compra (pack.totalCredits). */
+  creditsGranted: number;
+  /** Créditos consumidos desde a compra, calculados no momento da solicitação. */
+  creditsUsedAtRequest: number;
+  status: RefundStatus;
+  reason?: string | null;
+  decidedBy?: string | null;
+  decidedAt?: Date | null;
+  /** true quando a comissão correspondente foi estornada no processamento. */
+  commissionClawedBack?: boolean;
+  createdAt: Date;
+}
+
+// ---- Auditoria financeira ----
+export type AuditActorType = "system" | "admin" | "cron" | "user";
+
+/** Identificadores fixos de ator para operações não-humanas. */
+export const AUDIT_SYSTEM_ACTOR = "system";
+export const AUDIT_CRON_ACTOR = "cron";
+
+export interface AuditLog {
+  id: string;
+  /** Quem disparou a operação (uid do admin/usuário, ou um id fixo de sistema/cron). */
+  actorUid: string;
+  actorType: AuditActorType;
+  /** Ação canônica, ex.: 'commission.created', 'withdrawal.paid', 'refund.approved'. */
+  action: string;
+  targetType: "commission" | "withdrawal" | "refund" | "wallet" | "referral";
+  targetId: string;
+  /** Usuário afetado pela operação (dono da carteira/comissão), quando aplicável. */
+  affectedUid?: string | null;
+  /** Valor envolvido em centavos, quando aplicável. */
+  amountCents?: number | null;
+  metadata?: Record<string, unknown>;
+  /** Observações administrativas livres. */
+  notes?: string | null;
+  createdAt: Date;
 }

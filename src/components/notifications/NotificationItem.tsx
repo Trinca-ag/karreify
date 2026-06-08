@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Shield, Sparkles, Mail, Lock, Save, Trash2, ChevronRight, LifeBuoy, MessageCircle, CheckCircle2, Heart } from "lucide-react";
+import { FileText, Shield, Sparkles, Mail, Lock, Save, Trash2, ChevronRight, LifeBuoy, MessageCircle, CheckCircle2, Heart, UserPlus, Gift, Coins, Banknote, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   canSaveFromNotification,
@@ -37,6 +37,16 @@ function iconFor(type: Notification["type"]): { Icon: LucideIcon; tint: string }
       return { Icon: CheckCircle2, tint: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
     case "feedback-thanks":
       return { Icon: Heart, tint: "text-pink-400 bg-pink-500/10 border-pink-500/20" };
+    case "referral-signup":
+      return { Icon: UserPlus, tint: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20" };
+    case "referral-bonus":
+      return { Icon: Gift, tint: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
+    case "commission":
+      return { Icon: Coins, tint: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
+    case "withdrawal-status":
+      return { Icon: Banknote, tint: "text-sky-400 bg-sky-500/10 border-sky-500/20" };
+    case "refund-status":
+      return { Icon: RotateCcw, tint: "text-amber-400 bg-amber-500/10 border-amber-500/20" };
   }
 }
 
@@ -67,8 +77,15 @@ export default function NotificationItem({
     notification.type === "ticket-created" ||
     notification.type === "ticket-reply" ||
     notification.type === "ticket-closed";
+  const isWalletEvent =
+    notification.type === "referral-signup" ||
+    notification.type === "referral-bonus" ||
+    notification.type === "commission" ||
+    notification.type === "withdrawal-status" ||
+    notification.type === "refund-status";
   const { Icon, tint } = iconFor(notification.type);
-  const clickable = (isDoc && !expired) || (isTicket && !!notification.ticketId);
+  const clickable =
+    (isDoc && !expired) || (isTicket && !!notification.ticketId) || isWalletEvent;
 
   return (
     <div

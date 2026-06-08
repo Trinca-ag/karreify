@@ -1,6 +1,6 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { NOTIFICATION_SAVE_WINDOW_MS, type NotificationPendingPayload, type NotificationType, type SavedItemType, type UserRole } from "@/types";
+import { NOTIFICATION_SAVE_WINDOW_MS, type Notification, type NotificationPendingPayload, type NotificationType, type SavedItemType, type UserRole } from "@/types";
 
 interface CreateNotificationBase {
   uid: string;
@@ -111,6 +111,39 @@ export async function createTicketNotification(
     title: input.title,
     message: input.message,
     ticketId: input.ticketId,
+  });
+}
+
+interface CreateWalletNotificationInput extends Omit<CreateNotificationBase, "type"> {
+  type: "referral-signup" | "referral-bonus" | "commission" | "withdrawal-status" | "refund-status";
+  /** Valor financeiro envolvido, em centavos (comissão/saque/reembolso). */
+  amountCents?: number;
+  /** Sub-status do evento, para a UI escolher copy/ícone/cor. */
+  walletEventStatus?: Notification["walletEventStatus"];
+  /** id do registro relacionado (comissão/saque/reembolso/indicação). */
+  relatedId?: string;
+  /** Variação de créditos (ex.: +5 no bônus de indicação). */
+  creditsDelta?: number;
+}
+
+/**
+ * Notificação dos eventos de indicação/carteira (comissão, saque, reembolso,
+ * bônus). Carrega os campos financeiros extras quando informados. Campos
+ * `undefined` são omitidos para não violar a regra do Firestore que rejeita
+ * `undefined`.
+ */
+export async function createWalletNotification(
+  input: CreateWalletNotificationInput
+): Promise<string> {
+  return writeNotification({
+    uid: input.uid,
+    type: input.type,
+    title: input.title,
+    message: input.message,
+    ...(input.amountCents !== undefined ? { amountCents: input.amountCents } : {}),
+    ...(input.walletEventStatus ? { walletEventStatus: input.walletEventStatus } : {}),
+    ...(input.relatedId ? { relatedId: input.relatedId } : {}),
+    ...(input.creditsDelta !== undefined ? { creditsDelta: input.creditsDelta } : {}),
   });
 }
 

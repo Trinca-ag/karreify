@@ -30,7 +30,13 @@ service cloud.firestore {
         && !('freeSearchCount' in request.resource.data)
         && !('freeSearchLastAt' in request.resource.data)
         && !('jobsPassExpiresAt' in request.resource.data)
-        && !('jobsPassType' in request.resource.data);
+        && !('jobsPassType' in request.resource.data)
+        // Indicação é 100% server-side: a atribuição (referredBy) e o código
+        // próprio (referralCode) são gravados pelo Admin SDK no fluxo de
+        // boas-vindas. Bloquear no create impede o usuário se autoatribuir um
+        // indicador, forjar o próprio código ou burlar o anti-autoindicação.
+        && !('referredBy' in request.resource.data)
+        && !('referralCode' in request.resource.data);
       // Pelo client o dono só edita campos de perfil (profile/page.tsx). Saldo,
       // flag de boas-vindas, contadores de busca grátis e passe são gravados
       // exclusivamente pelo Admin SDK (que ignora estas regras). Restringir o
@@ -169,6 +175,67 @@ service cloud.firestore {
                     || isAdmin();
         allow create, update, delete: if false;
       }
+    }
+
+    // ==================== Sistema de Indicação / Carteira ====================
+    // Todos os registros financeiros (indicações, comissões, carteira, saques,
+    // reembolsos e auditoria) são gravados EXCLUSIVAMENTE pelo Admin SDK nas
+    // rotas de API. O client só LÊ os próprios registros; nunca cria, edita ou
+    // apaga. Idempotência e integridade ficam nas transações server-side.
+
+    // Vínculo indicador↔indicado. Leitura pelas duas pontas envolvidas ou admin.
+    match /referrals/{referralId} {
+      allow read: if isAuthenticated()
+        && (resource.data.referrerUid == request.auth.uid
+            || resource.data.referredUid == request.auth.uid
+            || isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    // Resolução código→uid. Só o servidor (Admin SDK) lê/grava — expor a
+    // listagem permitiria enumerar códigos de indicação de outros usuários.
+    match /referralCodes/{code} {
+      allow read, write: if false;
+    }
+
+    // Carteira de dinheiro (separada dos créditos/moedas). Server-only.
+    match /wallets/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+
+      // Ledger imutável de movimentações da carteira.
+      match /walletTransactions/{txId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update, delete: if false;
+      }
+    }
+
+    // Comissões. O indicador lê as próprias; admin lê todas.
+    match /commissions/{commissionId} {
+      allow read: if isAuthenticated()
+        && (resource.data.referrerUid == request.auth.uid || isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    // Saques PIX. Solicitados via rota de API (não há write direto do client),
+    // como acontece com os tickets. Dono lê os próprios; admin lê tudo.
+    match /withdrawals/{withdrawalId} {
+      allow read: if isAuthenticated()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    // Reembolsos. Solicitados via rota de API. Dono lê os próprios; admin tudo.
+    match /refunds/{refundId} {
+      allow read: if isAuthenticated()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    // Auditoria financeira — somente admin lê; nunca gravável/legível pelo client.
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
   }
 }

@@ -5,6 +5,7 @@ import { User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { onAuthChange, getUserData, logoutUser, triggerWelcomeCredits } from "@/services/firebase-auth";
+import { readRefCookie, attributeReferralIfPending } from "@/services/referral";
 import { isDeviceTrusted, updateDeviceActivity } from "@/services/device-manager";
 import { getDeviceId } from "@/utils/device-fingerprint";
 import { cache, CK, TTL, invalidateUser, invalidateAll } from "@/lib/cache";
@@ -68,6 +69,9 @@ export function useAuth() {
       // em que o doc do usuário só aparece numa emissão posterior à primeira
       // (ex.: cadastro novo cujo setDoc ainda não terminou).
       let welcomeCreditsTried = false;
+      // Atribuição de indicação: disparada no máximo uma vez por sessão de auth,
+      // só quando há cookie ?ref= pendente e o usuário ainda não tem indicador.
+      let referralTried = false;
       const ready = new Promise<void>((resolve) => {
         unsubSnapshot = onSnapshot(doc(db, "users", user.uid), (snap) => {
           const data = snap.exists() ? (snap.data() as User) : null;
@@ -87,6 +91,15 @@ export function useAuth() {
               welcomeCreditsTried = true;
               void triggerWelcomeCredits().then((r) => {
                 if (!r.settled) welcomeCreditsTried = false;
+              });
+            }
+            // Atribuição de indicação: só se chegou por link ?ref= (cookie
+            // presente) e ainda não tem indicador. Idempotente no servidor; o
+            // cookie se limpa sozinho numa resposta definitiva.
+            if (!data.referredBy && !referralTried && readRefCookie()) {
+              referralTried = true;
+              void attributeReferralIfPending().then((r) => {
+                if (!r.done) referralTried = false;
               });
             }
           }

@@ -364,6 +364,334 @@ Acesse o dashboard: ${url}/dashboard
 Qualquer dúvida ou sugestão, abra um chamado pelo suporte direto no dashboard.${textFooter()}`;
 }
 
+// ── Indicação / Carteira ────────────────────────────────
+
+export function referralBonusEmail(userName: string, credits: number): string {
+  const url = appUrl();
+  return baseLayout(
+    `
+    ${heading("Você ganhou créditos por indicação")}
+    ${paragraph(
+      `Ol&aacute;, <strong style="color:#0f172a;">${escapeHtml(userName)}</strong>. Um novo usu&aacute;rio se cadastrou usando o seu link de indica&ccedil;&atilde;o.`
+    )}
+    ${infoCard([
+      { label: "B&ocirc;nus recebido", value: `+${credits} cr&eacute;ditos`, accent: true },
+      { label: "Motivo", value: "Cadastro por indica&ccedil;&atilde;o" },
+    ])}
+    ${ctaButton(`${url}/profile`, "Ver minhas indicações")}
+    ${smallText(
+      "Continue compartilhando seu link: voc&ecirc; ganha cr&eacute;ditos a cada cadastro e ainda recebe comiss&atilde;o em dinheiro quando seu indicado compra um pacote."
+    )}
+  `,
+    `Você ganhou ${credits} créditos por indicação.`
+  );
+}
+
+export function referralBonusEmailText(userName: string, credits: number): string {
+  const url = appUrl();
+  return `Karreify — Você ganhou créditos por indicação
+
+Olá ${userName},
+
+Um novo usuário se cadastrou usando o seu link de indicação. Você recebeu +${credits} créditos como bônus.
+
+Continue compartilhando seu link: você ganha créditos a cada cadastro e ainda recebe comissão em dinheiro quando seu indicado compra um pacote.
+
+Acesse: ${url}/profile${textFooter()}`;
+}
+
+export function commissionReceivedEmail(
+  userName: string,
+  amountCents: number,
+  packName: string,
+  holdDays: number
+): string {
+  const url = appUrl();
+  const reais = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
+  return baseLayout(
+    `
+    ${heading("Você recebeu uma comissão")}
+    ${paragraph(
+      `Ol&aacute;, <strong style="color:#0f172a;">${escapeHtml(userName)}</strong>. Um usu&aacute;rio que voc&ecirc; indicou realizou uma compra — e voc&ecirc; ganhou comiss&atilde;o em dinheiro.`
+    )}
+    ${infoCard([
+      { label: "Comiss&atilde;o", value: reais, accent: true },
+      { label: "Origem", value: `Compra do ${escapeHtml(packName)}` },
+      { label: "Libera&ccedil;&atilde;o", value: `Em ${holdDays} dias para saque` },
+    ])}
+    ${ctaButton(`${url}/carteira`, "Ver minha carteira")}
+    ${smallText(
+      `O valor fica retido por ${holdDays} dias e depois &eacute; liberado automaticamente para saque via PIX.`
+    )}
+  `,
+    `Você recebeu ${reais} de comissão.`
+  );
+}
+
+export function commissionReceivedEmailText(
+  userName: string,
+  amountCents: number,
+  packName: string,
+  holdDays: number
+): string {
+  const url = appUrl();
+  const reais = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
+  return `Karreify — Você recebeu uma comissão
+
+Olá ${userName},
+
+Um usuário que você indicou realizou uma compra — e você ganhou comissão em dinheiro.
+
+Comissão: ${reais}
+Origem: Compra do ${packName}
+Liberação: em ${holdDays} dias para saque
+
+O valor fica retido por ${holdDays} dias e depois é liberado automaticamente para saque via PIX.
+
+Acesse: ${url}/carteira${textFooter()}`;
+}
+
+export function commissionReleasedEmail(userName: string, amountCents: number): string {
+  const url = appUrl();
+  const reais = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
+  return baseLayout(
+    `
+    ${heading("Comissão liberada para saque")}
+    ${paragraph(
+      `Ol&aacute;, <strong style="color:#0f172a;">${escapeHtml(userName)}</strong>. Uma comiss&atilde;o sua cumpriu o per&iacute;odo de reten&ccedil;&atilde;o e j&aacute; est&aacute; dispon&iacute;vel para saque.`
+    )}
+    ${infoCard([
+      { label: "Valor liberado", value: reais, accent: true },
+      { label: "Status", value: "Dispon&iacute;vel para saque" },
+    ])}
+    ${ctaButton(`${url}/carteira`, "Acessar minha carteira")}
+    ${smallText(
+      "Voc&ecirc; pode converter o saldo em cr&eacute;ditos ou solicitar saque via PIX (m&iacute;nimo R$ 30,00)."
+    )}
+  `,
+    `${reais} liberado para saque.`
+  );
+}
+
+export function commissionReleasedEmailText(userName: string, amountCents: number): string {
+  const url = appUrl();
+  const reais = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
+  return `Karreify — Comissão liberada para saque
+
+Olá ${userName},
+
+Uma comissão sua cumpriu o período de retenção e já está disponível para saque.
+
+Valor liberado: ${reais}
+Status: disponível para saque
+
+Você pode converter o saldo em créditos ou solicitar saque via PIX (mínimo R$ 30,00).
+
+Acesse: ${url}/carteira${textFooter()}`;
+}
+
+type WithdrawalEmailStatus = "requested" | "approved" | "paid" | "rejected";
+
+const withdrawalCopy: Record<WithdrawalEmailStatus, { h: string; p: string; s: string }> = {
+  requested: {
+    h: "Solicitação de saque recebida",
+    p: "Recebemos sua solicita&ccedil;&atilde;o de saque. Ela est&aacute; em an&aacute;lise e voc&ecirc; ser&aacute; avisado quando for aprovada e paga.",
+    s: "Em an&aacute;lise",
+  },
+  approved: {
+    h: "Saque aprovado",
+    p: "Seu saque foi aprovado. O pagamento via PIX ser&aacute; efetuado em breve.",
+    s: "Aprovado",
+  },
+  paid: {
+    h: "Saque pago",
+    p: "Seu saque foi pago via PIX. O valor deve cair na conta vinculada &agrave; sua chave em instantes.",
+    s: "Pago",
+  },
+  rejected: {
+    h: "Saque recusado",
+    p: "Sua solicita&ccedil;&atilde;o de saque foi recusada e o valor foi devolvido ao seu saldo dispon&iacute;vel.",
+    s: "Recusado",
+  },
+};
+
+export function withdrawalStatusEmail(
+  userName: string,
+  status: WithdrawalEmailStatus,
+  amountCents: number,
+  opts?: { reason?: string; payoutRef?: string }
+): string {
+  const url = appUrl();
+  const reais = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
+  const copy = withdrawalCopy[status];
+  const rows: Array<{ label: string; value: string; accent?: boolean }> = [
+    { label: "Valor", value: reais, accent: true },
+    { label: "Status", value: copy.s },
+  ];
+  if (status === "rejected" && opts?.reason) {
+    rows.push({ label: "Motivo", value: escapeHtml(opts.reason) });
+  }
+  if (status === "paid" && opts?.payoutRef) {
+    rows.push({ label: "Comprovante", value: escapeHtml(opts.payoutRef) });
+  }
+  return baseLayout(
+    `
+    ${heading(copy.h)}
+    ${paragraph(`Ol&aacute;, <strong style="color:#0f172a;">${escapeHtml(userName)}</strong>. ${copy.p}`)}
+    ${infoCard(rows)}
+    ${ctaButton(`${url}/carteira`, "Ver minha carteira")}
+  `,
+    `${copy.h} · ${reais}`
+  );
+}
+
+export function withdrawalStatusEmailText(
+  userName: string,
+  status: WithdrawalEmailStatus,
+  amountCents: number,
+  opts?: { reason?: string; payoutRef?: string }
+): string {
+  const url = appUrl();
+  const reais = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
+  const plain: Record<WithdrawalEmailStatus, string> = {
+    requested:
+      "Recebemos sua solicitação de saque. Ela está em análise e você será avisado quando for aprovada e paga.",
+    approved: "Seu saque foi aprovado. O pagamento via PIX será efetuado em breve.",
+    paid: "Seu saque foi pago via PIX. O valor deve cair na conta vinculada à sua chave em instantes.",
+    rejected:
+      "Sua solicitação de saque foi recusada e o valor foi devolvido ao seu saldo disponível.",
+  };
+  const extra =
+    status === "rejected" && opts?.reason
+      ? `\nMotivo: ${opts.reason}`
+      : status === "paid" && opts?.payoutRef
+        ? `\nComprovante: ${opts.payoutRef}`
+        : "";
+  return `Karreify — ${withdrawalCopy[status].h}
+
+Olá ${userName},
+
+${plain[status]}
+
+Valor: ${reais}${extra}
+
+Acesse: ${url}/carteira${textFooter()}`;
+}
+
+export function commissionReversedEmail(userName: string, amountCents: number): string {
+  const url = appUrl();
+  const reais = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
+  return baseLayout(
+    `
+    ${heading("Comissão estornada")}
+    ${paragraph(
+      `Ol&aacute;, <strong style="color:#0f172a;">${escapeHtml(userName)}</strong>. Uma comiss&atilde;o de indica&ccedil;&atilde;o foi estornada porque a compra do seu indicado foi reembolsada.`
+    )}
+    ${infoCard([
+      { label: "Valor estornado", value: reais, accent: true },
+      { label: "Motivo", value: "Compra reembolsada" },
+    ])}
+    ${ctaButton(`${url}/carteira`, "Ver minha carteira")}
+    ${smallText(
+      "Se o valor j&aacute; havia sido liberado, ele foi debitado do seu saldo. Saldos negativos bloqueiam novos saques at&eacute; serem regularizados."
+    )}
+  `,
+    `Comissão de ${reais} estornada.`
+  );
+}
+
+export function commissionReversedEmailText(userName: string, amountCents: number): string {
+  const url = appUrl();
+  const reais = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
+  return `Karreify — Comissão estornada
+
+Olá ${userName},
+
+Uma comissão de indicação de ${reais} foi estornada porque a compra do seu indicado foi reembolsada.
+
+Se o valor já havia sido liberado, ele foi debitado do seu saldo. Saldos negativos bloqueiam novos saques até serem regularizados.
+
+Acesse: ${url}/carteira${textFooter()}`;
+}
+
+type RefundEmailStatus = "requested" | "approved" | "rejected";
+
+const refundCopy: Record<RefundEmailStatus, { h: string; p: string; s: string }> = {
+  requested: {
+    h: "Solicitação de reembolso recebida",
+    p: "Recebemos sua solicita&ccedil;&atilde;o de reembolso. Ela est&aacute; em an&aacute;lise e voc&ecirc; ser&aacute; avisado da decis&atilde;o.",
+    s: "Em an&aacute;lise",
+  },
+  approved: {
+    h: "Reembolso aprovado",
+    p: "Seu reembolso foi aprovado. Os cr&eacute;ditos restantes da compra foram removidos e o valor ser&aacute; devolvido pelo mesmo meio de pagamento.",
+    s: "Aprovado",
+  },
+  rejected: {
+    h: "Reembolso recusado",
+    p: "Sua solicita&ccedil;&atilde;o de reembolso foi analisada e n&atilde;o p&ocirc;de ser aprovada.",
+    s: "Recusado",
+  },
+};
+
+export function refundStatusEmail(
+  userName: string,
+  status: RefundEmailStatus,
+  packName: string,
+  amountCents: number,
+  reason?: string
+): string {
+  const url = appUrl();
+  const reais = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
+  const copy = refundCopy[status];
+  const rows: Array<{ label: string; value: string; accent?: boolean }> = [
+    { label: "Compra", value: escapeHtml(packName), accent: true },
+    { label: "Valor", value: reais },
+    { label: "Status", value: copy.s },
+  ];
+  if (status === "rejected" && reason) {
+    rows.push({ label: "Motivo", value: escapeHtml(reason) });
+  }
+  return baseLayout(
+    `
+    ${heading(copy.h)}
+    ${paragraph(`Ol&aacute;, <strong style="color:#0f172a;">${escapeHtml(userName)}</strong>. ${copy.p}`)}
+    ${infoCard(rows)}
+    ${ctaButton(`${url}/compras`, "Ver minhas compras")}
+  `,
+    `${copy.h} · ${packName}`
+  );
+}
+
+export function refundStatusEmailText(
+  userName: string,
+  status: RefundEmailStatus,
+  packName: string,
+  amountCents: number,
+  reason?: string
+): string {
+  const url = appUrl();
+  const reais = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
+  const plain: Record<RefundEmailStatus, string> = {
+    requested:
+      "Recebemos sua solicitação de reembolso. Ela está em análise e você será avisado da decisão.",
+    approved:
+      "Seu reembolso foi aprovado. Os créditos restantes da compra foram removidos e o valor será devolvido pelo mesmo meio de pagamento.",
+    rejected: "Sua solicitação de reembolso foi analisada e não pôde ser aprovada.",
+  };
+  const extra = status === "rejected" && reason ? `\nMotivo: ${reason}` : "";
+  return `Karreify — ${refundCopy[status].h}
+
+Olá ${userName},
+
+${plain[status]}
+
+Compra: ${packName}
+Valor: ${reais}${extra}
+
+Acesse: ${url}/compras${textFooter()}`;
+}
+
 // ── Security alerts ─────────────────────────────────────
 
 function securityAlert(title: string, intro: string, when: string): string {

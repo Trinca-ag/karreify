@@ -16,6 +16,8 @@ import {
   Briefcase,
   LifeBuoy,
   Coins,
+  Wallet,
+  Receipt,
 } from "lucide-react";
 
 const menuItems = [
@@ -61,6 +63,11 @@ const menuItems = [
     icon: FolderOpen,
   },
   {
+    label: "Carteira",
+    href: "/carteira",
+    icon: Wallet,
+  },
+  {
     label: "Nos ajude a melhorar",
     href: "/feedback",
     icon: MessageSquareHeart,
@@ -69,6 +76,7 @@ const menuItems = [
 
 const bottomItems = [
   { label: "Pacotes", href: "/plans#pacotes", icon: Coins },
+  { label: "Compras", href: "/compras", icon: Receipt },
   { label: "Configurações", href: "/profile", icon: Settings },
   { label: "Suporte", href: "/support", icon: LifeBuoy },
 ];

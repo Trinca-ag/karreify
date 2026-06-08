@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loginUser, loginWithGoogle } from "@/services/firebase-auth";
+import { captureRefFromUrl } from "@/services/referral";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Image from "next/image";
@@ -84,6 +85,12 @@ export default function LoginPage() {
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef<TurnstileHandle>(null);
   const router = useRouter();
+
+  // Captura ?ref= no carregamento (caso o link de indicação aponte para o login
+  // ou o usuário navegue para cá) e persiste em cookie até a atribuição.
+  useEffect(() => {
+    captureRefFromUrl();
+  }, []);
 
   // Carrega lock persistido (caso o user dê F5 ou abra nova aba).
   useEffect(() => {
