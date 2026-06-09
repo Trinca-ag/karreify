@@ -138,7 +138,8 @@
       "WebFetch(domain:karreify.com)",
       "mcp__ide__getDiagnostics",
       "Bash(echo \"TSC_EXIT: $?\")",
-      "Bash(echo \"ESLINT_EXIT: $?\")"
+      "Bash(echo \"ESLINT_EXIT: $?\")",
+      "PowerShell(npx tsc --noEmit -p C:\\\\Karreify\\\\tsconfig.json)"
     ]
   }
 }

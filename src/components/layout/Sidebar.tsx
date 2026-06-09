@@ -2,84 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  FileSearch,
-  FilePlus,
-  Target,
-  Settings,
-  FileText,
-  Building2,
-  TrendingUp,
-  MessageSquareHeart,
-  FolderOpen,
-  Briefcase,
-  LifeBuoy,
-  Coins,
-  Wallet,
-  Receipt,
-} from "lucide-react";
-
-const menuItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  {
-    label: "Análise de Currículo",
-    href: "/resume-analysis",
-    icon: FileSearch,
-  },
-  {
-    label: "Criar Currículo",
-    href: "/create-resume",
-    icon: FilePlus,
-  },
-  {
-    label: "Adaptar para Vaga",
-    href: "/adapt-resume",
-    icon: Target,
-  },
-  {
-    label: "Carta de Apresentação",
-    href: "/cover-letter",
-    icon: FileText,
-  },
-  {
-    label: "Análise de Empresa",
-    href: "/company-analysis",
-    icon: Building2,
-  },
-  {
-    label: "Vagas",
-    href: "/jobs",
-    icon: Briefcase,
-  },
-  {
-    label: "Mercado",
-    href: "/market",
-    icon: TrendingUp,
-  },
-  {
-    label: "Meus Arquivos",
-    href: "/my-files",
-    icon: FolderOpen,
-  },
-  {
-    label: "Carteira",
-    href: "/carteira",
-    icon: Wallet,
-  },
-  {
-    label: "Nos ajude a melhorar",
-    href: "/feedback",
-    icon: MessageSquareHeart,
-  },
-];
-
-const bottomItems = [
-  { label: "Pacotes", href: "/plans#pacotes", icon: Coins },
-  { label: "Compras", href: "/compras", icon: Receipt },
-  { label: "Configurações", href: "/profile", icon: Settings },
-  { label: "Suporte", href: "/support", icon: LifeBuoy },
-];
+import { MENU_ITEMS, MENU_BOTTOM_ITEMS } from "./menuItems";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -91,7 +14,7 @@ export default function Sidebar() {
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-dark-800/50 backdrop-blur-xl border-r border-white/[0.06] sticky top-16 self-start h-[calc(100vh-4rem)]">
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {menuItems.map((item) => {
+        {MENU_ITEMS.map((item) => {
           const path = hrefPath(item.href);
           const isActive = path === "/dashboard"
             ? pathname === path
@@ -118,7 +41,7 @@ export default function Sidebar() {
         })}
       </nav>
       <div className="px-3 py-4 border-t border-white/[0.06] space-y-1">
-        {bottomItems.map((item) => {
+        {MENU_BOTTOM_ITEMS.map((item) => {
           const path = hrefPath(item.href);
           const isActive = path === "/dashboard"
             ? pathname === path

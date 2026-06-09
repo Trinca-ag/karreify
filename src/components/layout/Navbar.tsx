@@ -15,40 +15,9 @@ import {
   Coins,
   ChevronDown,
   ChevronRight,
-  LayoutDashboard,
-  FileSearch,
-  FilePlus,
-  Target,
-  Building2,
-  TrendingUp,
-  FolderOpen,
-  Briefcase,
-  MessageSquareHeart,
-  Settings,
-  LifeBuoy,
 } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
-
-// Mirror of the dashboard sidebar — kept inline so the drawer can render
-// the full feature list without coupling Navbar to Sidebar's module shape.
-const DRAWER_FEATURES = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Análise de Currículo", href: "/resume-analysis", icon: FileSearch },
-  { label: "Criar Currículo", href: "/create-resume", icon: FilePlus },
-  { label: "Adaptar para Vaga", href: "/adapt-resume", icon: Target },
-  { label: "Carta de Apresentação", href: "/cover-letter", icon: FileText },
-  { label: "Análise de Empresa", href: "/company-analysis", icon: Building2 },
-  { label: "Vagas", href: "/jobs", icon: Briefcase },
-  { label: "Mercado", href: "/market", icon: TrendingUp },
-  { label: "Meus Arquivos", href: "/my-files", icon: FolderOpen },
-  { label: "Nos ajude a melhorar", href: "/feedback", icon: MessageSquareHeart },
-];
-
-const DRAWER_BOTTOM = [
-  { label: "Pacotes", href: "/plans#pacotes", icon: Coins },
-  { label: "Configurações", href: "/profile", icon: Settings },
-  { label: "Suporte", href: "/support", icon: LifeBuoy },
-];
+import { MENU_ITEMS, MENU_BOTTOM_ITEMS } from "./menuItems";
 
 export default function Navbar() {
   const { user, userData, isAuthenticated, logout } = useAuthContext();
@@ -273,7 +242,7 @@ export default function Navbar() {
             {/* Scrollable feature list + bottom items */}
             <div className="flex-1 overflow-y-auto py-3">
               <div className="px-2 space-y-0.5">
-                {DRAWER_FEATURES.map((item) => (
+                {MENU_ITEMS.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -289,7 +258,7 @@ export default function Navbar() {
               <div className="mx-3 my-3 border-t border-white/[0.06]" />
 
               <div className="px-2 space-y-0.5">
-                {DRAWER_BOTTOM.map((item) => (
+                {MENU_BOTTOM_ITEMS.map((item) => (
                   <Link
                     key={item.label}
                     href={item.href}
