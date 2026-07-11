@@ -89,8 +89,11 @@ folha parece um CV normal (aceitável, é decorativa).
 
 ## Acessibilidade e performance
 
-- **`prefers-reduced-motion: reduce`:** não cria timeline; aplica direto o
-  estado final estático (correções visíveis, originais apagados).
+- **`prefers-reduced-motion`:** decisão do Gustavo (2026-07-11): a animação
+  roda para TODOS, sem checagem — é decoração `aria-hidden` e a vitrine do
+  produto no hero (no Windows, "Efeitos de animação" desligado ativa o
+  reduce e esconderia a animação). O fallback estático .cv-static foi
+  removido.
 - Container inteiro com `aria-hidden` (mesmo tratamento do vídeo atual):
   decoração com CV fictício, leitor de tela não narra. O clone acessível do
   `splitText` fica no default (sem custo).
@@ -103,4 +106,4 @@ folha parece um CV normal (aceitável, é decorativa).
 - `npm run type-check` e `npm run lint` (build completo local falha por chave
   Firebase redigida — não é critério).
 - Verificação visual no dev server: desktop e viewport mobile, loop completo,
-  hover do TiltCard, e emulação de `prefers-reduced-motion`.
+  hover do TiltCard.

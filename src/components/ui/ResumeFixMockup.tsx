@@ -28,12 +28,10 @@ export default function ResumeFixMockup() {
     const root = rootRef.current;
     if (!root) return;
 
-    // Quem prefere menos movimento vê o estado final estático (via CSS),
-    // sem timeline nenhuma.
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      root.classList.add("cv-static");
-      return;
-    }
+    // Decisão de produto: roda mesmo com prefers-reduced-motion — é
+    // decoração aria-hidden e a vitrine do produto no hero (no Windows,
+    // "Efeitos de animação" desligado ativaria o reduce e esconderia a
+    // animação de muita gente).
 
     const rows = Array.from(root.querySelectorAll<HTMLElement>(".cv-row"));
     const splits: ReturnType<typeof splitText>[] = [];
