@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import { createTimeline, splitText, stagger } from "animejs";
 
 /**
  * Folha de currículo fictícia do hero: a IA "sobrepõe" correções aos textos
@@ -19,6 +20,132 @@ import { useRef, type ReactNode } from "react";
  */
 export default function ResumeFixMockup() {
   const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    // Quem prefere menos movimento vê o estado final estático (via CSS),
+    // sem timeline nenhuma.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      root.classList.add("cv-static");
+      return;
+    }
+
+    const plane = root.querySelector<HTMLElement>(".cv-plane");
+    const rows = Array.from(root.querySelectorAll<HTMLElement>(".cv-row"));
+    const splits: ReturnType<typeof splitText>[] = [];
+
+    // loop + alternate: erra ↔ corrige para sempre; loopDelay segura cada
+    // extremo (~2,6 s) fazendo as vezes dos "holds" da spec.
+    const tl = createTimeline({
+      autoplay: false,
+      loop: true,
+      alternate: true,
+      loopDelay: 2600,
+      defaults: { ease: "inOutQuad" },
+    });
+
+    rows.forEach((row, i) => {
+      const wrongEl = row.querySelector<HTMLElement>(".cv-wrong");
+      const fixEl = row.querySelector<HTMLElement>(".cv-fix");
+      if (!wrongEl || !fixEl) return;
+
+      // splitText por palavra; nas erradas cada palavra ganha .cv-squiggle
+      // (sublinhado ondulado começa transparente). accessible fica no
+      // default (true) — sem custo, e o container já é aria-hidden.
+      const wrongSplit = splitText(wrongEl, {
+        words: { class: "cv-squiggle" },
+      });
+      const fixSplit = splitText(fixEl, { words: true });
+      splits.push(wrongSplit, fixSplit);
+
+      const tIn = 600 + i * 250; // sublinhados surgem em cascata (estado A)
+      const tFix = 2200 + i * 250; // correções entram em cascata
+
+      tl.add(
+        wrongSplit.words,
+        {
+          textDecorationColor: {
+            from: "rgba(239, 68, 68, 0)",
+            to: "rgba(239, 68, 68, 0.9)",
+          },
+          duration: 400,
+          delay: stagger(18),
+        },
+        tIn
+      )
+        .add(
+          wrongSplit.words,
+          {
+            z: "-0.9rem",
+            opacity: 0.25,
+            duration: 650,
+            delay: stagger(20, { from: "random" }),
+          },
+          tFix
+        )
+        .add(
+          fixEl,
+          {
+            opacity: { from: 0, to: 1 },
+            outlineColor: {
+              from: "rgba(4, 120, 87, 0)",
+              to: "rgba(4, 120, 87, 0.6)",
+            },
+            duration: 500,
+          },
+          tFix
+        )
+        .add(
+          fixSplit.words,
+          {
+            opacity: { from: 0, to: 1 },
+            z: { from: "2.2rem", to: "0rem" },
+            duration: 750,
+            delay: stagger(30, { from: "random" }),
+          },
+          tFix + 100
+        );
+    });
+
+    // Leve rotação 3D da folha durante a troca, como no demo.
+    if (plane) {
+      tl.add(
+        plane,
+        {
+          rotateY: { from: 0, to: -6 },
+          rotateX: { from: 0, to: 2 },
+          duration: 1200,
+        },
+        2200
+      );
+    }
+
+    tl.init();
+
+    // Mesmo padrão do VideoMockup: só roda com o card visível (a instância
+    // escondida pelo breakpoint nunca intersecta, então nunca roda).
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            tl.resume();
+          } else {
+            tl.pause();
+          }
+        }
+      },
+      { rootMargin: "200px 0px", threshold: 0.15 }
+    );
+    obs.observe(root);
+
+    return () => {
+      obs.disconnect();
+      tl.revert();
+      for (const s of splits) s.revert();
+    };
+  }, []);
 
   return (
     <div
