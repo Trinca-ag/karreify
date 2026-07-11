@@ -77,7 +77,25 @@ Timeline única do anime.js com `loop` + `alternate`:
    contorno. Sem rotação, sem profundidade.
 3. **Estado "corrigido"** (~2,6 s): só a versão verde visível (o errado
    está a opacidade 0 — sem sobras por construção).
-4. `alternate` desfaz a troca e o ciclo recomeça.
+4. **Flip com vagas (adicionado 2026-07-11, aprovado pelo Gustavo):** o
+   card gira 180° (~750 ms) e revela o VERSO escuro — 3 mini-cards de vaga
+   no visual exato do JobCard de /jobs (vidro escuro, salário esmeralda,
+   pin de localização, tag de modalidade), coerentes com o perfil da
+   Mariana, deslizando de baixo em cascata (~140 ms entre eles); o melhor
+   match acende anel azul primary + badge "94% match" (Sparkles). Enquanto
+   o verso está visível, a frente é resetada invisivelmente (backface
+   oculto) para o estado "com erros". Segura ~2,6 s, o card desvira
+   (180→360° — terminar em 360° torna o reinício do loop invisível) e o
+   ciclo recomeça. O `alternate` saiu da timeline; ciclo total ~12 s.
+
+   Estrutura: container com `perspective`; `.cv-flipper` (`preserve-3d`)
+   com duas faces absolutas `backface-visibility: hidden` — frente = folha
+   branca, verso = painel `bg-dark-900` pré-rotacionado 180°.
+
+   Vagas do verso: "Analista de Marketing Pleno" (Agência Pulso, São
+   Paulo, R$ 6.500–8.000, Híbrido, top match), "Coordenadora de Growth"
+   (Grupo Vetor, São Paulo, R$ 9.000–11.000, CLT), "Analista de CRM
+   Sênior" (TechBrasil, Remoto, R$ 7.500, Remoto).
 
 Estado inicial via CSS: erros visíveis, overlays com opacidade 0 — sem JS a
 folha parece um CV normal (aceitável, é decorativa).
