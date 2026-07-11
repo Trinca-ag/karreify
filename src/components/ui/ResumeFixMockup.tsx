@@ -190,8 +190,11 @@ export default function ResumeFixMockup() {
         </CvSection>
 
         <CvSection title="Formação">
-          <div className="space-y-1.5">
-            <span className="block h-1.5 w-3/5 rounded-full bg-slate-200" />
+          <FixRow
+            wrong="Fiz faculdade de administração."
+            fixed="Bacharelado em Administração — concluído em 2019."
+          />
+          <div className="mt-2">
             <span className="block h-1.5 w-2/5 rounded-full bg-slate-200" />
           </div>
         </CvSection>

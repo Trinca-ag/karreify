@@ -24,7 +24,7 @@ corrigidas — comunicando "a IA corrige seu currículo" logo na primeira dobra.
 3. **Moldura:** folha de papel clara (sem mockup de browser), contraste forte
    com o fundo escuro. `TiltCard` e badges flutuantes ("Score A+",
    "IA Analisou") mantidos como estão.
-4. **Conteúdo:** CV fictício compacto com 3 erros clássicos (rascunho abaixo,
+4. **Conteúdo:** CV fictício compacto com 4 erros clássicos (rascunho abaixo,
    ajustável depois).
 5. **Lib:** anime.js v4 (`npm i animejs`) — `splitText`, `createTimeline`,
    `stagger`. Nova dependência, tree-shakeable, importada só no componente.
@@ -54,6 +54,7 @@ mesmos wrappers (`TiltCard` + badges) nos dois pontos do hero. O import de
 | Resumo | "Busco uma oportunidade na área para crescer profissionalmente." | "Analista de marketing com 5 anos de experiência em growth e CRM." |
 | Experiência | "Responsável pelas vendas da empresa." | "Aumentei as vendas em 32% em 12 meses liderando time de 6." |
 | Habilidades | "Organisação e trabalho em equipe" | "Organização, liderança e trabalho em equipe." |
+| Formação | "Fiz faculdade de administração." | "Bacharelado em Administração — concluído em 2019." |
 
 ## Sequência da animação
 
@@ -65,10 +66,10 @@ mesmos wrappers (`TiltCard` + badges) nos dois pontos do hero. O import de
 
 Timeline única do anime.js com `loop` + `alternate`:
 
-1. **Estado "com erros"** (~2,6 s): folha mostra os 3 textos errados; um
+1. **Estado "com erros"** (~2,6 s): folha mostra os 4 textos errados; um
    sublinhado ondulado vermelho (estilo corretor ortográfico) surge sob
    cada um, de cima para baixo.
-2. **Troca** (cascata de ~250 ms entre os 3 erros, de cima para baixo):
+2. **Troca** (cascata de ~250 ms entre os 4 erros, de cima para baixo):
    as palavras erradas SAEM — sobem ~0.45rem desvanecendo, em ordem
    aleatória (`stagger(24, { from: 'random' })`, ~500 ms) — e as palavras
    corrigidas ENTRAM por baixo no mesmo lugar (~+200 ms, sobem de 0.5rem,
