@@ -784,3 +784,25 @@ body {
     transform: none !important;
   }
 }
+
+/* ========== ResumeFixMockup (hero) ========== */
+/* Sublinhado ondulado estilo corretor ortográfico, aplicado por palavra
+   (o splitText põe essa classe em cada palavra errada — text-decoration
+   não propaga para inline-block, por isso é por palavra e não no <p>).
+   Começa transparente; o anime.js anima textDecorationColor. */
+.cv-squiggle {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+/* prefers-reduced-motion: sem timeline — estado final "corrigido" fixo. */
+.cv-static .cv-fix {
+  opacity: 1;
+  outline-color: rgba(4, 120, 87, 0.6);
+}
+.cv-static .cv-wrong {
+  opacity: 0.25;
+}
