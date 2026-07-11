@@ -171,7 +171,23 @@
       "Bash(rmdir \"C:/Karreify/src/app/region-blocked\")",
       "Bash(perl -ni -e 'print unless m{\"/region-blocked\",}' src/app/robots.ts)",
       "Bash(awk '{print $5, $NF}')",
-      "Bash(ffprobe -version)"
+      "Bash(ffprobe -version)",
+      "WebFetch(domain:animejs.com)",
+      "PowerShell(git *)",
+      "PowerShell(npm view *)",
+      "PowerShell(npm install *)",
+      "PowerShell(node -e \"const p=require\\('./node_modules/animejs/package.json'\\); console.log\\(p.version, p.types || p.typings || JSON.stringify\\(p.exports && p.exports['.']\\)\\)\")",
+      "PowerShell(npm run *)",
+      "PowerShell(\\(Get-Content src\\\\app\\\\globals.css | Measure-Object -Line\\).Lines)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(claude plugin *)",
+      "Bash(git -C /c/Karreify diff --stat src/app/globals.css)",
+      "Bash(git -C /c/Karreify diff src/app/globals.css)",
+      "PowerShell(node \"C:\\\\Users\\\\Gustavo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Karreify\\\\37c0062a-8236-4ef9-b5a6-fb6a9dc25879\\\\scratchpad\\\\swap-hero-mockup.js\"; git diff src/app/page.tsx)",
+      "Bash(grep -qE '^\\\\.env\\\\*?$|^\\\\.env\\\\.local$|\\\\.env\\\\.local' /c/Karreify/.gitignore)",
+      "Bash(git -C /c/Karreify diff --stat src/app/globals.css src/components/ui/ResumeFixMockup.tsx)",
+      "PowerShell(Add-Type -AssemblyName System.Windows.Forms; \"ClientAreaAnimation \\(Windows 'Efeitos de animacao'\\): $\\([System.Windows.Forms.SystemInformation]::ClientAreaAnimation\\)\")",
+      "PowerShell($c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { $c | ForEach-Object { \"porta 3000 ainda ocupada pelo PID $\\($_.OwningProcess\\): $\\(\\(Get-Process -Id $_.OwningProcess\\).ProcessName\\)\" } } else { \"porta 3000 livre\" })"
     ]
   }
 }
