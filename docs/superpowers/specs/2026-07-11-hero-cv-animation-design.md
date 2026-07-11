@@ -57,32 +57,26 @@ mesmos wrappers (`TiltCard` + badges) nos dois pontos do hero. O import de
 
 ## Sequência da animação
 
-> Revisado em 2026-07-11 após feedback do Gustavo com print do demo: a
-> primeira versão deixava a correção "assentar" POR CIMA do erro com rotação
-> tímida (6°) — nada a ver com o demo. A anatomia real do demo accessible:
-> rotação 3D FORTE do bloco de texto (rotateY 60°) que transforma
-> profundidade em "leque"; cada palavra original salta para a FRENTE
-> (z +6rem, opacity .75) como caixinha de contorno vermelho tracejado (o
-> debug do demo); e o clone completo é revelado ATRÁS (z −2rem) em verde com
-> contorno pontilhado. O estado final é um raio-X explodido — nunca assenta.
+> Histórico: v1 assentava a correção por cima do erro (ficou com sobras);
+> v2 replicou a explosão 3D do demo accessible (rotateY 45°, caixinhas
+> vermelhas, correção atrás) — Gustavo viu e não gostou do 3D na folha.
+> v3 (atual, 2026-07-11): troca suave sem 3D, a pedido dele — "os textos
+> errados saindo e os novos entrando, surgindo com esse tom de verde".
 
 Timeline única do anime.js com `loop` + `alternate`:
 
-1. **Estado plano "com erros"** (~2,6 s): folha mostra os 3 textos errados;
-   um sublinhado ondulado vermelho (estilo corretor ortográfico) surge sob
+1. **Estado "com erros"** (~2,6 s): folha mostra os 3 textos errados; um
+   sublinhado ondulado vermelho (estilo corretor ortográfico) surge sob
    cada um, de cima para baixo.
-2. **Explosão 3D** (cascata de ~250 ms entre os 3 erros, de cima para
-   baixo): cada linha corrigível gira em 3D (`rotateY` 0→45°, ~900 ms);
-   as palavras erradas saltam para a frente (`z` 0→3.5rem, opacidade 0.75,
-   `stagger(40, { from: 'random' })`) ganhando contorno vermelho tracejado
-   por palavra; a correção completa é revelada atrás (`z` 0→−1.5rem,
-   opacidade 0→1) em verde-esmeralda com contorno pontilhado.
-3. **Estado explodido "corrigido"** (~2,6 s): raio-X em pé — erro na frente
-   em caixinhas, correção verde legível atrás.
-4. `alternate` colapsa a linha de volta ao plano e o ciclo recomeça.
-
-A folha não tem `overflow-hidden`: as palavras podem flutuar levemente para
-fora do papel durante a explosão (efeito desejado).
+2. **Troca** (cascata de ~250 ms entre os 3 erros, de cima para baixo):
+   as palavras erradas SAEM — sobem ~0.45rem desvanecendo, em ordem
+   aleatória (`stagger(24, { from: 'random' })`, ~500 ms) — e as palavras
+   corrigidas ENTRAM por baixo no mesmo lugar (~+200 ms, sobem de 0.5rem,
+   ~600 ms, `stagger(26)`), em verde-esmeralda (text-emerald-700), sem
+   contorno. Sem rotação, sem profundidade.
+3. **Estado "corrigido"** (~2,6 s): só a versão verde visível (o errado
+   está a opacidade 0 — sem sobras por construção).
+4. `alternate` desfaz a troca e o ciclo recomeça.
 
 Estado inicial via CSS: erros visíveis, overlays com opacidade 0 — sem JS a
 folha parece um CV normal (aceitável, é decorativa).

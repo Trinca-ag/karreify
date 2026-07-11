@@ -797,11 +797,3 @@ body {
   text-decoration-thickness: 1.5px;
   text-underline-offset: 3px;
 }
-
-/* Caixinha tracejada por palavra errada (o look do debug do demo do
-   anime.js). Transparente no estado plano; a timeline anima outlineColor
-   junto com o salto em z. */
-.cv-squiggle {
-  outline: 1px dashed rgba(239, 68, 68, 0);
-  outline-offset: 2px;
-}

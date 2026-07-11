@@ -4,22 +4,22 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { createTimeline, splitText, stagger } from "animejs";
 
 /**
- * Folha de currículo fictícia do hero, animada no visual do demo
- * "accessible" do SplitText/anime.js: cada linha corrigível gira em 3D e
- * "explode" em duas camadas — as palavras erradas saltam para a FRENTE como
- * caixinhas de contorno vermelho tracejado (o look do debug do demo) e a
- * correção completa é revelada ATRÁS em verde com contorno pontilhado
- * (o papel do clone acessível no demo). O alternate colapsa tudo de volta.
+ * Folha de currículo fictícia do hero: a IA detecta os erros (sublinhado
+ * ondulado vermelho estilo corretor ortográfico) e troca cada frase errada
+ * pela versão corrigida em verde — as palavras erradas saem flutuando para
+ * cima enquanto as corrigidas entram por baixo, palavra a palavra
+ * (splitText + stagger do anime.js). Alterna errado ↔ corrigido em loop.
  * Substitui o vídeo "Análise de currículo.mp4" no hero — os spotlights
  * continuam com VideoMockup.
  *
  * Conteúdo híbrido: texto real apenas nas frases que recebem correção; o
  * resto é barra cinza (greeking). Cada .cv-row empilha as duas camadas na
- * mesma célula de grid; em 3D quem manda é o z (preserve-3d), não a ordem
- * do DOM.
+ * mesma célula de grid, então a linha tem a altura da camada mais alta e a
+ * troca acontece sem pulo de layout.
  *
  * A animação roda num useEffect via anime.js; sem JS a folha fica no estado
- * "com erros", que parece um CV normal — aceitável, é decorativa.
+ * "com erros" (a correção começa com opacity 0 via CSS), que parece um CV
+ * normal — aceitável, é decorativa.
  */
 export default function ResumeFixMockup() {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -36,9 +36,8 @@ export default function ResumeFixMockup() {
     const rows = Array.from(root.querySelectorAll<HTMLElement>(".cv-row"));
     const splits: ReturnType<typeof splitText>[] = [];
 
-    // loop + alternate: plano ↔ explodido para sempre; loopDelay segura cada
-    // extremo (~2,6 s) — o estado "corrigido" É o raio-X explodido, nunca
-    // assenta por cima do erro.
+    // loop + alternate: errado ↔ corrigido para sempre; loopDelay segura
+    // cada extremo (~2,6 s).
     const tl = createTimeline({
       autoplay: false,
       loop: true,
@@ -53,9 +52,9 @@ export default function ResumeFixMockup() {
       if (!wrongEl || !fixEl) return;
 
       // splitText por palavra; cada palavra errada ganha .cv-squiggle
-      // (sublinhado ondulado + caixinha tracejada, ambos transparentes até
-      // a timeline animar as cores). accessible fica no default (true) —
-      // sem custo, e o container já é aria-hidden.
+      // (sublinhado ondulado transparente até a timeline animar a cor).
+      // accessible fica no default (true) — sem custo, e o container já é
+      // aria-hidden.
       const wrongSplit = splitText(wrongEl, {
         words: { class: "cv-squiggle" },
       });
@@ -63,7 +62,7 @@ export default function ResumeFixMockup() {
       splits.push(wrongSplit, fixSplit);
 
       const tIn = 600 + i * 250; // sublinhados surgem em cascata (estado A)
-      const tFix = 2200 + i * 250; // explosão 3D em cascata
+      const tFix = 2200 + i * 250; // troca errado → corrigido em cascata
 
       // Estado A: sublinhado "corretor ortográfico" desenha nos erros.
       tl.add(
@@ -78,47 +77,39 @@ export default function ResumeFixMockup() {
         },
         tIn
       )
-        // A linha inteira gira em 3D (o rotateY forte do demo é o que
-        // transforma profundidade em "leque" visível).
-        .add(
-          row,
-          {
-            rotateY: { from: 0, to: 45 },
-            duration: 900,
-          },
-          tFix
-        )
-        // Palavras erradas saltam para a frente como caixinhas vermelhas
-        // tracejadas semi-transparentes (equivalente ao debug do demo:
-        // z 6rem, opacity .75, outlineColor from transparente).
+        // Texto errado sai: palavras sobem e somem, em ordem aleatória.
         .add(
           wrongSplit.words,
           {
-            z: { from: "0rem", to: "3.5rem" },
-            opacity: 0.75,
-            outlineColor: {
-              from: "rgba(239, 68, 68, 0)",
-              to: "rgba(239, 68, 68, 0.8)",
-            },
-            duration: 750,
-            delay: stagger(40, { from: "random" }),
+            y: { from: "0rem", to: "-0.45rem" },
+            opacity: { from: 1, to: 0 },
+            duration: 500,
+            delay: stagger(24, { from: "random" }),
           },
           tFix
         )
-        // Correção completa revelada ATRÁS, verde com contorno pontilhado
-        // (equivalente ao clone acessível do demo: opacity 1, z -2rem).
+        // A camada da correção fica visível no início da troca (o estado
+        // "escondida" pré-animação vem do opacity-0 no CSS do container;
+        // as palavras carregam a entrada visual individualmente).
         .add(
           fixEl,
           {
             opacity: { from: 0, to: 1 },
-            z: { from: "0rem", to: "-1.5rem" },
-            outlineColor: {
-              from: "rgba(4, 120, 87, 0)",
-              to: "rgba(4, 120, 87, 0.7)",
-            },
-            duration: 750,
+            duration: 50,
           },
           tFix
+        )
+        // Correção entra no lugar: palavras verdes sobem de baixo, em
+        // ordem aleatória, cruzando com a saída das erradas.
+        .add(
+          fixSplit.words,
+          {
+            y: { from: "0.5rem", to: "0rem" },
+            opacity: { from: 0, to: 1 },
+            duration: 600,
+            delay: stagger(26, { from: "random" }),
+          },
+          tFix + 200
         );
     });
 
@@ -151,9 +142,9 @@ export default function ResumeFixMockup() {
     <div
       ref={rootRef}
       aria-hidden
-      className="relative mx-auto w-full max-w-[26rem] aspect-[10/13] rounded-xl bg-slate-50 px-6 py-6 shadow-2xl shadow-black/40 ring-1 ring-black/5 sm:px-8 sm:py-8 [perspective:1000px]"
+      className="relative mx-auto w-full max-w-[26rem] aspect-[10/13] overflow-hidden rounded-xl bg-slate-50 px-6 py-6 shadow-2xl shadow-black/40 ring-1 ring-black/5 sm:px-8 sm:py-8"
     >
-      <div className="cv-plane h-full [transform-style:preserve-3d]">
+      <div className="cv-plane h-full">
         {/* Cabeçalho */}
         <p className="font-heading text-base font-bold tracking-tight text-slate-900 sm:text-lg">
           Mariana Souza
@@ -217,26 +208,26 @@ function CvSection({
   children: ReactNode;
 }) {
   return (
-    <div className="mt-4 border-t border-slate-200/80 pt-3 [transform-style:preserve-3d]">
+    <div className="mt-4 border-t border-slate-200/80 pt-3">
       <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:text-[10px]">
         {title}
       </p>
-      <div className="mt-1.5 [transform-style:preserve-3d]">{children}</div>
+      <div className="mt-1.5">{children}</div>
     </div>
   );
 }
 
 /**
- * Par errado/correção empilhado na mesma célula de grid. A correção fica
- * atrás (z negativo na timeline); as palavras erradas saltam para a frente.
+ * Par errado/correção empilhado na mesma célula de grid: o errado sai
+ * flutuando para cima e a correção verde entra por baixo no mesmo lugar.
  */
 function FixRow({ wrong, fixed }: { wrong: string; fixed: string }) {
   return (
-    <div className="cv-row grid [transform-style:preserve-3d]">
-      <p className="cv-wrong col-start-1 row-start-1 text-[11px] leading-snug text-slate-700 sm:text-xs [transform-style:preserve-3d]">
+    <div className="cv-row grid">
+      <p className="cv-wrong col-start-1 row-start-1 text-[11px] leading-snug text-slate-700 sm:text-xs">
         {wrong}
       </p>
-      <p className="cv-fix col-start-1 row-start-1 rounded-sm text-[11px] font-medium leading-snug text-emerald-700 opacity-0 outline-offset-2 sm:text-xs [outline:1px_dotted_transparent]">
+      <p className="cv-fix col-start-1 row-start-1 text-[11px] font-medium leading-snug text-emerald-700 opacity-0 sm:text-xs">
         {fixed}
       </p>
     </div>
