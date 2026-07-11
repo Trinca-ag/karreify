@@ -4,6 +4,7 @@ import Link from "next/link";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import TiltCard from "@/components/ui/TiltCard";
 import VideoMockup from "@/components/ui/VideoMockup";
+import ResumeFixMockup from "@/components/ui/ResumeFixMockup";
 import { CREDIT_PACKS, WELCOME_CREDITS } from "@/types";
 import {
   FileSearch,
@@ -734,10 +735,7 @@ export default function Home() {
               <div className="lg:hidden mt-8 max-w-md mx-auto animate-fade-in-up animation-delay-300">
                 <div className="relative animate-float-slow">
                   <TiltCard intensity={8}>
-                    <VideoMockup
-                      src={`/videos/${encodeURIComponent("Análise de currículo.mp4")}`}
-                      url="karreify.com/resume-analysis"
-                    />
+                    <ResumeFixMockup />
                   </TiltCard>
                   <div className="absolute -top-4 -right-4 float-badge z-10">
                     <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/30">
@@ -777,10 +775,7 @@ export default function Home() {
             <div className="hidden lg:block animate-fade-in-up animation-delay-400">
               <div className="relative animate-float-slow">
                 <TiltCard intensity={8}>
-                  <VideoMockup
-                    src={`/videos/${encodeURIComponent("Análise de currículo.mp4")}`}
-                    url="karreify.com/resume-analysis"
-                  />
+                  <ResumeFixMockup />
                 </TiltCard>
                 {/* Floating badges */}
                 <div className="absolute -top-4 -right-4 float-badge z-10">
