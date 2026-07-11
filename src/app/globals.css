@@ -798,13 +798,15 @@ body {
   text-underline-offset: 3px;
 }
 
-/* prefers-reduced-motion: sem timeline — estado final "corrigido" fixo. */
+/* prefers-reduced-motion: sem timeline — folha estática já corrigida.
+   O texto errado some por completo (empilhado ele vaza por trás da correção
+   quando as frases têm larguras diferentes). */
 .cv-static .cv-fix {
   opacity: 1;
   outline-color: rgba(4, 120, 87, 0.6);
 }
 .cv-static .cv-wrong {
-  opacity: 0.25;
+  opacity: 0;
 }
 
 /* Caixinha tracejada por palavra errada (o look do debug do demo do
