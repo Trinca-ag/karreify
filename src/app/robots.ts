@@ -26,7 +26,6 @@ export default function robots(): MetadataRoute.Robots {
         "/support",
         "/feedback",
         "/auth/",
-        "/region-blocked",
       ],
     },
     sitemap: `${BASE}/sitemap.xml`,
