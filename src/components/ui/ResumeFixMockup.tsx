@@ -11,10 +11,11 @@ import { MapPin, Sparkles } from "lucide-react";
  *    (sublinhado ondulado vermelho) e troca cada frase errada pela versão
  *    corrigida em verde, palavra a palavra (splitText + stagger).
  * 2. FLIP — o card gira 180° e revela o verso escuro.
- * 3. VERSO — 3 mini-cards de vaga no visual do JobCard real de /jobs
- *    deslizam em cascata; o melhor match acende um anel azul + badge.
- *    Enquanto o verso está visível, a frente é resetada invisivelmente
- *    (backface oculto) para o estado "com erros".
+ * 3. VERSO — um feed de vagas (mini-cards no visual do JobCard real de
+ *    /jobs) rola muito rápido e desacelera até parar (ease outExpo, com a
+ *    distância medida em runtime); o melhor match acende anel azul +
+ *    badge. Enquanto o verso está visível, a frente é resetada
+ *    invisivelmente (backface oculto) para o estado "com erros".
  * 4. O card desvira (180→360°) já mostrando o currículo com erros e o
  *    ciclo recomeça — terminar em 360° torna o reinício do loop invisível.
  *
@@ -28,6 +29,24 @@ import { MapPin, Sparkles } from "lucide-react";
  * Sem JS o card fica na frente, estado "com erros" (correções com opacity
  * 0 via CSS) — parece um CV normal; aceitável, é decorativo.
  */
+
+/** Feed do verso: os 3 últimos ficam visíveis quando a rolagem para; o
+ *  antepenúltimo (primeiro do trio final) é o top match destacado. */
+const JOBS = [
+  { title: "Analista de Social Media", company: "Nube Digital", location: "São Paulo, SP", salary: "R$ 4.800", tag: "CLT" },
+  { title: "Gerente de Marketing", company: "Rota Comércio", location: "Campinas, SP", salary: "R$ 14.000", tag: "Presencial" },
+  { title: "Analista de Performance", company: "Clique Mídia", location: "Remoto", salary: "R$ 6.000", tag: "Remoto" },
+  { title: "Coordenadora de Conteúdo", company: "Editora Lumen", location: "São Paulo, SP", salary: "R$ 7.200", tag: "Híbrido" },
+  { title: "Especialista em SEO", company: "Loja Norte", location: "Remoto", salary: "R$ 8.500", tag: "PJ" },
+  { title: "Analista de Growth Jr", company: "AppFinança", location: "São Paulo, SP", salary: "R$ 4.200", tag: "Híbrido" },
+  { title: "Brand Manager", company: "Casa Bela", location: "São Paulo, SP", salary: "R$ 12.000", tag: "CLT" },
+  { title: "Analista de E-mail Mkt", company: "Vitrine Web", location: "Remoto", salary: "R$ 5.500", tag: "Remoto" },
+  { title: "Media Buyer Pleno", company: "Studio Onda", location: "Florianópolis, SC", salary: "R$ 6.800", tag: "Remoto" },
+  { title: "Analista de Marketing Pleno", company: "Agência Pulso", location: "São Paulo, SP", salary: "R$ 6.500–8.000", tag: "Híbrido", topMatch: true },
+  { title: "Coordenadora de Growth", company: "Grupo Vetor", location: "São Paulo, SP", salary: "R$ 9.000–11.000", tag: "CLT" },
+  { title: "Analista de CRM Sênior", company: "TechBrasil", location: "Remoto", salary: "R$ 7.500", tag: "Remoto" },
+] as const;
+
 export default function ResumeFixMockup() {
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -41,19 +60,20 @@ export default function ResumeFixMockup() {
     // animação de muita gente).
 
     const flipper = root.querySelector<HTMLElement>(".cv-flipper");
-    const rows = Array.from(root.querySelectorAll<HTMLElement>(".cv-row"));
-    const jobs = Array.from(root.querySelectorAll<HTMLElement>(".cv-job"));
+    const view = root.querySelector<HTMLElement>(".cv-jobs-view");
+    const strip = root.querySelector<HTMLElement>(".cv-jobs-strip");
     const glow = root.querySelector<HTMLElement>(".cv-job-glow");
     const badge = root.querySelector<HTMLElement>(".cv-job-badge");
+    const rows = Array.from(root.querySelectorAll<HTMLElement>(".cv-row"));
     const splits: ReturnType<typeof splitText>[] = [];
 
-    // Momentos do ciclo (~12 s no total). A fase do currículo termina
+    // Momentos do ciclo (~13 s no total). A fase do currículo termina
     // ~4,2 s; os holds ficam entre as fases.
     const T_FLIP = 6600; // vira para o verso
-    const T_JOBS = 7200; // cascata dos mini-cards
-    const T_GLOW = 8100; // anel de top match
-    const T_RESET = 7700; // reset invisível da frente (verso visível)
-    const T_BACK = 10900; // desvira para a frente
+    const T_SCROLL = 7150; // feed rola rápido e desacelera (2,4 s)
+    const T_RESET = 8200; // reset invisível da frente (verso visível)
+    const T_GLOW = 9650; // anel de top match, logo após a rolagem parar
+    const T_BACK = 11900; // desvira para a frente
 
     const tl = createTimeline({
       autoplay: false,
@@ -140,18 +160,21 @@ export default function ResumeFixMockup() {
       );
     }
 
-    // ---- Fase 3: vagas em cascata + destaque de top match ----
-    jobs.forEach((job, i) => {
+    // ---- Fase 3: feed rola muito rápido e desacelera até o trio final;
+    //      distância medida em runtime (responsivo). outExpo = arrancada
+    //      forte com parada suave. ----
+    if (strip && view) {
+      const dist = Math.max(0, strip.offsetHeight - view.clientHeight);
       tl.add(
-        job,
+        strip,
         {
-          y: { from: "1rem", to: "0rem" },
-          opacity: { from: 0, to: 1 },
-          duration: 500,
+          y: { from: "0px", to: `-${dist}px` },
+          duration: 2400,
+          ease: "outExpo",
         },
-        T_JOBS + i * 140
+        T_SCROLL
       );
-    });
+    }
     if (glow) {
       tl.add(glow, { opacity: { from: 0, to: 1 }, duration: 450 }, T_GLOW);
     }
@@ -282,8 +305,8 @@ export default function ResumeFixMockup() {
           </CvSection>
         </div>
 
-        {/* ============ VERSO: vagas no estilo de /jobs ============ */}
-        <div className="absolute inset-0 overflow-hidden rounded-xl bg-dark-900 px-5 py-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 sm:px-6 sm:py-6 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+        {/* ============ VERSO: feed de vagas no estilo de /jobs ============ */}
+        <div className="absolute inset-0 flex flex-col overflow-hidden rounded-xl bg-dark-900 px-5 py-5 shadow-2xl shadow-black/40 ring-1 ring-white/10 sm:px-6 sm:py-6 [backface-visibility:hidden] [transform:rotateY(180deg)]">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400 sm:text-[11px]">
@@ -298,29 +321,13 @@ export default function ResumeFixMockup() {
             </span>
           </div>
 
-          <div className="mt-4 flex flex-col gap-3">
-            <MiniJobCard
-              title="Analista de Marketing Pleno"
-              company="Agência Pulso"
-              location="São Paulo, SP"
-              salary="R$ 6.500–8.000"
-              tag="Híbrido"
-              topMatch
-            />
-            <MiniJobCard
-              title="Coordenadora de Growth"
-              company="Grupo Vetor"
-              location="São Paulo, SP"
-              salary="R$ 9.000–11.000"
-              tag="CLT"
-            />
-            <MiniJobCard
-              title="Analista de CRM Sênior"
-              company="TechBrasil"
-              location="Remoto"
-              salary="R$ 7.500"
-              tag="Remoto"
-            />
+          {/* Janela do feed: a esteira rola por trás (overflow oculto) */}
+          <div className="cv-jobs-view relative mt-4 flex-1 overflow-hidden">
+            <div className="cv-jobs-strip flex flex-col gap-3">
+              {JOBS.map((job) => (
+                <MiniJobCard key={`${job.title}-${job.company}`} {...job} />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -366,7 +373,7 @@ function FixRow({ wrong, fixed }: { wrong: string; fixed: string }) {
  * Miniatura do JobCard real de /jobs (vidro escuro, salário esmeralda,
  * pin de localização, tag de modalidade). `topMatch` adiciona o anel azul
  * (.cv-job-glow) e o badge "94% match" (.cv-job-badge) que a timeline
- * acende depois da cascata. Começa com opacity-0 — a timeline traz.
+ * acende quando a rolagem para.
  */
 function MiniJobCard({
   title,
@@ -384,7 +391,7 @@ function MiniJobCard({
   topMatch?: boolean;
 }) {
   return (
-    <div className="cv-job relative rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3.5 opacity-0">
+    <div className="cv-job relative rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3.5">
       {topMatch && (
         <>
           <span

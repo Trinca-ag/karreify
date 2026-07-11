@@ -80,9 +80,12 @@ Timeline única do anime.js com `loop` + `alternate`:
 4. **Flip com vagas (adicionado 2026-07-11, aprovado pelo Gustavo):** o
    card gira 180° (~750 ms) e revela o VERSO escuro — 3 mini-cards de vaga
    no visual exato do JobCard de /jobs (vidro escuro, salário esmeralda,
-   pin de localização, tag de modalidade), coerentes com o perfil da
-   Mariana, deslizando de baixo em cascata (~140 ms entre eles); o melhor
-   match acende anel azul primary + badge "94% match" (Sparkles). Enquanto
+   pin de localização, tag de modalidade). Revisão pedida pelo Gustavo:
+   em vez de cascata, um FEED de 12 vagas rola muito rápido e desacelera
+   até parar (ease outExpo, ~2,4 s; distância = altura da esteira menos a
+   janela, medida em runtime), estacionando no trio final coerente com o
+   perfil da Mariana; só então o melhor match acende anel azul primary +
+   badge "94% match" (Sparkles). Enquanto
    o verso está visível, a frente é resetada invisivelmente (backface
    oculto) para o estado "com erros". Segura ~2,6 s, o card desvira
    (180→360° — terminar em 360° torna o reinício do loop invisível) e o
