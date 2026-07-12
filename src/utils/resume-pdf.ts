@@ -6,6 +6,7 @@ export interface PdfAdjustments {
   fontSizeOffset?: number;
   spacingOffset?: number;
   hiddenSections?: SectionName[];
+  sectionOrder?: SectionName[];
   // Granular per-category px overrides (preferred). Undefined falls back to the template default.
   sectionTitleFontPx?: number;
   entryTitleFontPx?: number;
@@ -49,6 +50,7 @@ export async function generateResumePDFBlob(
       fontSizeOffset: adjustments?.fontSizeOffset,
       spacingOffset: adjustments?.spacingOffset,
       hiddenSections: adjustments?.hiddenSections,
+      sectionOrder: adjustments?.sectionOrder,
       sectionTitleFontPx: adjustments?.sectionTitleFontPx,
       entryTitleFontPx: adjustments?.entryTitleFontPx,
       bodyFontPx: adjustments?.bodyFontPx,

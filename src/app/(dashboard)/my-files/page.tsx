@@ -135,6 +135,7 @@ export default function MyFilesPage() {
             fontSizeOffset: item.adjustments?.fontSizeOffset,
             spacingOffset: item.adjustments?.spacingOffset,
             hiddenSections: item.adjustments?.hiddenSections as SectionName[] | undefined,
+            sectionOrder: item.adjustments?.sectionOrder as SectionName[] | undefined,
           }
         );
         return;

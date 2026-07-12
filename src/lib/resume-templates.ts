@@ -9,6 +9,7 @@ export interface TemplateOptions {
   fontSizeOffset?: number;     // steps of 1.5pt (body) / 2pt (name), range -5..+5 (legacy)
   spacingOffset?: number;      // steps of 3pt (sections) / 2pt (entries), range -5..+5 (legacy)
   hiddenSections?: SectionName[];
+  sectionOrder?: SectionName[];   // ordem custom (Ajustes → Seções); vazio/ausente = automática por nível
   // ── Granular px overrides (preferred over legacy offsets) ──
   // When defined (non-undefined), the value is used verbatim as the CSS font-size/margin in px.
   // When undefined, the legacy offset + computed pt default applies.
@@ -219,6 +220,29 @@ function getSectionOrder(level?: string): SectionName[] {
   return ["summary", "skills", "work", "projects", "education", "certifications", "languages"];
 }
 
+// Seções que participam da ordenação custom ("header" é sempre primeiro,
+// renderizado fora do map dos templates).
+const ORDERABLE_SECTIONS: SectionName[] = ["summary", "skills", "work", "projects", "education", "certifications", "languages"];
+
+// Ordem custom do usuário com sanitização à prova de saves antigos/futuros:
+// filtra nomes desconhecidos e duplicados, ignora "header" e apende no fim
+// (em ordem canônica) qualquer seção ausente. Vazio/ausente → automática.
+export function resolveSectionOrder(custom: SectionName[] | undefined, level?: string): SectionName[] {
+  if (!custom || custom.length === 0) return getSectionOrder(level);
+  const seen = new Set<SectionName>();
+  const order: SectionName[] = [];
+  for (const name of custom) {
+    if (ORDERABLE_SECTIONS.includes(name) && !seen.has(name)) {
+      seen.add(name);
+      order.push(name);
+    }
+  }
+  for (const name of ORDERABLE_SECTIONS) {
+    if (!seen.has(name)) order.push(name);
+  }
+  return order;
+}
+
 
 // ── Skills rendering with categories ─────────────────────
 
@@ -393,7 +417,7 @@ export function templateProfissional(rawData: ResumeSchema, options?: TemplateOp
       : "",
   };
 
-  const order = getSectionOrder(options?.candidateLevel);
+  const order = resolveSectionOrder(options?.sectionOrder, options?.candidateLevel);
   const sectionsHtml = order.map(name => sections[name]).filter(Boolean).join("\n");
 
   return `<!DOCTYPE html>
@@ -720,7 +744,7 @@ export function templateModerno(rawData: ResumeSchema, options?: TemplateOptions
       : "",
   };
 
-  const order = getSectionOrder(options?.candidateLevel);
+  const order = resolveSectionOrder(options?.sectionOrder, options?.candidateLevel);
   const sectionsHtml = order.map(name => sections[name]).filter(Boolean).join("\n");
 
   return `<!DOCTYPE html>

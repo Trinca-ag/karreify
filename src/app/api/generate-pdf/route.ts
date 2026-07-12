@@ -358,6 +358,13 @@ export async function POST(request: NextRequest) {
     const fontSizeOffset: number | undefined = body.fontSizeOffset;
     const spacingOffset: number | undefined = body.spacingOffset;
     const hiddenSections: string[] | undefined = body.hiddenSections;
+    // Ordem custom das seções — whitelist estrita (ignora silenciosamente
+    // valores fora do contrato; ausente/vazio deixa a ordem automática).
+    const ORDERABLE = ["summary", "skills", "work", "projects", "education", "certifications", "languages"];
+    const rawSectionOrder: unknown = body.sectionOrder;
+    const sectionOrder = Array.isArray(rawSectionOrder)
+      ? rawSectionOrder.filter((s): s is string => typeof s === "string" && ORDERABLE.includes(s))
+      : undefined;
     // Granular px overrides (preferred — undefined leaves the legacy default in place).
     const sectionTitleFontPx: number | undefined = body.sectionTitleFontPx;
     const entryTitleFontPx: number | undefined = body.entryTitleFontPx;
@@ -379,6 +386,9 @@ export async function POST(request: NextRequest) {
       fontSizeOffset,
       spacingOffset,
       hiddenSections: hiddenSections as import("@/lib/resume-templates").SectionName[] | undefined,
+      sectionOrder: sectionOrder && sectionOrder.length > 0
+        ? (sectionOrder as import("@/lib/resume-templates").SectionName[])
+        : undefined,
       sectionTitleFontPx,
       entryTitleFontPx,
       bodyFontPx,
