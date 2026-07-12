@@ -112,12 +112,40 @@ async function refundFreeSearch(uid: string): Promise<void> {
   });
 }
 
+type JobModality = "presencial" | "hibrido" | "remoto";
+const MODALITIES: JobModality[] = ["presencial", "hibrido", "remoto"];
+
+/** Remove acentos e baixa a caixa para casar as regex de modalidade. */
+function normalizeForMatch(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Classifica a modalidade pelo texto do anúncio. Híbrido tem precedência
+ *  sobre remoto ("híbrido com home office" é híbrido); sem sinal =
+ *  presencial. */
+function classifyModality(job: CachedJob): JobModality {
+  const text = normalizeForMatch(
+    `${job.title} ${job.snippet} ${job.location} ${job.type}`
+  );
+  if (/hibrid/.test(text)) return "hibrido";
+  if (/remot|home ?office|teletrabalho|anywhere/.test(text)) return "remoto";
+  return "presencial";
+}
+
+/** Pós-filtro aplicado AO SERVIR (cache-hit e fresh); o cache guarda a
+ *  página sem filtro, então refiltar é idempotente. */
+function filterByModality(jobs: CachedJob[], modality?: JobModality): CachedJob[] {
+  if (!modality) return jobs;
+  return jobs.filter((j) => classifyModality(j) === modality);
+}
+
 interface SearchParams {
   keyword: string;
   uf?: string;
   city?: string;
   period: "today" | "week" | "month";
   exactMatch: boolean;
+  modality?: JobModality;
   page: number;
 }
 
@@ -218,12 +246,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { keyword, uf, city, period, exactMatch, page } = body as {
+    const { keyword, uf, city, period, exactMatch, modality, page } = body as {
       keyword?: string;
       uf?: string;
       city?: string;
       period?: "today" | "week" | "month";
       exactMatch?: boolean;
+      modality?: string;
       page?: number;
     };
 
@@ -237,12 +266,16 @@ export async function POST(request: NextRequest) {
     const safePeriod = period === "today" || period === "week" ? period : "month";
     const targetPage = Math.max(1, Math.min(20, page || 1));
     const trimmedKeyword = keyword.trim().slice(0, 200);
+    const safeModality = MODALITIES.includes(modality as JobModality)
+      ? (modality as JobModality)
+      : undefined;
     const searchParams: SearchParams = {
       keyword: trimmedKeyword,
       uf,
       city,
       period: safePeriod,
       exactMatch: !!exactMatch,
+      modality: safeModality,
       page: targetPage,
     };
 
@@ -318,7 +351,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const cacheKey = makeCacheKey(searchParams);
+    // Remoto/híbrido mudam a query enviada ao provider, então precisam de
+    // chave própria; presencial/todas compartilham a MESMA busca de provider
+    // (o filtro só roda ao servir) — sufixo aplicado apenas à chave, nunca
+    // ao provider.
+    const cacheKey = makeCacheKey(
+      safeModality === "remoto" || safeModality === "hibrido"
+        ? { ...searchParams, keyword: `${trimmedKeyword} §mod=${safeModality}` }
+        : searchParams
+    );
     const cached = await getCached(cacheKey);
     if (cached) {
       recordCall({
@@ -336,7 +377,7 @@ export async function POST(request: NextRequest) {
       // Busca gratuita já foi reservada (incrementada) no gate; cache hit é
       // sucesso, então não há nada a estornar.
       return NextResponse.json({
-        jobs: cached.jobs,
+        jobs: filterByModality(cached.jobs, safeModality),
         totalCount: cached.totalCount,
         page: targetPage,
         ...(freeInfo && {
@@ -460,7 +501,7 @@ export async function POST(request: NextRequest) {
     if (countablePassSearch) await bumpDailySearch(ctx.uid, dailyDateKey);
     // Busca gratuita já foi reservada no gate; provider OK = sucesso, nada a estornar.
     return NextResponse.json({
-      jobs: result.jobs,
+      jobs: filterByModality(result.jobs, safeModality),
       totalCount: result.totalCount,
       page: targetPage,
       ...(freeInfo && {

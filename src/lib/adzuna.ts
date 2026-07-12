@@ -29,6 +29,7 @@ export interface AdzunaSearchParams {
   city?: string;
   period: "today" | "week" | "month";
   exactMatch?: boolean;
+  modality?: "presencial" | "hibrido" | "remoto";
   page: number;
 }
 
@@ -133,6 +134,11 @@ export async function callAdzuna(
 
   if (params.exactMatch) qs.set("what_phrase", params.keyword.trim());
   else qs.set("what", params.keyword.trim());
+
+  // Augment de modalidade — a Adzuna não tem filtro nativo; what_and exige
+  // que todas as palavras apareçam no anúncio. Presencial não altera a query.
+  if (params.modality === "remoto") qs.set("what_and", "home office");
+  else if (params.modality === "hibrido") qs.set("what_and", "híbrido");
 
   const where = buildWhere(params.uf, params.city);
   if (where) qs.set("where", where);

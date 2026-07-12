@@ -35,6 +35,7 @@ export interface JoobleSearchParams {
   city?: string;
   period: "today" | "week" | "month";
   exactMatch?: boolean;
+  modality?: "presencial" | "hibrido" | "remoto";
   page: number;
 }
 
@@ -82,13 +83,23 @@ function buildLocation(uf?: string, city?: string): string {
   return "";
 }
 
-/** Jooble has no exactMatch flag — quotes act as a phrase operator. */
-function buildKeywords(keyword: string, exactMatch?: boolean): string {
+/** Jooble has no exactMatch flag — quotes act as a phrase operator. O
+ *  augment de modalidade fica FORA das aspas para a frase continuar
+ *  casando ("analista" home office). Presencial não altera a query. */
+function buildKeywords(
+  keyword: string,
+  exactMatch?: boolean,
+  modality?: "presencial" | "hibrido" | "remoto"
+): string {
   const trimmed = keyword.trim();
-  if (!exactMatch) return trimmed;
-  return trimmed.startsWith('"') && trimmed.endsWith('"')
+  const base = !exactMatch
     ? trimmed
-    : `"${trimmed}"`;
+    : trimmed.startsWith('"') && trimmed.endsWith('"')
+      ? trimmed
+      : `"${trimmed}"`;
+  if (modality === "remoto") return `${base} home office`;
+  if (modality === "hibrido") return `${base} híbrido`;
+  return base;
 }
 
 export async function callJooble(
@@ -102,7 +113,7 @@ export async function callJooble(
   }
 
   const body = {
-    keywords: buildKeywords(params.keyword, params.exactMatch),
+    keywords: buildKeywords(params.keyword, params.exactMatch, params.modality),
     location: buildLocation(params.uf, params.city),
     page: String(params.page),
     ResultOnPage: "20",
