@@ -1168,3 +1168,19 @@ Responda APENAS com o JSON.`;
 
   return generateCompletion(prompt, { maxTokens: 2048, temperature: 0.3 });
 }
+
+/**
+ * Extrai do texto do currículo a profissão (curta, pesquisável, sem nível
+ * de senioridade) e a cidade/UF do candidato, para pré-preencher a busca de
+ * vagas em /jobs. Retorna a resposta crua da IA (JSON em texto) — o parse
+ * tolerante e a sanitização ficam na rota.
+ */
+export async function extractJobProfile(resumeText: string): Promise<string> {
+  const prompt = `Leia o currículo abaixo e extraia APENAS estas informações, respondendo SOMENTE com JSON válido, sem markdown e sem texto extra:
+
+{"profession": "cargo/profissão principal do candidato, em português, curto e pesquisável (ex.: Analista de Marketing, Desenvolvedor Backend, Enfermeira), SEM nível de senioridade (não inclua júnior/pleno/sênior/estagiário)", "city": "cidade onde o candidato mora, ou null se não constar", "uf": "sigla de 2 letras do estado brasileiro do candidato (ex.: SP), ou null se não constar"}
+
+Currículo:
+${resumeText}`;
+  return generateCompletion(prompt, { maxTokens: 200, temperature: 0.1 });
+}
