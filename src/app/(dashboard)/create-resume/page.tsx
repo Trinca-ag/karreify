@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import Button from "@/components/ui/Button";
@@ -10,11 +10,14 @@ import { extractTextFromFile } from "@/utils/file-parser";
 import { checkCredits } from "@/services/credits";
 import { authedFetch } from "@/lib/api-client";
 import { generateResumePDFBlob, downloadResumePDF, type PdfAdjustments } from "@/utils/resume-pdf";
-import { Upload, PenLine, Plus, Trash2, Download, RefreshCw, FileText, AlertTriangle, XCircle, Type, AlignJustify, Eye, EyeOff, RotateCcw, Sparkles, User, Target, Briefcase, GraduationCap, FolderKanban, ChevronLeft, ChevronRight, Check, Menu, X, SlidersHorizontal } from "lucide-react";
+import { Upload, PenLine, Plus, Trash2, Download, RefreshCw, FileText, AlertTriangle, XCircle, Type, AlignJustify, Eye, EyeOff, RotateCcw, Sparkles, User, Target, Briefcase, GraduationCap, FolderKanban, ChevronLeft, ChevronRight, Check, Menu, X, SlidersHorizontal, GripVertical } from "lucide-react";
+import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import toast from "react-hot-toast";
 import type { ResumeSchema, GenerationNotes, QualityReport } from "@/lib/resume-schema";
 import type { TemplateName, SectionName } from "@/lib/resume-templates";
-import { getDefaultSizesPx } from "@/lib/resume-templates";
+import { getDefaultSizesPx, resolveSectionOrder } from "@/lib/resume-templates";
 import dynamic from "next/dynamic";
 import Modal from "@/components/ui/Modal";
 import SaveButton from "@/components/ui/SaveButton";
@@ -150,6 +153,8 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   const [metaFontPx, setMetaFontPx] = useState<number | null>(null);
   const [sectionSpacingPx, setSectionSpacingPx] = useState<number | null>(null);
   const [hiddenSections, setHiddenSections] = useState<SectionName[]>([]);
+  // Ordem custom das seções (drag & drop). null = automática por nível.
+  const [sectionOrder, setSectionOrder] = useState<SectionName[] | null>(null);
   const [editingSection, setEditingSection] = useState<SectionName | null>(null);
   const [availableSections, setAvailableSections] = useState<SectionName[]>([]);
   const editorDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -339,12 +344,35 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
   // Build current adjustments object
   const currentAdjustments = useCallback((): PdfAdjustments => ({
     hiddenSections: hiddenSections.length > 0 ? hiddenSections : undefined,
+    sectionOrder: sectionOrder ?? undefined,
     sectionTitleFontPx: sectionTitleFontPx ?? undefined,
     entryTitleFontPx: entryTitleFontPx ?? undefined,
     bodyFontPx: bodyFontPx ?? undefined,
     metaFontPx: metaFontPx ?? undefined,
     sectionSpacingPx: sectionSpacingPx ?? undefined,
-  }), [hiddenSections, sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx]);
+  }), [hiddenSections, sectionOrder, sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx]);
+
+  // Lista do painel na ordem REAL de renderização (header primeiro, fixo).
+  const orderedSections = useMemo<SectionName[]>(() => {
+    const effective = resolveSectionOrder(sectionOrder ?? undefined, candidateLevel);
+    return ["header", ...effective.filter(s => availableSections.includes(s))];
+  }, [sectionOrder, candidateLevel, availableSections]);
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  function handleSectionDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const visible: SectionName[] = orderedSections.filter(s => s !== "header");
+    const from = visible.indexOf(active.id as SectionName);
+    const to = visible.indexOf(over.id as SectionName);
+    if (from < 0 || to < 0) return;
+    // resolveSectionOrder completa com as seções sem conteúdo no fim.
+    setSectionOrder(resolveSectionOrder(arrayMove(visible, from, to), candidateLevel));
+  }
 
   // When template changes and we already have resume data, regenerate PDF
   useEffect(() => {
@@ -363,7 +391,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     }, 400);
     return () => { if (editorDebounce.current) clearTimeout(editorDebounce.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx, hiddenSections]);
+  }, [sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx, hiddenSections, sectionOrder]);
 
   // When text is edited, regenerate PDF with longer debounce
   useEffect(() => {
@@ -475,6 +503,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           if (typeof adj.bodyFontPx === "number") setBodyFontPx(adj.bodyFontPx);
           if (typeof adj.metaFontPx === "number") setMetaFontPx(adj.metaFontPx);
           if (typeof adj.sectionSpacingPx === "number") setSectionSpacingPx(adj.sectionSpacingPx);
+          if (Array.isArray(adj.sectionOrder)) setSectionOrder(adj.sectionOrder as SectionName[]);
         }
         await generatePdf(
           schema,
@@ -482,6 +511,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
           item.candidateLevel,
           {
             hiddenSections: item.adjustments?.hiddenSections as SectionName[] | undefined,
+            sectionOrder: (item.adjustments as Record<string, unknown> | undefined)?.sectionOrder as SectionName[] | undefined,
             sectionTitleFontPx: (item.adjustments as Record<string, unknown> | undefined)?.sectionTitleFontPx as number | undefined,
             entryTitleFontPx: (item.adjustments as Record<string, unknown> | undefined)?.entryTitleFontPx as number | undefined,
             bodyFontPx: (item.adjustments as Record<string, unknown> | undefined)?.bodyFontPx as number | undefined,
@@ -507,6 +537,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
         candidateLevel,
         adjustments: {
           hiddenSections: hiddenSections.length > 0 ? hiddenSections : undefined,
+          sectionOrder: sectionOrder ?? undefined,
           sectionTitleFontPx: sectionTitleFontPx ?? undefined,
           entryTitleFontPx: entryTitleFontPx ?? undefined,
           bodyFontPx: bodyFontPx ?? undefined,
@@ -518,7 +549,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     return () => {
       if (editDebounce.current) clearTimeout(editDebounce.current);
     };
-  }, [user, editingItemId, resumeData, selectedTemplate, candidateLevel, hiddenSections, sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx]);
+  }, [user, editingItemId, resumeData, selectedTemplate, candidateLevel, hiddenSections, sectionOrder, sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx]);
 
   // Main create handler
   async function handleCreate(formData: Record<string, unknown>) {
@@ -658,6 +689,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     setMetaFontPx(null);
     setSectionSpacingPx(null);
     setHiddenSections([]);
+    setSectionOrder(null);
     setEditingSection(null);
     setAvailableSections([]);
     setSelectedTemplate("profissional");
@@ -696,7 +728,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
     );
     saver.markDirty();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumeData, selectedTemplate, sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx, hiddenSections]);
+  }, [resumeData, selectedTemplate, sectionTitleFontPx, entryTitleFontPx, bodyFontPx, metaFontPx, sectionSpacingPx, hiddenSections, sectionOrder]);
 
   // For edit-mode (loaded from /my-files), the item is already saved; reflect that in the button.
   // The existing debounced updateResumeItem effect keeps the doc in sync as the user edits.
@@ -929,7 +961,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">Ajustes</h3>
-                {(sectionTitleFontPx != null || entryTitleFontPx != null || bodyFontPx != null || metaFontPx != null || sectionSpacingPx != null || hiddenSections.length > 0) && (
+                {(sectionTitleFontPx != null || entryTitleFontPx != null || bodyFontPx != null || metaFontPx != null || sectionSpacingPx != null || hiddenSections.length > 0 || sectionOrder != null) && (
                   <button
                     onClick={() => {
                       setSectionTitleFontPx(null);
@@ -938,6 +970,7 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                       setMetaFontPx(null);
                       setSectionSpacingPx(null);
                       setHiddenSections([]);
+                      setSectionOrder(null);
                     }}
                     className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors"
                   >
@@ -959,61 +992,82 @@ const [generationNotes, setGenerationNotes] = useState<GenerationNotes | null>(n
                   <Eye className="w-3.5 h-3.5" /> Seções
                 </label>
                 <div className="space-y-1.5">
-                  {availableSections.map(key => {
-                    const label = SECTION_LABELS[key];
-                    const isHeader = key === "header";
-                    const isHidden = !isHeader && hiddenSections.includes(key);
-                    const isEditing = editingSection === key && !isHidden;
-                    return (
-                      <div key={key}>
-                        <div className="flex items-center gap-1">
-                          {isHeader ? (
-                            <span className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs bg-white/[0.02] text-gray-300 border border-white/[0.06]">
-                              <PenLine className="w-3.5 h-3.5 flex-shrink-0" />
-                              {label}
-                            </span>
-                          ) : (
+                  <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
+                    <SortableContext items={orderedSections.filter(s => s !== "header")} strategy={verticalListSortingStrategy}>
+                      {orderedSections.map(key => {
+                        const label = SECTION_LABELS[key];
+                        const isHeader = key === "header";
+                        const isHidden = !isHeader && hiddenSections.includes(key);
+                        const isEditing = editingSection === key && !isHidden;
+
+                        const rowContent = (
+                          <>
+                            {isHeader ? (
+                              <span className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs bg-white/[0.02] text-gray-300 border border-white/[0.06]">
+                                <PenLine className="w-3.5 h-3.5 flex-shrink-0" />
+                                {label}
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setHiddenSections(prev =>
+                                    isHidden ? prev.filter(s => s !== key) : [...prev, key]
+                                  );
+                                  if (!isHidden) setEditingSection(prev => prev === key ? null : prev);
+                                }}
+                                disabled={pdfLoading}
+                                className={`flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                                  isHidden
+                                    ? "bg-red-500/10 text-red-400/70 border border-red-500/20"
+                                    : "bg-white/[0.02] text-gray-300 border border-white/[0.06] hover:bg-white/[0.05]"
+                                }`}
+                              >
+                                {isHidden ? <EyeOff className="w-3.5 h-3.5 flex-shrink-0" /> : <Eye className="w-3.5 h-3.5 flex-shrink-0" />}
+                                <span className={isHidden ? "line-through" : ""}>{label}</span>
+                              </button>
+                            )}
                             <button
-                              onClick={() => {
-                                setHiddenSections(prev =>
-                                  isHidden ? prev.filter(s => s !== key) : [...prev, key]
-                                );
-                                if (!isHidden) setEditingSection(prev => prev === key ? null : prev);
-                              }}
-                              disabled={pdfLoading}
-                              className={`flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
-                                isHidden
-                                  ? "bg-red-500/10 text-red-400/70 border border-red-500/20"
-                                  : "bg-white/[0.02] text-gray-300 border border-white/[0.06] hover:bg-white/[0.05]"
-                              }`}
+                              onClick={() => setEditingSection(prev => prev === key ? null : key)}
+                              disabled={isHidden || pdfLoading}
+                              className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-all ${
+                                isEditing
+                                  ? "bg-primary-500/20 border-primary-500/40 text-primary-400"
+                                  : "bg-white/[0.02] border-white/[0.06] text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]"
+                              } disabled:opacity-30 disabled:cursor-not-allowed`}
                             >
-                              {isHidden ? <EyeOff className="w-3.5 h-3.5 flex-shrink-0" /> : <Eye className="w-3.5 h-3.5 flex-shrink-0" />}
-                              <span className={isHidden ? "line-through" : ""}>{label}</span>
+                              <PenLine className="w-3 h-3" />
                             </button>
-                          )}
-                          <button
-                            onClick={() => setEditingSection(prev => prev === key ? null : key)}
-                            disabled={isHidden || pdfLoading}
-                            className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-all ${
-                              isEditing
-                                ? "bg-primary-500/20 border-primary-500/40 text-primary-400"
-                                : "bg-white/[0.02] border-white/[0.06] text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]"
-                            } disabled:opacity-30 disabled:cursor-not-allowed`}
-                          >
-                            <PenLine className="w-3 h-3" />
-                          </button>
-                        </div>
-                        {isEditing && resumeData && (
+                          </>
+                        );
+
+                        const editorContent = isEditing && resumeData ? (
                           <SectionEditor
                             section={key}
                             data={resumeData}
                             onUpdate={updateResume}
                             pdfLoading={pdfLoading}
                           />
-                        )}
-                      </div>
-                    );
-                  })}
+                        ) : null;
+
+                        if (isHeader) {
+                          return (
+                            <div key={key}>
+                              <div className="flex items-center gap-1">
+                                {/* espaçador alinhando com a alça das linhas arrastáveis */}
+                                <span className="w-7 h-7 flex-shrink-0" />
+                                {rowContent}
+                              </div>
+                              {editorContent}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <SortableSectionRow key={key} id={key} disabled={pdfLoading} row={rowContent} editor={editorContent} />
+                        );
+                      })}
+                    </SortableContext>
+                  </DndContext>
                 </div>
               </div>
             </div>
@@ -2007,3 +2061,48 @@ function SectionEditor({
   }
 }
 
+/**
+ * Linha arrastável da lista de seções (Ajustes). A alça (GripVertical) é o
+ * único ativador do drag — toggles e lápis continuam clicáveis normalmente.
+ * `touch-none` na alça evita que o scroll da página "roube" o gesto no
+ * celular.
+ */
+function SortableSectionRow({
+  id,
+  disabled,
+  row,
+  editor,
+}: {
+  id: SectionName;
+  disabled?: boolean;
+  row: ReactNode;
+  editor?: ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={isDragging ? "relative z-10 rounded-lg ring-1 ring-primary-500/40" : undefined}
+    >
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          disabled={disabled}
+          aria-label="Arrastar para reordenar a seção"
+          className={`w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-lg border transition-all touch-none ${
+            isDragging
+              ? "cursor-grabbing bg-primary-500/20 border-primary-500/40 text-primary-400"
+              : "cursor-grab bg-white/[0.02] border-white/[0.06] text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]"
+          } disabled:opacity-30 disabled:cursor-not-allowed`}
+        >
+          <GripVertical className="w-3.5 h-3.5" />
+        </button>
+        {row}
+      </div>
+      {editor}
+    </div>
+  );
+}
