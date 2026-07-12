@@ -13,12 +13,15 @@ export interface Job {
 
 export type DatePeriod = "today" | "week" | "month";
 
+export type JobModality = "presencial" | "hibrido" | "remoto";
+
 export interface JobSearchFilters {
   keyword: string;
   uf?: string;
   city?: string;
   period: DatePeriod;
   exactMatch?: boolean;
+  modality?: JobModality;
   page?: number;
 }
 

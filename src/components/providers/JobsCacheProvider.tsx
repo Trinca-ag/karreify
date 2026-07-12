@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Job, DatePeriod } from "@/services/jobs";
+import type { Job, DatePeriod, JobModality } from "@/services/jobs";
 
 interface CachedPage {
   jobs: Job[];
@@ -24,6 +24,7 @@ interface JobsCacheState {
   city: string;
   period: DatePeriod;
   exactMatch: boolean;
+  modality: JobModality | "";
   page: number;
   jobs: Job[];
   totalCount: number;
@@ -39,6 +40,7 @@ interface JobsCacheContextType extends JobsCacheState {
   setCity: (v: string) => void;
   setPeriod: (v: DatePeriod) => void;
   setExactMatch: (v: boolean) => void;
+  setModality: (v: JobModality | "") => void;
   setPage: (v: number) => void;
   setJobs: (v: Job[]) => void;
   setTotalCount: (v: number) => void;
@@ -58,6 +60,7 @@ const defaultState: JobsCacheState = {
   city: "",
   period: "month",
   exactMatch: false,
+  modality: "",
   page: 1,
   jobs: [],
   totalCount: 0,
@@ -132,6 +135,10 @@ export function JobsCacheProvider({ children }: { children: ReactNode }) {
     (v: boolean) => setState((p) => ({ ...p, exactMatch: v })),
     []
   );
+  const setModality = useCallback(
+    (v: JobModality | "") => setState((p) => ({ ...p, modality: v })),
+    []
+  );
   const setPage = useCallback(
     (v: number) => setState((p) => ({ ...p, page: v })),
     []
@@ -196,6 +203,7 @@ export function JobsCacheProvider({ children }: { children: ReactNode }) {
       setCity,
       setPeriod,
       setExactMatch,
+      setModality,
       setPage,
       setJobs,
       setTotalCount,
@@ -212,6 +220,7 @@ export function JobsCacheProvider({ children }: { children: ReactNode }) {
       setCity,
       setPeriod,
       setExactMatch,
+      setModality,
       setPage,
       setJobs,
       setTotalCount,

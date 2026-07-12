@@ -35,6 +35,7 @@ import {
   extractJobProfile,
   type Job,
   type DatePeriod,
+  type JobModality,
 } from "@/services/jobs";
 import { BRAZILIAN_STATES, fetchCitiesByUF } from "@/lib/ibge";
 import { useJobsCache } from "@/components/providers/JobsCacheProvider";
@@ -50,6 +51,13 @@ const PERIOD_OPTIONS: { value: DatePeriod; label: string }[] = [
   { value: "today", label: "Hoje" },
   { value: "week", label: "Semana" },
   { value: "month", label: "Mês" },
+];
+
+const MODALITY_OPTIONS: { value: JobModality | ""; label: string }[] = [
+  { value: "", label: "Todas" },
+  { value: "presencial", label: "Presencial" },
+  { value: "hibrido", label: "Híbrido" },
+  { value: "remoto", label: "Home office" },
 ];
 
 const PAGE_SIZE = 20;
@@ -70,6 +78,8 @@ export default function JobsPage() {
     setPeriod,
     exactMatch,
     setExactMatch,
+    modality,
+    setModality,
     page,
     setPage,
     jobs,
@@ -201,6 +211,7 @@ export default function JobsPage() {
       c: searchCity,
       p: period,
       e: exactMatch ? 1 : 0,
+      m: modality,
       pg: targetPage,
     });
   }
@@ -240,6 +251,7 @@ export default function JobsPage() {
         city: searchCity || undefined,
         period,
         exactMatch,
+        modality: modality || undefined,
         page: targetPage,
       });
       setJobs(result.jobs);
@@ -381,6 +393,25 @@ export default function JobsPage() {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-400 mb-1.5 block">Modalidade</label>
+            <div className="flex gap-1 bg-white/5 border border-white/10 rounded-xl p-1 w-full sm:w-fit">
+              {MODALITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.label}
+                  onClick={() => setModality(opt.value)}
+                  className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    modality === opt.value
+                      ? "bg-primary-500/20 text-primary-300"
+                      : "text-gray-400 hover:text-gray-200"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
 
