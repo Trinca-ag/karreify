@@ -378,7 +378,19 @@ export default function JobsPage() {
               <label className="text-xs text-gray-400 mb-1.5 block">
                 Publicado
               </label>
-              <div className="flex gap-1 bg-white/5 border border-white/10 rounded-xl p-1">
+              {/* Mobile: dropdown nativo; sm+: segmented */}
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value as DatePeriod)}
+                className="sm:hidden w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 text-sm"
+              >
+                {PERIOD_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-dark-800">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <div className="hidden sm:flex gap-1 bg-white/5 border border-white/10 rounded-xl p-1">
                 {PERIOD_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -398,7 +410,19 @@ export default function JobsPage() {
 
           <div>
             <label className="text-xs text-gray-400 mb-1.5 block">Modalidade</label>
-            <div className="flex gap-1 bg-white/5 border border-white/10 rounded-xl p-1 w-full sm:w-fit">
+            {/* Mobile: dropdown nativo; sm+: segmented */}
+            <select
+              value={modality}
+              onChange={(e) => setModality(e.target.value as JobModality | "")}
+              className="sm:hidden w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 text-sm"
+            >
+              {MODALITY_OPTIONS.map((opt) => (
+                <option key={opt.label} value={opt.value} className="bg-dark-800">
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <div className="hidden sm:flex gap-1 bg-white/5 border border-white/10 rounded-xl p-1 sm:w-fit">
               {MODALITY_OPTIONS.map((opt) => (
                 <button
                   key={opt.label}
