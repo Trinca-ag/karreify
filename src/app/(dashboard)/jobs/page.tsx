@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
+import FileUpload from "@/components/ui/FileUpload";
+import { extractTextFromFile } from "@/utils/file-parser";
 import {
   Briefcase,
   Search,
@@ -30,6 +32,7 @@ import {
   buyJobsPass,
   formatRelativeDate,
   JobsSearchError,
+  extractJobProfile,
   type Job,
   type DatePeriod,
 } from "@/services/jobs";
@@ -113,6 +116,11 @@ export default function JobsPage() {
   const [passModalOpen, setPassModalOpen] = useState(false);
   const [dailyLimitOpen, setDailyLimitOpen] = useState(false);
   const [buyingPass, setBuyingPass] = useState<JobsPassId | null>(null);
+  // Buscar com o currículo: modal de upload + extração de profissão via IA.
+  const [cvModalOpen, setCvModalOpen] = useState(false);
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [cvLoading, setCvLoading] = useState(false);
+  const [cvError, setCvError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!uf) {
@@ -150,29 +158,65 @@ export default function JobsPage() {
     }
   }
 
+  async function handleSearchByResume() {
+    if (!cvFile) return;
+    setCvLoading(true);
+    setCvError(null);
+    try {
+      const text = await extractTextFromFile(cvFile);
+      const profile = await extractJobProfile(text);
+      // Estados refletem na UI; a busca usa overrides para não depender do
+      // setState assíncrono.
+      setKeyword(profile.profession);
+      setUf(profile.uf ?? "");
+      setCity(profile.city ?? "");
+      setCvModalOpen(false);
+      setCvFile(null);
+      toast.success(`Buscando vagas de ${profile.profession}`);
+      await runSearch(1, {
+        keyword: profile.profession,
+        uf: profile.uf ?? "",
+        city: profile.city ?? "",
+      });
+    } catch (err) {
+      setCvError(
+        err instanceof Error ? err.message : "Não foi possível ler seu currículo."
+      );
+    } finally {
+      setCvLoading(false);
+    }
+  }
+
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(totalCount / PAGE_SIZE)),
     [totalCount]
   );
 
-  function makeCacheKey(targetPage: number): string {
+  type SearchOverrides = { keyword?: string; uf?: string; city?: string };
+
+  function makeCacheKey(targetPage: number, kw: string, searchUf: string, searchCity: string): string {
     return JSON.stringify({
-      k: keyword.trim().toLowerCase(),
-      uf,
-      c: city,
+      k: kw.trim().toLowerCase(),
+      uf: searchUf,
+      c: searchCity,
       p: period,
       e: exactMatch ? 1 : 0,
       pg: targetPage,
     });
   }
 
-  async function runSearch(forcedPage?: number) {
-    if (!keyword.trim() || keyword.trim().length < 2) {
+  async function runSearch(forcedPage?: number, overrides?: SearchOverrides) {
+    // Overrides permitem buscar com valores recém-extraídos do currículo
+    // sem esperar o setState assíncrono refletir nos estados do hook.
+    const kw = (overrides?.keyword ?? keyword).trim();
+    const searchUf = overrides?.uf ?? uf;
+    const searchCity = overrides?.city ?? city;
+    if (!kw || kw.length < 2) {
       toast.error("Digite ao menos 2 caracteres para buscar.");
       return;
     }
     const targetPage = forcedPage ?? 1;
-    const cacheKey = makeCacheKey(targetPage);
+    const cacheKey = makeCacheKey(targetPage, kw, searchUf, searchCity);
 
     const cached = getCachedPage(cacheKey);
     if (cached) {
@@ -191,9 +235,9 @@ export default function JobsPage() {
     setError(null);
     try {
       const result = await searchJobs({
-        keyword: keyword.trim(),
-        uf: uf || undefined,
-        city: city || undefined,
+        keyword: kw,
+        uf: searchUf || undefined,
+        city: searchCity || undefined,
         period,
         exactMatch,
         page: targetPage,
@@ -428,6 +472,19 @@ export default function JobsPage() {
               </Button>
             </div>
           </div>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-white/[0.06]" />
+            <span className="text-[11px] text-gray-500 uppercase tracking-wider">ou</span>
+            <div className="flex-1 h-px bg-white/[0.06]" />
+          </div>
+          <button
+            onClick={() => setCvModalOpen(true)}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-primary-500/30 bg-primary-500/10 hover:bg-primary-500/15 text-primary-300 text-sm font-medium transition-all disabled:opacity-40"
+          >
+            <FileText className="w-4 h-4" /> Buscar com meu currículo
+            <Sparkles className="w-3.5 h-3.5" />
+          </button>
           {hasActivePass ? (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg text-[11px] text-emerald-200 leading-relaxed">
               <div className="flex items-start gap-2">
@@ -601,6 +658,54 @@ export default function JobsPage() {
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={cvModalOpen}
+        onClose={() => !cvLoading && setCvModalOpen(false)}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="text-center">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-primary-500 to-accent-violet flex items-center justify-center shadow-lg shadow-black/20">
+              <FileText className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="mt-3 text-lg font-semibold text-white font-heading">
+              Buscar com meu currículo
+            </h3>
+            <p className="mt-1 text-sm text-gray-400 leading-relaxed">
+              Anexe seu currículo (PDF ou Word): a IA identifica sua profissão
+              e localização e busca as vagas para você. Grátis — a busca conta
+              na sua cota normal.
+            </p>
+          </div>
+          <FileUpload
+            onFileSelect={(f) => {
+              setCvFile(f);
+              setCvError(null);
+            }}
+            selectedFile={cvFile}
+            onClear={() => {
+              setCvFile(null);
+              setCvError(null);
+            }}
+            disabled={cvLoading}
+          />
+          {cvError && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-300">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{cvError}</span>
+            </div>
+          )}
+          <Button
+            onClick={handleSearchByResume}
+            disabled={!cvFile || cvLoading}
+            loading={cvLoading}
+            className="w-full glow-blue"
+          >
+            {cvLoading ? "Lendo seu currículo..." : "Identificar profissão e buscar"}
+          </Button>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={dailyLimitOpen}

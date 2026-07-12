@@ -103,3 +103,25 @@ export function formatRelativeDate(iso: string): string {
   }
   return "Há mais de 1 mês";
 }
+
+export interface JobProfileResult {
+  profession: string;
+  city: string | null;
+  uf: string | null;
+}
+
+/**
+ * Extrai profissão/cidade/UF do texto do currículo para pré-preencher a
+ * busca (gratuito; rate-limited no servidor).
+ */
+export async function extractJobProfile(resumeText: string): Promise<JobProfileResult> {
+  const response = await authedFetch("/api/jobs/extract-profile", {
+    method: "POST",
+    body: JSON.stringify({ resumeText }),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.success) {
+    throw new Error(data?.error || "Não foi possível ler seu currículo. Tente novamente.");
+  }
+  return { profession: data.profession, city: data.city ?? null, uf: data.uf ?? null };
+}
