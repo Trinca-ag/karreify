@@ -15,6 +15,8 @@ import {
   Building2,
   BarChart2,
   Sparkles,
+  BookOpen,
+  Mail,
   Upload,
   ArrowRight,
   Check,
@@ -36,6 +38,14 @@ import {
   Gift,
   type LucideIcon,
 } from "lucide-react";
+import { GUIDES } from "@/content/guides";
+
+// Ícone de cada guia-pilar exibido na seção "Guias" da home.
+const guideIcons: Record<string, LucideIcon> = {
+  "como-fazer-um-curriculo": ScrollText,
+  "criar-curriculo-com-ia": Sparkles,
+  "carta-de-apresentacao": Mail,
+};
 
 /* =========================================================================
    FEATURE SPOTLIGHTS — dados de cada seção
@@ -1374,6 +1384,63 @@ export default function Home() {
             Pagamento via PIX ou cartão (Abacate Pay). Suas moedas caem na conta
             imediatamente após a confirmação.
           </p>
+        </div>
+      </section>
+
+      {/* ========== GUIAS ========== */}
+      <section id="guias" className="relative py-28 bg-dark-900 overflow-hidden scroll-mt-20">
+        <div className="absolute inset-0 bg-radial-blue opacity-40" />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal direction="up" className="text-center max-w-3xl mx-auto mb-14">
+            <span className="inline-block px-4 py-1.5 rounded-full text-xs font-medium bg-primary-500/10 border border-primary-500/20 text-primary-400 mb-6">
+              Guias gratuitos
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold leading-tight">
+              Aprenda a montar um currículo{" "}
+              <span className="gradient-text">que abre portas</span>
+            </h2>
+            <p className="mt-5 text-lg text-gray-400">
+              Conteúdo aprofundado e gratuito sobre currículo, ATS e carta de
+              apresentação — escrito para o mercado brasileiro.
+            </p>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6">
+            {GUIDES.filter((g) => g.pillar).map((g, i) => {
+              const Icon = guideIcons[g.slug] || BookOpen;
+              return (
+                <ScrollReveal key={g.slug} direction="up" delay={i * 120}>
+                  <Link
+                    href={`/${g.slug}`}
+                    className="group glass-card h-full p-7 rounded-2xl border border-white/[0.06] hover:border-primary-500/30 hover:-translate-y-1 transition-all duration-300 flex flex-col"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center mb-5">
+                      <Icon className="w-5 h-5 text-primary-400" />
+                    </div>
+                    <h3 className="text-lg font-heading font-bold text-white leading-snug group-hover:text-primary-300 transition-colors">
+                      {g.h1}
+                    </h3>
+                    <p className="mt-3 text-sm text-gray-400 leading-relaxed line-clamp-3 flex-1">
+                      {g.metaDescription}
+                    </p>
+                    <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary-400 group-hover:gap-2.5 transition-all">
+                      Ler guia <ArrowRight className="w-4 h-4" />
+                    </span>
+                  </Link>
+                </ScrollReveal>
+              );
+            })}
+          </div>
+
+          <ScrollReveal direction="up" delay={200} className="mt-12 text-center">
+            <Link
+              href="/guias"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold bg-white/[0.04] border border-white/10 text-white hover:bg-white/[0.08] hover:border-primary-500/30 transition-all"
+            >
+              Ver todos os {GUIDES.length} guias
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </ScrollReveal>
         </div>
       </section>
 

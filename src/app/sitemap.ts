@@ -24,6 +24,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${BASE}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
     { url: `${BASE}/modelos-de-curriculo`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${BASE}/guias`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE}/sobre`, lastModified: now, changeFrequency: "yearly", priority: 0.6 },
     ...guides,
     ...professions,

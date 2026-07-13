@@ -187,7 +187,16 @@
       "Bash(grep -qE '^\\\\.env\\\\*?$|^\\\\.env\\\\.local$|\\\\.env\\\\.local' /c/Karreify/.gitignore)",
       "Bash(git -C /c/Karreify diff --stat src/app/globals.css src/components/ui/ResumeFixMockup.tsx)",
       "PowerShell(Add-Type -AssemblyName System.Windows.Forms; \"ClientAreaAnimation \\(Windows 'Efeitos de animacao'\\): $\\([System.Windows.Forms.SystemInformation]::ClientAreaAnimation\\)\")",
-      "PowerShell($c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { $c | ForEach-Object { \"porta 3000 ainda ocupada pelo PID $\\($_.OwningProcess\\): $\\(\\(Get-Process -Id $_.OwningProcess\\).ProcessName\\)\" } } else { \"porta 3000 livre\" })"
+      "PowerShell($c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { $c | ForEach-Object { \"porta 3000 ainda ocupada pelo PID $\\($_.OwningProcess\\): $\\(\\(Get-Process -Id $_.OwningProcess\\).ProcessName\\)\" } } else { \"porta 3000 livre\" })",
+      "PowerShell(node \"C:\\\\Users\\\\Gustavo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Karreify\\\\37c0062a-8236-4ef9-b5a6-fb6a9dc25879\\\\scratchpad\\\\plumb-section-order.js\"; git diff --stat)",
+      "PowerShell(node \"C:\\\\Users\\\\Gustavo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Karreify\\\\37c0062a-8236-4ef9-b5a6-fb6a9dc25879\\\\scratchpad\\\\ui-section-order.js\"; git diff --stat \"src/app/\\(dashboard\\)/create-resume/page.tsx\")",
+      "PowerShell(node \"C:\\\\Users\\\\Gustavo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Karreify\\\\37c0062a-8236-4ef9-b5a6-fb6a9dc25879\\\\scratchpad\\\\append-extract-profile.js\")",
+      "PowerShell(node \"C:\\\\Users\\\\Gustavo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Karreify\\\\37c0062a-8236-4ef9-b5a6-fb6a9dc25879\\\\scratchpad\\\\ui-jobs-by-resume.js\"; git diff --stat src/services/jobs.ts \"src/app/\\(dashboard\\)/jobs/page.tsx\")",
+      "PowerShell($tools = 'ffmpeg','node','npm','npx','python','python3'; foreach \\($t in $tools\\) { $c = Get-Command $t -ErrorAction SilentlyContinue; if \\($c\\) { \"$t : $\\($c.Source\\)\" } else { \"$t : NAO ENCONTRADO\" } })",
+      "Bash(sed 's/<loc>//')",
+      "Bash(grep -nE 'id=\"[a-z-]+\"|\\\\{/\\\\* .* \\\\*/\\\\}|<section|<Footer|<Navbar' src/app/page.tsx)",
+      "Bash(grep -oE \".{0,15}Ver todos os.{0,60}\" /tmp/km_home.html)",
+      "Bash(powershell -NoProfile -Command \"Get-CimInstance Win32_Process | Where-Object { \\\\$_.CommandLine -match 'next dev|next-server' } | ForEach-Object { Stop-Process -Id \\\\$_.ProcessId -Force -ErrorAction SilentlyContinue }; 'dev server encerrado'\")"
     ]
   }
 }
