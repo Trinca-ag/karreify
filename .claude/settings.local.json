@@ -200,7 +200,11 @@
       "PowerShell($g = Get-Content C:\\\\Karreify\\\\src\\\\content\\\\guides.ts; $g[\\($g.Count-70\\)..\\($g.Count-1\\)] -join \"`n\")",
       "PowerShell($p = Get-Content C:\\\\Karreify\\\\package.json -Raw | ConvertFrom-Json; $p.scripts | Format-List)",
       "PowerShell($p = Get-Content C:\\\\Karreify\\\\src\\\\content\\\\professions.ts; \\($p.Count-40\\)..\\($p.Count-1\\) | ForEach-Object { \"$\\($_+1\\): $\\($p[$_]\\)\" })",
-      "PowerShell(Get-CimInstance *)"
+      "PowerShell(Get-CimInstance *)",
+      "PowerShell(git push *)",
+      "PowerShell(node \"C:\\\\Users\\\\Gustavo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Karreify\\\\1dac3ee3-b876-4930-9a23-23bdfd3fa3c2\\\\scratchpad\\\\resize-icon.mjs\")",
+      "PowerShell(node \"C:\\\\Users\\\\Gustavo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Karreify\\\\1dac3ee3-b876-4930-9a23-23bdfd3fa3c2\\\\scratchpad\\\\probe.mjs\")",
+      "PowerShell(node \"C:\\\\Users\\\\Gustavo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Karreify\\\\1dac3ee3-b876-4930-9a23-23bdfd3fa3c2\\\\scratchpad\\\\build-icon.mjs\")"
     ]
   }
 }
