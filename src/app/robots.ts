@@ -7,26 +7,17 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      // Páginas de app (atrás de login), painel admin, APIs e auxiliares não
-      // têm valor de busca — fora do índice.
-      disallow: [
-        "/admin",
-        "/api/",
-        "/dashboard",
-        "/create-resume",
-        "/resume-analysis",
-        "/adapt-resume",
-        "/cover-letter",
-        "/company-analysis",
-        "/jobs",
-        "/plans",
-        "/market",
-        "/my-files",
-        "/profile",
-        "/support",
-        "/feedback",
-        "/auth/",
-      ],
+      // Só /api/ fica aqui, e por crawl budget — não por sigilo.
+      //
+      // O painel admin e as páginas de app atrás de login NÃO são listados de
+      // propósito. robots.txt é público: listar "/admin" aqui entregaria o
+      // caminho do painel para qualquer scanner. E `Disallow` bloqueia o
+      // rastreamento, não o índice — com o crawl bloqueado o Google nunca veria
+      // o noindex e a URL poderia continuar indexada via link externo.
+      // A exclusão dessas rotas é feita por `X-Robots-Tag: noindex` em header
+      // (ver NOINDEX_PATHS em next.config.mjs), que desindexa de verdade sem
+      // divulgar caminho nenhum.
+      disallow: ["/api/"],
     },
     sitemap: `${BASE}/sitemap.xml`,
     host: BASE,
