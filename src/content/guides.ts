@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 import type { Guide } from "./types";
+import { GUIDES_ENTREVISTA } from "./guides-entrevista";
+import { GUIDES_CARREIRA } from "./guides-carreira";
+import { GUIDES_LINKEDIN } from "./guides-linkedin";
 
 // Os artigos são preenchidos a partir da geração de conteúdo. Mantenha o conteúdo
 // genuinamente útil e único por página (Google penaliza páginas finas).
-export const GUIDES: Guide[] = [
+// Este arquivo guarda o cluster original (currículo + carta). Clusters novos ficam
+// em arquivos próprios e entram no array exportado lá embaixo.
+const GUIDES_CURRICULO: Guide[] = [
   {
     "slug": "como-fazer-um-curriculo",
     "metaTitle": "Como Fazer um Currículo do Zero em 2026 (Guia Completo)",
@@ -3912,6 +3917,13 @@ export const GUIDES: Guide[] = [
       "como-fazer-um-curriculo"
     ]
   }
+];
+
+export const GUIDES: Guide[] = [
+  ...GUIDES_CURRICULO,
+  ...GUIDES_ENTREVISTA,
+  ...GUIDES_CARREIRA,
+  ...GUIDES_LINKEDIN,
 ];
 
 export function getGuide(slug: string): Guide | undefined {

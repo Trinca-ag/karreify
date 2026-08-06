@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Sparkles, Mail, ScrollText, type LucideIcon } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  Sparkles,
+  Mail,
+  ScrollText,
+  MessagesSquare,
+  Linkedin,
+  type LucideIcon,
+} from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { JsonLd } from "@/components/content/JsonLd";
@@ -10,9 +19,9 @@ import type { Guide } from "@/content/types";
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://karreify.com";
 
 export const metadata: Metadata = {
-  title: "Guias de Currículo e Carta de Apresentação",
+  title: "Guias de Currículo, Entrevista e Carreira",
   description:
-    "Todos os guias do Karreify para montar um currículo profissional, passar na triagem de ATS, usar IA a seu favor e escrever cartas de apresentação. Conteúdo gratuito para 2026.",
+    "Todos os guias do Karreify: currículo profissional, triagem de ATS, entrevista de emprego, negociação de salário, LinkedIn e recolocação. Conteúdo gratuito para 2026.",
   alternates: { canonical: "/guias" },
 };
 
@@ -65,6 +74,42 @@ const GROUPS: { title: string; description: string; slugs: string[] }[] = [
     ],
   },
   {
+    title: "Entrevista de emprego",
+    description: "Como se preparar, o que responder e o que fazer depois.",
+    slugs: [
+      "perguntas-e-respostas-de-entrevista-de-emprego",
+      "fale-sobre-voce-entrevista",
+      "pontos-fortes-e-fracos-na-entrevista",
+      "entrevista-comportamental-metodo-star",
+      "entrevista-online-por-video",
+      "perguntas-para-fazer-ao-recrutador",
+      "o-que-fazer-depois-da-entrevista",
+    ],
+  },
+  {
+    title: "Salário, carreira e demissão",
+    description: "Negociar, pedir aumento, sair bem e voltar ao mercado.",
+    slugs: [
+      "pretensao-salarial",
+      "como-negociar-salario",
+      "como-pedir-aumento-de-salario",
+      "carta-de-demissao",
+      "como-pedir-demissao",
+      "transicao-de-carreira",
+      "recolocacao-profissional",
+    ],
+  },
+  {
+    title: "LinkedIn e marca pessoal",
+    description: "Ser encontrado por recrutadores e construir rede.",
+    slugs: [
+      "titulo-do-linkedin",
+      "resumo-do-linkedin",
+      "open-to-work-linkedin",
+      "networking-profissional",
+    ],
+  },
+  {
     title: "Ferramentas",
     description: "Como escolher onde criar o seu currículo.",
     slugs: ["melhores-sites-para-criar-curriculo"],
@@ -75,6 +120,8 @@ const PILLAR_ICONS: Record<string, LucideIcon> = {
   "como-fazer-um-curriculo": ScrollText,
   "criar-curriculo-com-ia": Sparkles,
   "carta-de-apresentacao": Mail,
+  "entrevista-de-emprego": MessagesSquare,
+  "como-fazer-um-bom-linkedin": Linkedin,
 };
 
 export default function Page() {
@@ -95,7 +142,7 @@ export default function Page() {
   const collectionLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: "Guias de Currículo e Carta de Apresentação",
+    name: "Guias de Currículo, Entrevista e Carreira",
     url: `${SITE_URL}/guias`,
     inLanguage: "pt-BR",
   };
@@ -115,9 +162,10 @@ export default function Page() {
           Guias de Currículo e Carreira
         </h1>
         <p className="mt-4 text-lg text-gray-300 leading-relaxed max-w-2xl">
-          Conteúdo gratuito e aprofundado para montar um currículo que gera entrevistas:
-          fundamentos, otimização para ATS, uso de inteligência artificial e cartas de
-          apresentação — tudo escrito para o mercado brasileiro em 2026.
+          Conteúdo gratuito e aprofundado para cada etapa da busca por emprego: montar um
+          currículo que passa no ATS, se preparar para a entrevista, negociar salário,
+          usar o LinkedIn a seu favor e se recolocar — tudo escrito para o mercado
+          brasileiro em 2026.
         </p>
 
         {/* Pilares — os guias essenciais */}

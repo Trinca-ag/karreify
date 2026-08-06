@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import type { Profession } from "./types";
+import { PROFESSIONS_INDUSTRIA_CONSTRUCAO } from "./professions-industria-construcao";
+import { PROFESSIONS_COMERCIO_ALIMENTACAO } from "./professions-comercio-alimentacao";
+import { PROFESSIONS_CUIDADOS_SAUDE } from "./professions-cuidados-saude";
+import { PROFESSIONS_CORPORATIVO } from "./professions-corporativo";
 
-export const PROFESSIONS: Profession[] = [
+// Lote original de profissões. Os lotes seguintes ficam em arquivos próprios e
+// entram no array exportado lá embaixo — evita um único arquivo gigante.
+const PROFESSIONS_BASE: Profession[] = [
   {
     "slug": "desenvolvedor",
     "profession": "Desenvolvedor de Software",
@@ -4365,6 +4371,14 @@ export const PROFESSIONS: Profession[] = [
       }
     ]
   }
+];
+
+export const PROFESSIONS: Profession[] = [
+  ...PROFESSIONS_BASE,
+  ...PROFESSIONS_INDUSTRIA_CONSTRUCAO,
+  ...PROFESSIONS_COMERCIO_ALIMENTACAO,
+  ...PROFESSIONS_CUIDADOS_SAUDE,
+  ...PROFESSIONS_CORPORATIVO,
 ];
 
 export function getProfession(slug: string): Profession | undefined {
