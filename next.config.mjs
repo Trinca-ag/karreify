@@ -96,6 +96,20 @@ const nextConfig = {
           ...SECURITY_HEADERS,
         ],
       },
+      {
+        // Só a home libera embed via iframe (dashboard/admin/api seguem
+        // bloqueados pelo X-Frame-Options: DENY acima). Navegadores modernos
+        // priorizam frame-ancestors sobre X-Frame-Options quando os dois
+        // headers estão presentes, então isso basta sem remover o DENY.
+        // Usado pelo portfólio da Trinca pra mostrar a tela inicial ao vivo.
+        source: "/",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self' https://trinca-dashboard.web.app http://localhost:3100",
+          },
+        ],
+      },
     ];
   },
 };
